@@ -3,34 +3,44 @@
 # Bash Script to Commit, Push, and Reinstall cDFT Solver
 # ==========================================================
 
-# Stop on error
 set -e
 
-# --- Git commit & push ---
-echo "🔧 Adding all changes..."
-git add .
+# --- Environment setup ---
+ENV_NAME="myenv"
+PYTHON=${PYTHON:-python3}
 
-echo "✏️ Committing changes..."
-git commit -m "update_data_$(date '+%Y-%m-%d_%H-%M-%S')" || echo "No changes to commit."
-
-
-echo "🚀 Pushing to remote..."
-git push -u origin main
-
-# --- Activate Python environment ---
-ENV_PATH=~/myenv
-if [ ! -d "$ENV_PATH" ]; then
-    echo "❌ Environment $ENV_PATH does not exist."
+echo "🔧 Checking for Python installation..."
+if ! command -v $PYTHON &>/dev/null; then
+    echo "❌ Python not found. Please install Python 3.8+."
     exit 1
 fi
 
+# --- Create virtual environment if it doesn't exist ---
+if [ ! -d "$ENV_NAME" ]; then
+    echo "📦 Creating virtual environment: $ENV_NAME"
+    $PYTHON -m venv "$ENV_NAME"
+fi
+
+# --- Activate virtual environment ---
 echo "🚀 Activating environment..."
 # shellcheck disable=SC1091
-source "$ENV_PATH/bin/activate"
+source "$ENV_NAME/bin/activate" || { echo "❌ Failed to activate virtual environment"; exit 1; }
 
-# --- Uninstall existing package ---
-echo "🗑️ Uninstalling existing cdft_solver package if it exists..."
-pip uninstall -y cdft_solver || echo "No existing package found."
+# --- Upgrade pip ---
+echo "⬆️  Upgrading pip..."
+pip install --upgrade pip
+
+# --- Install essential libraries ---
+echo "📚 Installing essential libraries..."
+pip install numpy json5 matplotlib pynufft scipy pyfftw sympy
+
+# --- Run installer_essential.sh if present ---
+if [ -f installer_essential.sh ]; then
+    echo "🔧 Running installer_essential.sh..."
+    chmod +x installer_essential.sh
+    ./installer_essential.sh
+fi
+
 
 # --- Install from GitHub ---
 GIT_URL="https://github.com/vikkivarma16/cDFT_solver.git"
