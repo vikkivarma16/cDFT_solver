@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cdft_package"
+name = "cdft_solver"
 version = "0.1.0"
 description = "A package for CDFT calculations and wall potentials"
 authors = [{name = "Your Name", email = "your.email@example.com"}]

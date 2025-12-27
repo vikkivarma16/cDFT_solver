@@ -30,7 +30,7 @@ source "$ENV_PATH/bin/activate"
 
 # --- Uninstall existing package ---
 echo "🗑️ Uninstalling existing cdft_solver package if it exists..."
-pip uninstall -y cdft_solver || echo "No existing package found."
+pip uninstall -y cdft_package || echo "No existing package found."
 
 # --- Install from GitHub ---
 GIT_URL="https://github.com/vikkivarma16/cDFT_solver.git"
