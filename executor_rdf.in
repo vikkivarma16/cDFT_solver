@@ -1,0 +1,44 @@
+###  .... RDF CALCULATORS .... ###
+task = rdf_bulk
+
+
+
+# # # .... UNIT CONVERSION FOR INPUT PARAMETERS .... # # #
+temperature = 300.0     # in Kelvin
+length = 200.0          # in Angstroms
+
+
+
+# # # .... PARTICLE PROPERTIES AND INTERACTIONS .... # # #
+particle_types = "cgrained"
+species = a  
+# b
+
+# for identical pairs, max 3 kinds of potentials are supported
+# reduce system configuration to ≤ 3 potential types per pair
+
+# --- primary interactions ---
+#interaction: aa = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.01
+#interaction: ab = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.5
+#interaction: ac = ma,  sigma = 1.000, cutoff = 3.5, epsilon = 0.1787, m = 12, n = 6, lambda = 0.477246
+#interaction: ac = gs,  sigma = 1.000, cutoff = 3.5, epsilon =-1.6
+#interaction: bb = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.0
+#interaction: bc = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 0.0
+interaction: aa = hc,  sigma = 0.970, cutoff = 3.5, epsilon = 2.0
+
+# --- secondary interactions ---
+#interaction: aa = ghc,  sigma = 1.02, cutoff = 3.2, epsilon = 2.0
+#interaction: aa = ma,  sigma = 1.000, cutoff = 3.5, epsilon = 0.1787, m = 12, n = 6, lambda = 0.477246
+#interaction: bc = ghc,  sigma = 0.973004, cutoff = 3.2, epsilon = 2.0
+
+
+# --- densities in the system ---
+density: a = 0.2
+#density: b = 2.0
+#density: b = 0.02
+#density: c = 0.01
+
+cutoff = 7
+n_points = 200
+beta  = 1.0
+alpha_rdf_max = 0.01
