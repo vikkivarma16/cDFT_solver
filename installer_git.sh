@@ -1,48 +1,41 @@
 #!/usr/bin/env bash
 # ==========================================================
-# Bash Script to Setup Environment and Run CDFT Example
+# Bash Script to Commit, Push, and Reinstall cDFT Solver
 # ==========================================================
 
 # Stop on error
 set -e
 
-# --- Environment setup ---
-ENV_NAME="cdft_env"
-PYTHON=${PYTHON:-python3}
+# --- Git commit & push ---
+echo "🔧 Adding all changes..."
+git add .
 
-echo "🔧 Checking for Python installation..."
-if ! command -v $PYTHON &>/dev/null; then
-    echo "❌ Python not found. Please install Python 3.8+ before continuing."
+echo "✏️ Committing changes..."
+git commit -m "update_data_$(date '+%Y-%m-%d_%H-%M-%S')" || echo "No changes to commit."
+
+
+echo "🚀 Pushing to remote..."
+git push -u origin main
+
+# --- Activate Python environment ---
+ENV_PATH=~/myenv
+if [ ! -d "$ENV_PATH" ]; then
+    echo "❌ Environment $ENV_PATH does not exist."
     exit 1
-fi
-
-# --- Create and activate virtual environment ---
-if [ ! -d "$ENV_NAME" ]; then
-    echo "📦 Creating virtual environment: $ENV_NAME"
-    $PYTHON -m venv "$ENV_NAME"
 fi
 
 echo "🚀 Activating environment..."
 # shellcheck disable=SC1091
-source "$ENV_NAME/bin/activate"
+source "$ENV_PATH/bin/activate"
 
-# --- Upgrade pip ---
-echo "⬆️  Upgrading pip..."
-pip install --upgrade pip
+# --- Uninstall existing package ---
+echo "🗑️ Uninstalling existing cdft_solver package if it exists..."
+pip uninstall -y cdft_package || echo "No existing package found."
 
-# --- Install dependencies ---
-echo "📚 Installing required libraries..."
-pip install numpy json5 matplotlib pynufft scipy pyfftw sympy
+# --- Install from GitHub ---
+GIT_URL="https://github.com/vikkivarma16/cDFT_solver.git"
+echo "📦 Installing cdft_package from GitHub..."
+pip install git+$GIT_URL
 
-# --- Install your cdft_package ---
-echo "📦 Installing cdft_package..."
-pip install -e .
-
-# --- Run example script ---
-# Replace cdft_package.example_executor with your actual module path if needed
-echo "▶️ Running CDFT example executor..."
-
-python3 -m cdft_package.executor_dft_main executor_isochor.in
-
-echo "✅ Execution complete."
+echo "✅ Done! Environment activated and package installed."
 

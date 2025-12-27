@@ -7,7 +7,7 @@
 set -e
 
 # --- Environment setup ---
-ENV_NAME="cdft_env"
+ENV_NAME="myenv"
 PYTHON=${PYTHON:-python3}
 
 echo "🔧 Checking for Python installation..."
