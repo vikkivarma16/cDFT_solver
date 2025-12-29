@@ -94,7 +94,7 @@ def export_weight_functions_to_files(weight_functions, output_dir):
         file_name = output_dir / f"supplied_data_weight_FMT_k_space_{particle_type}.txt"
         np.savetxt(file_name, weight_function)
 
-def fmt_weights_1d(ctx):
+def fmt_weights_one_d_cylindrical(ctx):
     # File paths using ctx
     json_file_path = Path(ctx.scratch_dir) / 'input_data_particles_interactions_parameters.json'
     k_space_file_path = Path(ctx.scratch_dir) / 'supplied_data_k_space.txt'
@@ -131,5 +131,5 @@ def fmt_weights_1d(ctx):
         plt.savefig(plot_dir / f"FMT_weight_{particle_type}.png", dpi=300)
         plt.close()
 
-    print("\n\n... k space FMT weights calculated, exported, and plots saved heheeheh ... \n\n")
+    print("\n\n✅ k space FMT weights generated, exported, and plots saved ... \n\n")
 

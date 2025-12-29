@@ -12,7 +12,7 @@ import json
 import numpy as np
 from pathlib import Path
 
-def r_k_space_cartesian(ctx):
+def r_k_space_box(ctx):
 
     
     """

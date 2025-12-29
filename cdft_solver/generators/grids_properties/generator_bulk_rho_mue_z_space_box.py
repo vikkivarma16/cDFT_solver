@@ -1,4 +1,4 @@
-def bulk_rho_mue_r_space(ctx):
+def bulk_rho_mue_z_space_box(ctx):
     import numpy as np
     import json
     from pathlib import Path
