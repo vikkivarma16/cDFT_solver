@@ -5,6 +5,7 @@ import re
 from collections import OrderedDict
 
 
+
 def super_dictionary_creator(
     ctx=None,
     input_file=None,
@@ -138,6 +139,9 @@ def super_dictionary_creator(
     # -------------------------
     # Post-processing: promote attributes to keys if last_key is empty
     # -------------------------
+    # Post-processing: promote attributes to keys if last_key is empty
+    # -------------------------
+    
     def preserve_and_promote(d):
         if not isinstance(d, dict):
             return d
@@ -156,18 +160,22 @@ def super_dictionary_creator(
         for k in original_keys:
             if k == "" and isinstance(d[k], dict):
                 v = d[k]
+                # Only promote if there is exactly one key inside
                 if len(v) == 1:
-                    # Promote the single key
                     single_key, single_val = next(iter(v.items()))
                     new_d[single_key] = single_val
                 else:
-                    # Keep empty key as-is
-                    new_d[k] = v
+                    # Multiple global attributes → attach directly to super_key
+                    for attr_key, attr_val in v.items():
+                        new_d[attr_key] = attr_val
             else:
                 new_d[k] = d[k]
 
         return new_d
-        
+
+    # Apply to result
+    result = preserve_and_promote(result[super_key_name])
+
         
     
 
