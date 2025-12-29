@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import re
+from collections import OrderedDict
 
 
 def super_dictionary_creator(
@@ -34,7 +35,7 @@ def super_dictionary_creator(
     • Split hierarchy by ':' or whitespace
     • Last hierarchy key receives attribute dict
 
-    Repeated keys → stored as lists
+    Repeated keys → merged if both dicts; stored as lists only if conflict
     """
 
     # -------------------------
@@ -52,7 +53,7 @@ def super_dictionary_creator(
     scratch.mkdir(parents=True, exist_ok=True)
 
     result = base_dict.copy() if base_dict else {}
-    result.setdefault(super_key_name, {})
+    result.setdefault(super_key_name, OrderedDict())
 
     # -------------------------
     # Helpers
@@ -64,6 +65,20 @@ def super_dictionary_creator(
             return int(f) if f.is_integer() else f
         except:
             return val
+
+    def merge_dicts(existing, new):
+        """Merge new dict into existing dict, preserving order."""
+        if not isinstance(existing, dict) or not isinstance(new, dict):
+            # Conflict, return list
+            return [existing, new]
+
+        merged = OrderedDict(existing)
+        for k, v in new.items():
+            if k in merged:
+                merged[k] = merge_dicts(merged[k], v)
+            else:
+                merged[k] = v
+        return merged
 
     # -------------------------
     # Main parsing loop
@@ -77,7 +92,7 @@ def super_dictionary_creator(
             # PHASE 1 — ATTRIBUTE EXTRACTION
             segments = [s.strip() for s in line.split(",")]
 
-            attributes = {}
+            attributes = OrderedDict()
             attr_order = []
             current_attr = None
 
@@ -110,22 +125,19 @@ def super_dictionary_creator(
 
             current = result[super_key_name]
             for key in hierarchy[:-1]:
-                current = current.setdefault(key, {})
+                current = current.setdefault(key, OrderedDict())
 
             last_key = hierarchy[-1] if hierarchy else ""
+
+            # Merge instead of blindly creating a list
             if last_key in current:
-                if isinstance(current[last_key], list):
-                    current[last_key].append(attributes)
-                else:
-                    current[last_key] = [current[last_key], attributes]
+                current[last_key] = merge_dicts(current[last_key], attributes)
             else:
                 current[last_key] = attributes
 
     # -------------------------
     # Post-processing: promote attributes to keys if last_key is empty
     # -------------------------
-    from collections import OrderedDict
-
     def preserve_and_promote(d):
         if not isinstance(d, dict):
             return d
@@ -156,8 +168,7 @@ def super_dictionary_creator(
 
         return new_d
 
-
-    #result  = preserve_and_promote(result[super_key_name])
+    result[super_key_name] = preserve_and_promote(result[super_key_name])
 
     # -------------------------
     # Export JSON
@@ -169,27 +180,4 @@ def super_dictionary_creator(
         print(f"\n✅ Super dictionary exported to: {out}")
 
     return result
-
-
-# -------------------------------------------------
-# Example usage
-# -------------------------------------------------
-if __name__ == "__main__":
-    from types import SimpleNamespace
-
-    input_text = """
-    species = a, b, c
-    interaction primary: aa type = gs, sigma = 1.414, cutoff = 3.5, epsilon = 2.01
-    interaction primary: ab type = gs, sigma = 1.414, cutoff = 3.5, epsilon = 2.5
-    interaction primary: ac type = ma, sigma = 1.0, cutoff = 3.5, epsilon = 0.1787, m = 12, n = 6, lambda = 0.477246
-    interaction secondary: aa type = ghc, sigma = 1.02, cutoff = 3.2, epsilon = 2.0
-    profile iteration_max = 5000, tolerance = 0.00001, alpha = 0.1
-    """
-
-    tmp = Path("tmp_input.in")
-    tmp.write_text(input_text)
-
-    ctx = SimpleNamespace(input_file=tmp, scratch_dir=".")
-    d = super_dictionary_creator(ctx, export_json=True)
-    print(json.dumps(d, indent=2))
 
