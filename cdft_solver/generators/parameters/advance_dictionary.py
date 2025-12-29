@@ -124,30 +124,40 @@ def super_dictionary_creator(
     # -------------------------
     # Post-processing: promote attributes to keys if last_key is empty
     # -------------------------
-    def promote_attributes(d):
+    from collections import OrderedDict
+
+    def preserve_and_promote(d):
         if not isinstance(d, dict):
-            return
-        keys_to_promote = []
-        for k, v in d.items():
-            if k == "" and isinstance(v, dict):
-                keys_to_promote.append(k)
+            return d
+
+        # Recursively fix child dictionaries first
+        for k, v in list(d.items()):
+            if isinstance(v, dict):
+                d[k] = preserve_and_promote(v)
             elif isinstance(v, list):
-                for item in v:
-                    promote_attributes(item)
-            elif isinstance(v, dict):
-                promote_attributes(v)
+                d[k] = [preserve_and_promote(i) if isinstance(i, dict) else i for i in v]
 
-        for k in keys_to_promote:
-            v = d.pop(k)
-            if len(v) == 1:
-                # single attribute → use as key
-                single_key, single_val = next(iter(v.items()))
-                d[single_key] = single_val
+        # Store original order
+        original_keys = list(d.keys())
+        new_d = OrderedDict()
+
+        for k in original_keys:
+            if k == "" and isinstance(d[k], dict):
+                v = d[k]
+                if len(v) == 1:
+                    # Promote the single key
+                    single_key, single_val = next(iter(v.items()))
+                    new_d[single_key] = single_val
+                else:
+                    # Keep empty key as-is
+                    new_d[k] = v
             else:
-                # multiple attributes → keep under empty string
-                d[""] = v
+                new_d[k] = d[k]
 
-    promote_attributes(result[super_key_name])
+        return new_d
+
+
+    preserve_and_promote(result[super_key_name])
 
     # -------------------------
     # Export JSON
