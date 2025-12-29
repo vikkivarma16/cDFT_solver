@@ -157,7 +157,7 @@ def super_dictionary_creator(
         return new_d
 
 
-    preserve_and_promote(result[super_key_name])
+    result  = preserve_and_promote(result[super_key_name])
 
     # -------------------------
     # Export JSON
