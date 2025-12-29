@@ -92,7 +92,7 @@ def rdf_configurations(ctx, export_json=True, filename="input_rdf_parameters.jso
         out_file = scratch / filename
         with open(out_file, "w") as f:
             json.dump({"rdf_parameters": rdf_dict}, f, indent=4)
-        print(f"\n✅ RDF parameters exported to: {out_file}")
+        print(f"✅ RDF parameters exported to: {out_file}")
 
     return rdf_dict
 
