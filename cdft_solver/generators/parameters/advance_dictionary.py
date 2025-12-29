@@ -13,14 +13,18 @@ def super_dictionary_creator(
     """
     Universal dictionary builder from hierarchical input.
 
-    Handles:
-    - Hierarchy with colon
-    - Inline attributes after space in last key
-      e.g. 'aa type = gs, sigma = 1.414' → {"aa": {"type": "gs", "sigma": 1.414}}
+    Features:
+    - Leftmost key = super key (default: 'system')
+    - Hierarchy detected via colons in keys
+    - Inline attributes after space in last key handled properly:
+      e.g., 'aa type = gs, sigma=1.414' → {'aa': {'type': 'gs', 'sigma': 1.414}}
     - Comma-separated key=value pairs
-    - Comma-separated values without '=' → list
-    - Optional update from base_dict
+    - Can update a base dictionary if provided
     """
+
+    # -------------------------
+    # Determine input file and scratch
+    # -------------------------
     if ctx is not None:
         input_file = input_file or ctx.input_file
         scratch = Path(ctx.scratch_dir)
@@ -31,10 +35,16 @@ def super_dictionary_creator(
     input_file = Path(input_file)
     scratch.mkdir(parents=True, exist_ok=True)
 
+    # -------------------------
+    # Initialize dictionary
+    # -------------------------
     result = base_dict.copy() if base_dict else {}
     if super_key_name not in result:
         result[super_key_name] = {}
 
+    # -------------------------
+    # Helper function to convert values
+    # -------------------------
     def convert_val(val):
         val = val.strip()
         try:
@@ -45,6 +55,9 @@ def super_dictionary_creator(
         except:
             return val
 
+    # -------------------------
+    # Parse input file
+    # -------------------------
     with input_file.open() as f:
         for raw in f:
             line = raw.strip()
@@ -58,7 +71,7 @@ def super_dictionary_creator(
             left = left.strip()
             right = right.strip()
 
-            # Handle hierarchy via colon
+            # Handle hierarchy via colons
             hierarchy = [k.strip() for k in left.split(":")]
             current = result[super_key_name]
             for k in hierarchy[:-1]:
@@ -66,48 +79,34 @@ def super_dictionary_creator(
                     current[k] = {}
                 current = current[k]
 
+            # Last key may have inline attributes, e.g., "aa type"
             last_key = hierarchy[-1]
-
-            # Inline attributes after space in last key
+            inline_attrs = []
             if " " in last_key:
                 tokens = last_key.split()
                 last_key = tokens[0]
                 inline_attrs = tokens[1:]
-                if last_key not in current or not isinstance(current[last_key], dict):
-                    current[last_key] = {}
-                for attr in inline_attrs:
-                    if attr not in current[last_key]:
-                        current[last_key][attr] = None
-            else:
-                inline_attrs = []
-                if last_key not in current:
-                    current[last_key] = {}
+
+            # Ensure last_key is a dict
+            if last_key not in current or not isinstance(current[last_key], dict):
+                current[last_key] = {}
 
             # Split right-hand side by comma
-            segments = [seg.strip() for seg in right.split(",") if seg.strip()]
+            segments = [seg.strip() for seg in right.split(",")]
 
-            # If all segments contain '=', treat as key=value pairs
-            if all("=" in seg for seg in segments):
-                for seg in segments:
+            for seg in segments:
+                if "=" in seg:
                     k, v = [s.strip() for s in seg.split("=", 1)]
                     v = convert_val(v)
+                    # Assign to inline attribute if matches, else just add to dict
                     current[last_key][k] = v
-            else:
-                # Some segments do not have '=', treat as list
-                values = [convert_val(seg) for seg in segments]
-                if inline_attrs:
-                    # assign first value to first inline_attr, etc.
-                    for val, attr in zip(values, inline_attrs):
-                        current[last_key][attr] = val
                 else:
-                    # if last_key is empty dict, convert to list
-                    if isinstance(current[last_key], dict) and not current[last_key]:
-                        current[last_key] = values
-                    else:
-                        # if some inline key=value exists, append as extra values
-                        current[last_key]["_values"] = values
+                    # segment without '=', optional assign None
+                    current[last_key][seg] = None
 
+    # -------------------------
     # Export JSON if requested
+    # -------------------------
     if export_json:
         out_file = scratch / filename
         with open(out_file, "w") as f:
