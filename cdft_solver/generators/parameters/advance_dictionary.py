@@ -1,9 +1,6 @@
 # cdft_solver/utils/super_dict.py
-
 import json
 from pathlib import Path
-import re
-from collections import defaultdict
 
 def super_dictionary_creator(
     ctx=None,
@@ -14,27 +11,11 @@ def super_dictionary_creator(
     super_key_name="system"
 ):
     """
-    Universal dictionary builder from hierarchical input.
+    Generic hierarchical dictionary builder from input lines with '='.
 
-    Parameters
-    ----------
-    ctx : ExecutionContext or None
-        If provided, can read ctx.input_file and ctx.scratch_dir
-    input_file : str or Path
-        If provided, overrides ctx.input_file
-    base_dict : dict
-        Optional dictionary to update/merge into
-    export_json : bool
-        Export the resulting dictionary to JSON
-    filename : str
-        JSON filename (within ctx.scratch_dir)
-    super_key_name : str
-        Top-level key for the dictionary
+    - Works for any input format with key=value and optional colons/hierarchy.
+    - Can merge into an existing base dictionary.
     """
-
-    # -----------------------------
-    # Determine input file and output dir
-    # -----------------------------
     if ctx is not None:
         input_file = input_file or ctx.input_file
         scratch = Path(ctx.scratch_dir)
@@ -45,16 +26,11 @@ def super_dictionary_creator(
     input_file = Path(input_file)
     scratch.mkdir(parents=True, exist_ok=True)
 
-    # -----------------------------
     # Initialize dictionary
-    # -----------------------------
     result = base_dict.copy() if base_dict else {}
     if super_key_name not in result:
         result[super_key_name] = {}
 
-    # -----------------------------
-    # Helper functions
-    # -----------------------------
     def convert_val(val):
         val = val.strip()
         try:
@@ -65,52 +41,39 @@ def super_dictionary_creator(
         except:
             return val
 
-    # -----------------------------
-    # Parse file
-    # -----------------------------
     with input_file.open() as f:
         for raw in f:
             line = raw.strip()
             if not line or line.startswith("#"):
                 continue
 
-            # detect key=value (standard)
-            if "=" in line:
-                parts = line.split("=")
-                # handle multiple "=" in line
-                key = parts[0].strip()
-                val = "=".join(parts[1:]).strip()
+            # Process line by taking the **last '='**
+            if "=" not in line:
+                continue
+            left, right = line.rsplit("=", 1)
+            right = convert_val(right.strip())
 
-                # detect optional hierarchy via colon
-                if ":" in key:
-                    key_hierarchy = [k.strip() for k in key.split(":")]
-                else:
-                    key_hierarchy = [key]
+            # Left-hand side hierarchy
+            keys = [k.strip() for k in left.replace(":", " ").split() if k.strip()]
+            if not keys:
+                continue
 
-                current = result[super_key_name]
-
-                for i, k in enumerate(key_hierarchy):
-                    if i == len(key_hierarchy) - 1:
-                        # last key, assign value
-                        if k in current:
-                            # merge if existing value is dict
-                            if isinstance(current[k], dict):
-                                # store as special _value key
-                                current[k]["_value"] = convert_val(val)
-                            else:
-                                # overwrite
-                                current[k] = convert_val(val)
-                        else:
-                            current[k] = convert_val(val)
+            # Assign to dictionary recursively
+            current = result[super_key_name]
+            for i, k in enumerate(keys):
+                if i == len(keys) - 1:
+                    # last key → assign value
+                    if k in current and isinstance(current[k], dict):
+                        # store previous value under "_value" if needed
+                        current[k]["_value"] = right
                     else:
-                        # intermediate key, ensure dict
-                        if k not in current or not isinstance(current[k], dict):
-                            current[k] = {}
-                        current = current[k]
+                        current[k] = right
+                else:
+                    # intermediate key → ensure dict
+                    if k not in current or not isinstance(current[k], dict):
+                        current[k] = {}
+                    current = current[k]
 
-    # -----------------------------
-    # Export JSON if requested
-    # -----------------------------
     if export_json:
         out_file = scratch / filename
         with open(out_file, "w") as f:
@@ -120,19 +83,18 @@ def super_dictionary_creator(
     return result
 
 
-# --- Example standalone usage ---
+# --- Example ---
 if __name__ == "__main__":
     from types import SimpleNamespace
 
-    # minimal example input
     input_text = """
     species = a, b, c
-    closure: aa = hnc
-    closure: ab = py
+    interaction primary: aa type = gs
+    interaction primary: ab type = gs
     profile iteration_max = 5000
     profile tolerance = 0.00001
-    external: d position = 0.0,0.0,0.0
-    external: d position = 60.0,0.0,0.0
+    external d position = 0.0,0.0,0.0
+    external d position = 60.0,0.0,0.0
     """
 
     tmp_file = Path("tmp_input.in")
