@@ -52,7 +52,7 @@ def super_dictionary_creator(
     input_file = Path(input_file)
     scratch.mkdir(parents=True, exist_ok=True)
 
-    result = base_dict.copy() if base_dict else {}
+    result =  {}
     result.setdefault(super_key_name, OrderedDict())
 
     # -------------------------
@@ -167,8 +167,30 @@ def super_dictionary_creator(
                 new_d[k] = d[k]
 
         return new_d
+        
+        
+    
 
     result[super_key_name] = preserve_and_promote(result[super_key_name])
+    
+    
+    def update_from_base(result, base):
+    """
+    Recursively update `result` dictionary with values from `base`.
+    Only keys present in `base` are updated/overwritten.
+    """
+    for k, v in base.items():
+        if k in result:
+            if isinstance(result[k], dict) and isinstance(v, dict):
+                update_from_base(result[k], v)
+            else:
+                result[k] = v
+        else:
+            # key from base does not exist in result, ignore
+            pass
+    if base_dict:
+    update_from_base(result, base_dict)
+
 
     # -------------------------
     # Export JSON
