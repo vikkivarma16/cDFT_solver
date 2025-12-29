@@ -1,6 +1,5 @@
 from .pair_interactions import pair_interactions
-from .box_parameters import box_parameters
-from .confinement_parameters import confinement_parameters
+from .space import space
 
 __all__ = [
     "particles_interactions",

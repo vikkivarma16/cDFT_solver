@@ -28,7 +28,7 @@ def parse_tuple_list(val):
 
 # ------------------------------ Main parser ------------------------------
 
-def data_exporter_space_confinement_parameters(ctx):
+def space(ctx):
     input_file = Path(ctx.input_file)
     scratch = Path(ctx.scratch_dir)
 
