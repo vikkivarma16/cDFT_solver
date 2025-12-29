@@ -105,8 +105,8 @@ def super_dictionary_creator(
             # ====================================
             before_eq = line.split("=", 1)[0].strip()
 
-            # remove attribute token from the end
-            attr_token = attr_order[0]
+            # remove the first attribute token from the end
+            attr_token = attr_order[0] if attr_order else ""
             tokens = before_eq.split()
             if tokens and tokens[-1] == attr_token:
                 tokens = tokens[:-1]
@@ -122,6 +122,18 @@ def super_dictionary_creator(
 
             last_key = hierarchy[-1] if hierarchy else ""
 
+            # -------------------------
+            # PROMOTION RULE: attribute-only lines
+            # -------------------------
+            if not last_key:
+                if len(attributes) == 1:
+                    promoted_key, promoted_value = next(iter(attributes.items()))
+                    current[promoted_key] = promoted_value
+                    continue
+                else:
+                    # fallback to empty string key (rare)
+                    last_key = ""
+
             # handle repeated keys
             if last_key in current:
                 if isinstance(current[last_key], list):
@@ -130,14 +142,6 @@ def super_dictionary_creator(
                     current[last_key] = [current[last_key], attributes]
             else:
                 current[last_key] = attributes
-                
-            # ---- Promotion rule for attribute-only lines ----
-            if not last_key or last_key.strip() == "":
-                if len(attr_dict) == 1:
-                    promoted_key, promoted_value = next(iter(attr_dict.items()))
-                    current[promoted_key] = promoted_value
-                    continue
-
 
     # -------------------------
     # Export JSON
