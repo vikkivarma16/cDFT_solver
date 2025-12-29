@@ -182,34 +182,36 @@ def super_dictionary_creator(
     
     #result[super_key_name] = preserve_and_promote(result[super_key_name])
     
-    
-    def update_from_base_recursive(result, base):
+    def replace_from_base_recursive(result, base):
         """
         Recursively search `result` for keys in `base`.
-        If found, overwrite attributes with `base` values.
+        If a key matches, replace the entire value with the base value.
         """
         if not isinstance(result, dict):
             return
 
         for k, v in base.items():
-            if k in result and isinstance(result[k], dict) and isinstance(v, dict):
-                # recursively update matching dict
-                update_from_base_recursive(result[k], v)
+            if k in result:
+                # replace the whole dictionary or value
+                result[k] = v
             else:
-                # search deeper
+                # search deeper in nested dicts/lists
                 for rk, rv in result.items():
                     if isinstance(rv, dict):
-                        update_from_base_recursive(rv, {k: v})
+                        replace_from_base_recursive(rv, {k: v})
                     elif isinstance(rv, list):
                         for item in rv:
                             if isinstance(item, dict):
-                                update_from_base_recursive(item, {k: v})
+                                replace_from_base_recursive(item, {k: v})
 
-                pass
-       
+    # Usage:
     if base_dict:
-        print ("\nWarning: udpated the dictionary with the supplied values, and overridden the parameters supplied from the input file.")
-        update_from_base_recursive(result, base_dict)
+        print("\nWarning: replacing dictionary entries from base_dict.")
+        replace_from_base_recursive(result, base_dict)  # in-place replacement
+
+    
+    
+   
 
     # -------------------------
     # Export JSON
