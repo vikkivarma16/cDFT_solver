@@ -208,7 +208,7 @@ def super_dictionary_creator(
                 pass
     if base_dict:
         print ("\nWarning: udpated the dictionary with the supplied values, and overridden the parameters supplied from the input file.")
-        update_from_base_recursive(result, base_dict)
+        result = update_from_base_recursive(result, base_dict)
 
 
 
