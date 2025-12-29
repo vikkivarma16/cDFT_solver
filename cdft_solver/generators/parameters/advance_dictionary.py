@@ -74,9 +74,7 @@ def super_dictionary_creator(
             if not line or line.startswith("#") or "=" not in line:
                 continue
 
-            # ====================================
             # PHASE 1 — ATTRIBUTE EXTRACTION
-            # ====================================
             segments = [s.strip() for s in line.split(",")]
 
             attributes = {}
@@ -100,20 +98,14 @@ def super_dictionary_creator(
                             attributes[current_attr] = [prev]
                         attributes[current_attr].append(convert(seg))
 
-            # ====================================
             # PHASE 2 — HIERARCHY EXTRACTION
-            # ====================================
             before_eq = line.split("=", 1)[0].strip()
-
-            # remove attribute token from the end
-            attr_token = attr_order[0]
+            attr_token = attr_order[0] if attr_order else ""
             tokens = before_eq.split()
             if tokens and tokens[-1] == attr_token:
                 tokens = tokens[:-1]
 
             hierarchy_text = " ".join(tokens)
-
-            # split hierarchy by ':' OR whitespace
             hierarchy = [h for h in re.split(r"[:\s]+", hierarchy_text) if h]
 
             current = result[super_key_name]
@@ -121,8 +113,6 @@ def super_dictionary_creator(
                 current = current.setdefault(key, {})
 
             last_key = hierarchy[-1] if hierarchy else ""
-
-            # handle repeated keys
             if last_key in current:
                 if isinstance(current[last_key], list):
                     current[last_key].append(attributes)
@@ -130,6 +120,34 @@ def super_dictionary_creator(
                     current[last_key] = [current[last_key], attributes]
             else:
                 current[last_key] = attributes
+
+    # -------------------------
+    # Post-processing: promote attributes to keys if last_key is empty
+    # -------------------------
+    def promote_attributes(d):
+        if not isinstance(d, dict):
+            return
+        keys_to_promote = []
+        for k, v in d.items():
+            if k == "" and isinstance(v, dict):
+                keys_to_promote.append(k)
+            elif isinstance(v, list):
+                for item in v:
+                    promote_attributes(item)
+            elif isinstance(v, dict):
+                promote_attributes(v)
+
+        for k in keys_to_promote:
+            v = d.pop(k)
+            if len(v) == 1:
+                # single attribute → use as key
+                single_key, single_val = next(iter(v.items()))
+                d[single_key] = single_val
+            else:
+                # multiple attributes → keep under empty string
+                d[""] = v
+
+    promote_attributes(result[super_key_name])
 
     # -------------------------
     # Export JSON
