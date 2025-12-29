@@ -6,4 +6,4 @@ for running isochores DFT minimization.
 """
 
 
-from   .generator_pair_potential_isotropic import pair_potential_isotropic
+from   .pair_potential_isotropic import pair_potential_isotropic
