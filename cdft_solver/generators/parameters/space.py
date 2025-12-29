@@ -25,7 +25,7 @@ def parse_tuple_list(val):
 
 # ------------------------------ Main parser ------------------------------
 
-def space_confinement(ctx, export_json=True, output_name="input_data_space_confinement_parameters.json"):
+def space_confinement(ctx, export_json=True, output_name="input_space_confinement_parameters.json"):
     """
     Parse executor input and build space confinement dictionary.
 

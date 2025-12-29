@@ -8,6 +8,8 @@ def rdf_configurations(ctx, export_json=True, filename="input_rdf_parameters.jso
     """
     Parse RDF parameters from an input file and check consistency.
 
+    Only lines starting with 'rdf' are considered.
+
     Parameters
     ----------
     ctx : ExecutionContext
@@ -36,16 +38,22 @@ def rdf_configurations(ctx, export_json=True, filename="input_rdf_parameters.jso
             if not line or line.startswith("#"):
                 continue
 
+            # Only process lines starting with 'rdf'
+            if not line.lower().startswith("rdf"):
+                continue
+
+            content = line[3:].strip()  # remove 'rdf' prefix
+
             # --- species line ---
-            if line.lower().startswith("species"):
-                _, val = line.split("=", 1)
+            if content.lower().startswith("species"):
+                _, val = content.split("=", 1)
                 rdf_dict["species"] = [s.strip() for s in val.split(",") if s.strip()]
                 continue
 
             # --- closure lines ---
-            if line.lower().startswith("closure"):
+            if content.lower().startswith("closure"):
                 # Format: closure: ab = hnc,
-                _, val = line.split(":", 1)
+                _, val = content.split(":", 1)
                 pair, closure = val.split("=", 1)
                 pair = pair.strip()
                 closure = closure.strip().rstrip(",")
@@ -53,8 +61,8 @@ def rdf_configurations(ctx, export_json=True, filename="input_rdf_parameters.jso
                 continue
 
             # --- global parameters ---
-            if "=" in line:
-                key, val = line.split("=", 1)
+            if "=" in content:
+                key, val = content.split("=", 1)
                 key = key.strip()
                 val = val.strip()
                 try:
