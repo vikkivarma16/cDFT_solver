@@ -189,7 +189,7 @@ def super_dictionary_creator(
             # key from base does not exist in result, ignore
             pass
     if base_dict:
-    update_from_base(result, base_dict)
+        update_from_base(result, base_dict)
 
 
     # -------------------------
