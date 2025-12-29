@@ -120,18 +120,20 @@ def super_dictionary_creator(
             for key in hierarchy[:-1]:
                 current = current.setdefault(key, {})
 
-            last_key = hierarchy[-1] if hierarchy else ""
+            last_key = hierarchy[-1] if hierarchy else None
 
             # -------------------------
-            # PROMOTION RULE: attribute-only lines
+            # SAFE PROMOTION RULE
             # -------------------------
             if not last_key:
+                # no hierarchy key, promote attributes
                 if len(attributes) == 1:
-                    promoted_key, promoted_value = next(iter(attributes.items()))
-                    current[promoted_key] = promoted_value
+                    # single attribute → use its name as key
+                    single_key, single_val = next(iter(attributes.items()))
+                    current[single_key] = single_val
                     continue
                 else:
-                    # fallback to empty string key (rare)
+                    # multiple attributes → store under default empty key
                     last_key = ""
 
             # handle repeated keys
