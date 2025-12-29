@@ -183,22 +183,32 @@ def super_dictionary_creator(
     #result[super_key_name] = preserve_and_promote(result[super_key_name])
     
     
-    def update_from_base(result, base):
+    def update_from_base_recursive(result, base):
         """
-            Recursively update `result` dictionary with values from `base`.
-            Only keys present in `base` are updated/overwritten.
+        Recursively search `result` for keys in `base`.
+        If found, overwrite attributes with `base` values.
         """
+        if not isinstance(result, dict):
+            return
+
         for k, v in base.items():
-            if k in result:
-                if isinstance(result[k], dict) and isinstance(v, dict):
-                    update_from_base(result[k], v)
-                else:
-                    result[k] = v
+            if k in result and isinstance(result[k], dict) and isinstance(v, dict):
+                # recursively update matching dict
+                update_from_base_recursive(result[k], v)
             else:
-                # key from base does not exist in result, ignore
+                # search deeper
+                for rk, rv in result.items():
+                    if isinstance(rv, dict):
+                        update_from_base_recursive(rv, {k: v})
+                    elif isinstance(rv, list):
+                        for item in rv:
+                            if isinstance(item, dict):
+                                update_from_base_recursive(item, {k: v})
+
                 pass
     if base_dict:
-        update_from_base(result, base_dict)
+        update_from_base_recursive(result, base_dict)
+
 
 
     # -------------------------

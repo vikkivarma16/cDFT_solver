@@ -1,8 +1,5 @@
 """
-Isochores subpackage
-
-Contains engines, calculators, and data generators
-for running isochores DFT minimization.
+Creates dictionary for the further processing
 """
 
 
