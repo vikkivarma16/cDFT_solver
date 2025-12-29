@@ -99,7 +99,7 @@ def external_potentials(ctx, export_json=True, filename="input_external_potentia
         out_file = scratch / filename
         with open(out_file, "w") as f:
             json.dump({"external_potentials": data_dict}, f, indent=4)
-        print(f"\n✅ External potentials exported to: {out_file}")
+        print(f"✅ External potentials exported to: {out_file}")
 
     return data_dict
 
