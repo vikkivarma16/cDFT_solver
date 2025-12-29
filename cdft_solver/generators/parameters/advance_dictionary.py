@@ -10,14 +10,18 @@ def super_dictionary_creator(
     super_key_name="system"
 ):
     """
-    Universal dictionary builder.
+    Universal dictionary builder using a strict two-pass algorithm:
 
-    Correct rules:
-    - Split line ONCE at first '='
-    - Hierarchy comes ONLY from left part
-    - Attributes come ONLY from right part
-    - Attributes detected strictly by '='
-    - Comma values without '=' belong to previous attribute
+    PASS 1 (attributes):
+      - Split line by commas
+      - Any segment containing '=' defines an attribute
+      - Attribute name = last token before '='
+      - Values without '=' belong to the previous attribute
+
+    PASS 2 (hierarchy):
+      - Everything BEFORE the first '=' contains hierarchy
+      - Last token before '=' is NOT hierarchy (it is attribute name)
+      - Remaining tokens define hierarchy via ':'
     """
 
     # -------------------------
@@ -36,13 +40,13 @@ def super_dictionary_creator(
     result = base_dict.copy() if base_dict else {}
     result.setdefault(super_key_name, {})
 
-    def convert_val(val):
-        val = val.strip()
+    def convert_val(v):
+        v = v.strip()
         try:
-            v = float(val)
-            return int(v) if v.is_integer() else v
+            f = float(v)
+            return int(f) if f.is_integer() else f
         except:
-            return val
+            return v
 
     # -------------------------
     # Parse file
@@ -53,65 +57,59 @@ def super_dictionary_creator(
             if not line or line.startswith("#") or "=" not in line:
                 continue
 
-            # -------------------------
-            # 1. Split ONCE at first '='
-            # -------------------------
-            left, right = line.split("=", 1)
-            left = left.strip()
-            right = right.strip()
-
-            # -------------------------
-            # 2. Extract hierarchy
-            # -------------------------
-            #left_parts = [p.strip() for p in left.split(":", " ")]
-            import re
-
-            left_parts = [p for p in re.split(r'[:\s]+', left) if p]
-
-
-            # last hierarchy block may contain attribute word → keep only first token
-            last_block_tokens = left_parts[-1].split()
-            object_key = last_block_tokens[0]
-
-            hierarchy = left_parts[:-1]
-
-            current = result[super_key_name]
-            for h in hierarchy:
-                current = current.setdefault(h, {})
-
-            # -------------------------
-            # 3. Parse attributes from RIGHT
-            # -------------------------
-            segments = [s.strip() for s in right.split(",") if s.strip()]
-            attrs = {}
+            # ==========================================================
+            # PASS 1: Extract attributes FIRST
+            # ==========================================================
+            segments = [s.strip() for s in line.split(",") if s.strip()]
+            attributes = {}
             current_attr = None
 
             for seg in segments:
                 if "=" in seg:
-                    k, v = seg.split("=", 1)
-                    k = k.strip().split()[-1]
-                    v = convert_val(v)
-                    attrs[k] = [v]
-                    current_attr = k
+                    left, right = seg.split("=", 1)
+                    attr = left.strip().split()[-1]
+                    val = convert_val(right)
+                    attributes[attr] = [val]
+                    current_attr = attr
                 else:
+                    # continuation value
                     if current_attr is not None:
-                        attrs[current_attr].append(convert_val(seg))
+                        attributes[current_attr].append(convert_val(seg))
 
-            # flatten single-element lists
-            for k, v in attrs.items():
+            # flatten lists of length 1
+            for k, v in attributes.items():
                 if len(v) == 1:
-                    attrs[k] = v[0]
+                    attributes[k] = v[0]
 
-            # -------------------------
-            # 4. Assign object
-            # -------------------------
-            if object_key in current:
-                if isinstance(current[object_key], list):
-                    current[object_key].append(attrs)
+            # ==========================================================
+            # PASS 2: Extract hierarchy
+            # ==========================================================
+            left_of_first_equal = line.split("=", 1)[0].strip()
+
+            # remove attribute token at end
+            tokens = left_of_first_equal.split()
+            hierarchy_str = " ".join(tokens[:-1])
+
+            hierarchy = [h.strip() for h in hierarchy_str.split(":") if h.strip()]
+            if not hierarchy:
+                continue
+
+            current = result[super_key_name]
+            for h in hierarchy[:-1]:
+                current = current.setdefault(h, {})
+
+            final_key = hierarchy[-1]
+
+            # ==========================================================
+            # Assign attributes
+            # ==========================================================
+            if final_key in current:
+                if isinstance(current[final_key], list):
+                    current[final_key].append(attributes)
                 else:
-                    current[object_key] = [current[object_key], attrs]
+                    current[final_key] = [current[final_key], attributes]
             else:
-                current[object_key] = attrs
+                current[final_key] = attributes
 
     # -------------------------
     # Export JSON
