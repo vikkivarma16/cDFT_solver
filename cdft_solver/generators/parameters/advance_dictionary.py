@@ -13,13 +13,13 @@ def super_dictionary_creator(
     """
     Universal dictionary builder from hierarchical input.
 
-    Features:
+    Rules:
     - Leftmost key = super key (default: 'system')
     - Hierarchy detected via colons in keys
-    - Right-hand side of '=' can have multiple key=value pairs separated by commas
-    - Handles repeated keys and merges attributes correctly
+    - Right-hand side evaluated from right with key=value pairs
+    - All key=value pairs assigned as attributes to the last hierarchy key
+    - Multiple definitions of the same key are stored as a list
     """
-    # Determine input file and scratch
     if ctx is not None:
         input_file = input_file or ctx.input_file
         scratch = Path(ctx.scratch_dir)
@@ -30,7 +30,6 @@ def super_dictionary_creator(
     input_file = Path(input_file)
     scratch.mkdir(parents=True, exist_ok=True)
 
-    # Initialize dictionary
     result = base_dict.copy() if base_dict else {}
     if super_key_name not in result:
         result[super_key_name] = {}
@@ -45,44 +44,48 @@ def super_dictionary_creator(
         except:
             return val
 
-    # Parse input file
     with input_file.open() as f:
         for raw in f:
             line = raw.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
 
+            # Split hierarchy from left side of first '='
             left, right = line.split("=", 1)
             left = left.strip()
             right = right.strip()
 
-            # Handle hierarchy via colons
             hierarchy = [k.strip() for k in left.split(":")]
+            last_key = hierarchy[-1]
+            parent_hierarchy = hierarchy[:-1]
+
+            # Traverse hierarchy
             current = result[super_key_name]
-            for k in hierarchy[:-1]:
+            for k in parent_hierarchy:
                 if k not in current or not isinstance(current[k], dict):
                     current[k] = {}
                 current = current[k]
 
-            last_key = hierarchy[-1]
-
-            # Ensure last_key is a dict
-            if last_key not in current or not isinstance(current[last_key], dict):
-                current[last_key] = {}
-
-            # Split right-hand side by comma
+            # Split right-hand side by commas to get attributes
             segments = [seg.strip() for seg in right.split(",") if seg.strip()]
-
-            # Process each key=value segment
+            attr_dict = {}
             for seg in segments:
                 if "=" in seg:
                     k, v = [s.strip() for s in seg.split("=", 1)]
-                    current[last_key][k] = convert_val(v)
+                    attr_dict[k] = convert_val(v)
                 else:
-                    # Segment without '=', assign as None
-                    current[last_key][seg] = None
+                    # standalone value, rare case
+                    attr_dict[seg] = None
 
-    # Export JSON if requested
+            # Handle multiple definitions of same key as a list
+            if last_key in current:
+                if isinstance(current[last_key], list):
+                    current[last_key].append(attr_dict)
+                else:
+                    current[last_key] = [current[last_key], attr_dict]
+            else:
+                current[last_key] = attr_dict
+
     if export_json:
         out_file = scratch / filename
         with open(out_file, "w") as f:
