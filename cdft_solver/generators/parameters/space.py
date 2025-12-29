@@ -53,8 +53,6 @@ def space_confinement(ctx, export_json=True, output_name="input_data_space_confi
         "space_properties": {"dimension": 1, "confinement": "pbox"},
         "box_properties": {"box_length": [10.0,5.0,5.0], "box_points": [100,100,100]},
         "boundary_type": {"aperiodicity_blocker": "NA"},
-        "walls": None,
-        "wall_interactions": {"primary":{}, "secondary":{}, "tertiary":{}}
     }
 
     walls_flag = {}
