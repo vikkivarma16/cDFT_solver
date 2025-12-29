@@ -130,6 +130,14 @@ def super_dictionary_creator(
                     current[last_key] = [current[last_key], attributes]
             else:
                 current[last_key] = attributes
+                
+            # ---- Promotion rule for attribute-only lines ----
+            if not last_key or last_key.strip() == "":
+                if len(attr_dict) == 1:
+                    promoted_key, promoted_value = next(iter(attr_dict.items()))
+                    current[promoted_key] = promoted_value
+                    continue
+
 
     # -------------------------
     # Export JSON
