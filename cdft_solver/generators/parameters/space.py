@@ -47,11 +47,6 @@ def space_confinement(ctx, export_json=True, output_name="input_data_space_confi
     input_file = Path(ctx.input_file)
     scratch = Path(ctx.scratch_dir)
 
-    # Load species from interactions JSON (required for wall parsing)
-    pj = scratch / 'input_data_particles_interactions_parameters.json'
-    if not pj.exists():
-        raise FileNotFoundError("Missing input_data_particles_interactions_parameters.json")
-    species = json.load(pj.open())['particles_interactions_parameters']['species']
 
     # Default configuration
     conf = {
@@ -91,36 +86,6 @@ def space_confinement(ctx, export_json=True, output_name="input_data_space_confi
                 conf['box_properties']['box_points'] = [int(float(x)) for x in val.split(',')]
             continue
 
-        # Wall properties
-        if line.startswith('wall:') and conf['boundary_type']['aperiodicity_blocker'] == 'wall':
-            _, rest = line.split(':',1)
-            key, val = [x.strip() for x in rest.split('=',1)]
-            if key == 'particles':
-                conf['walls']['particles'] = parse_list(val)
-                walls_flag = {s+w:[0,0,0] for s in species for w in conf['walls']['particles']}
-            elif key == 'position':
-                conf['walls']['positions'] = parse_tuple_list(val)
-            elif key in ('orientation','normal'):
-                conf['walls']['normals'] = parse_tuple_list(val)
-            continue
-
-        # Wall interactions
-        if line.startswith('wall_interaction'):
-            _, right = line.split(':',1)
-            pair, props = [x.strip() for x in right.split('=',1)]
-            chunks = [c.strip() for c in props.split(',') if c.strip()]
-            temp = {"type": chunks[0], "sigma":1.1, "cutoff":3.4, "epsilon":2.0}
-            for chunk in chunks[1:]:
-                if "=" in chunk:
-                    k,v = [x.strip() for x in chunk.split('=',1)]
-                    temp[k] = _to_float(v)
-            if pair not in walls_flag: walls_flag[pair] = [0,0,0]
-            slot = walls_flag[pair]
-            if slot[0]==0: conf['wall_interactions']['primary'][pair]=temp; slot[0]=1
-            elif slot[1]==0: conf['wall_interactions']['secondary'][pair]=temp; slot[1]=1
-            else: conf['wall_interactions']['tertiary'][pair]=temp; slot[2]=1
-            continue
-
     # Build final dictionary
     out_dict = {
         "space_confinement_parameters": {
@@ -128,9 +93,6 @@ def space_confinement(ctx, export_json=True, output_name="input_data_space_confi
             "box_properties": conf['box_properties']
         }
     }
-    if conf['boundary_type']['aperiodicity_blocker'] == 'wall' and conf['walls']:
-        conf['walls']['interactions'] = conf['wall_interactions']
-        out_dict['space_confinement_parameters']['walls_properties'] = conf['walls']
 
     # Export JSON if requested
     if export_json:
