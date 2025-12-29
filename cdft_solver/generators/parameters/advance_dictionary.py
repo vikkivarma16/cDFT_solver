@@ -1,6 +1,7 @@
 # cdft_solver/utils/super_dict.py
 import json
 from pathlib import Path
+from collections import defaultdict
 
 def super_dictionary_creator(
     ctx=None,
@@ -13,23 +14,27 @@ def super_dictionary_creator(
     """
     Universal dictionary builder from hierarchical input.
 
-    Rules:
-    - Leftmost key = super key (default: 'system')
-    - Hierarchy detected via colons in keys
-    - Right-hand side evaluated from right with key=value pairs
-    - All key=value pairs assigned as attributes to the last hierarchy key
-    - Multiple definitions of the same key are stored as a list
+    Parsing Logic:
+    --------------
+    1. Split each line by comma to get segments.
+    2. Detect all key=value pairs in segments.
+    3. Remaining left-most part (before first '=') → hierarchy key(s), use colons for nesting.
+    4. Assign all attributes to the last hierarchy key.
+    5. Multiple definitions of the same hierarchy key are stored as a list.
     """
+
+    # Determine input file and output directory
     if ctx is not None:
         input_file = input_file or ctx.input_file
         scratch = Path(ctx.scratch_dir)
     else:
         if input_file is None:
-            raise ValueError("No input file or ctx provided.")
+            raise ValueError("No input_file or ctx provided")
         scratch = Path(".")
     input_file = Path(input_file)
     scratch.mkdir(parents=True, exist_ok=True)
 
+    # Initialize dictionary
     result = base_dict.copy() if base_dict else {}
     if super_key_name not in result:
         result[super_key_name] = {}
@@ -50,34 +55,32 @@ def super_dictionary_creator(
             if not line or line.startswith("#") or "=" not in line:
                 continue
 
-            # Split hierarchy from left side of first '='
-            left, right = line.split(" ", 1)
-            left = left.strip()
-            right = right.strip()
+            # Split by comma first
+            segments = [seg.strip() for seg in line.split(",")]
 
-            hierarchy = [k.strip() for k in left.split(":")]
-            last_key = hierarchy[-1]
-            parent_hierarchy = hierarchy[:-1]
-
-            # Traverse hierarchy
-            current = result[super_key_name]
-            for k in parent_hierarchy:
-                if k not in current or not isinstance(current[k], dict):
-                    current[k] = {}
-                current = current[k]
-
-            # Split right-hand side by commas to get attributes
-            segments = [seg.strip() for seg in right.split(",") if seg.strip()]
             attr_dict = {}
+            hierarchy_key_candidate = None
+
             for seg in segments:
                 if "=" in seg:
                     k, v = [s.strip() for s in seg.split("=", 1)]
                     attr_dict[k] = convert_val(v)
                 else:
-                    # standalone value, rare case
-                    attr_dict[seg] = None
+                    # If segment has no '=', it might be hierarchy part
+                    if hierarchy_key_candidate is None:
+                        hierarchy_key_candidate = seg
 
-            # Handle multiple definitions of same key as a list
+            # If hierarchy key candidate contains colon, split for nested dict
+            hierarchy_keys = hierarchy_key_candidate.split(":") if hierarchy_key_candidate else ["unnamed"]
+            current = result[super_key_name]
+            for k in hierarchy_keys[:-1]:
+                if k not in current or not isinstance(current[k], dict):
+                    current[k] = {}
+                current = current[k]
+
+            last_key = hierarchy_keys[-1]
+
+            # Handle multiple definitions of the same last_key
             if last_key in current:
                 if isinstance(current[last_key], list):
                     current[last_key].append(attr_dict)
@@ -86,6 +89,7 @@ def super_dictionary_creator(
             else:
                 current[last_key] = attr_dict
 
+    # Export JSON if requested
     if export_json:
         out_file = scratch / filename
         with open(out_file, "w") as f:
@@ -95,7 +99,7 @@ def super_dictionary_creator(
     return result
 
 
-# --- Example usage ---
+# --- Example Usage ---
 if __name__ == "__main__":
     from types import SimpleNamespace
 
@@ -103,10 +107,10 @@ if __name__ == "__main__":
     species = a, b, c
     interaction primary: aa: type = gs, sigma = 1.414, cutoff = 3.5, epsilon = 2.01
     interaction primary: ab: type = gs, sigma = 1.414, cutoff = 3.5, epsilon = 2.5
-    interaction secondary: aa = ghc, sigma = 1.02, cutoff = 3.2, epsilon = 2.0
-    profile iteration_max = 5000, tolerance = 0.00001, alpha = 0.1
-    external: d position = 0.0,0.0,0.0
-    external: d position = 60.0,0.0,0.0
+    interaction secondary: aa: type = ghc, sigma = 1.02, cutoff = 3.2, epsilon = 2.0
+    profile: iteration_max = 5000, tolerance = 0.00001, alpha = 0.1
+    external: d: position = 0.0,0.0,0.0
+    external: d: position = 60.0,0.0,0.0
     """
 
     tmp_file = Path("tmp_input.in")
