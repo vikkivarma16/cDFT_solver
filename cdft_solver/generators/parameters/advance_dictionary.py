@@ -16,14 +16,10 @@ def super_dictionary_creator(
     Features:
     - Leftmost key = super key (default: 'system')
     - Hierarchy detected via colons in keys
-    - Inline attributes after space in last key handled properly
-      e.g., 'aa type = gs, sigma=1.414' → {'aa': {'type': 'gs', 'sigma': 1.414}}
-    - Comma-separated key=value pairs
-    - Can update a base dictionary if provided
+    - Right-hand side of '=' can have multiple key=value pairs separated by commas
+    - Handles repeated keys and merges attributes correctly
     """
-    # -------------------------
     # Determine input file and scratch
-    # -------------------------
     if ctx is not None:
         input_file = input_file or ctx.input_file
         scratch = Path(ctx.scratch_dir)
@@ -34,16 +30,11 @@ def super_dictionary_creator(
     input_file = Path(input_file)
     scratch.mkdir(parents=True, exist_ok=True)
 
-    # -------------------------
     # Initialize dictionary
-    # -------------------------
     result = base_dict.copy() if base_dict else {}
     if super_key_name not in result:
         result[super_key_name] = {}
 
-    # -------------------------
-    # Helper function to convert values
-    # -------------------------
     def convert_val(val):
         val = val.strip()
         try:
@@ -54,9 +45,7 @@ def super_dictionary_creator(
         except:
             return val
 
-    # -------------------------
     # Parse input file
-    # -------------------------
     with input_file.open() as f:
         for raw in f:
             line = raw.strip()
@@ -75,36 +64,25 @@ def super_dictionary_creator(
                     current[k] = {}
                 current = current[k]
 
-            # Last key may have inline attributes, e.g., "aa type"
-            last_key_tokens = hierarchy[-1].split()
-            last_key = last_key_tokens[0]
-            inline_attrs = last_key_tokens[1:]
+            last_key = hierarchy[-1]
 
+            # Ensure last_key is a dict
             if last_key not in current or not isinstance(current[last_key], dict):
                 current[last_key] = {}
-
-            # If inline attributes exist, assign them as keys with None (will be overwritten if present on RHS)
-            for attr in inline_attrs:
-                current[last_key][attr] = None
 
             # Split right-hand side by comma
             segments = [seg.strip() for seg in right.split(",") if seg.strip()]
 
-            # Process all segments
+            # Process each key=value segment
             for seg in segments:
                 if "=" in seg:
                     k, v = [s.strip() for s in seg.split("=", 1)]
                     current[last_key][k] = convert_val(v)
                 else:
-                    # If segment has no '=', treat it as the value of first inline attribute or "type"
-                    if inline_attrs:
-                        current[last_key][inline_attrs[0]] = convert_val(seg)
-                    else:
-                        current[last_key]["type"] = convert_val(seg)
+                    # Segment without '=', assign as None
+                    current[last_key][seg] = None
 
-    # -------------------------
     # Export JSON if requested
-    # -------------------------
     if export_json:
         out_file = scratch / filename
         with open(out_file, "w") as f:
@@ -120,8 +98,8 @@ if __name__ == "__main__":
 
     input_text = """
     species = a, b, c
-    interaction primary: aa type = gs, sigma = 1.414, cutoff = 3.5, epsilon = 2.01
-    interaction primary: ab type = gs, sigma = 1.414, cutoff = 3.5, epsilon = 2.5
+    interaction primary: aa: type = gs, sigma = 1.414, cutoff = 3.5, epsilon = 2.01
+    interaction primary: ab: type = gs, sigma = 1.414, cutoff = 3.5, epsilon = 2.5
     interaction secondary: aa = ghc, sigma = 1.02, cutoff = 3.2, epsilon = 2.0
     profile iteration_max = 5000, tolerance = 0.00001, alpha = 0.1
     external: d position = 0.0,0.0,0.0
