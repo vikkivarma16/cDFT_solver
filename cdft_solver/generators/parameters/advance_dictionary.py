@@ -1,7 +1,5 @@
-# cdft_solver/utils/super_dict.py
 import json
 from pathlib import Path
-from collections import defaultdict
 
 def super_dictionary_creator(
     ctx=None,
@@ -14,73 +12,92 @@ def super_dictionary_creator(
     """
     Universal dictionary builder from hierarchical input.
 
-    Parsing Logic:
-    --------------
-    1. Split each line by comma to get segments.
-    2. Detect all key=value pairs in segments.
-    3. Remaining left-most part (before first '=') → hierarchy key(s), use colons for nesting.
-    4. Assign all attributes to the last hierarchy key.
-    5. Multiple definitions of the same hierarchy key are stored as a list.
+    Attribute parsing rules:
+    - Attributes are detected strictly by '='
+    - Attribute name = last token before '='
+    - Values following without '=' belong to the last attribute
+    - Multiple values become a list
     """
 
-    # Determine input file and output directory
+    # -------------------------
+    # Resolve input & output
+    # -------------------------
     if ctx is not None:
         input_file = input_file or ctx.input_file
         scratch = Path(ctx.scratch_dir)
     else:
         if input_file is None:
-            raise ValueError("No input_file or ctx provided")
+            raise ValueError("No input file or ctx provided.")
         scratch = Path(".")
     input_file = Path(input_file)
     scratch.mkdir(parents=True, exist_ok=True)
 
-    # Initialize dictionary
     result = base_dict.copy() if base_dict else {}
-    if super_key_name not in result:
-        result[super_key_name] = {}
+    result.setdefault(super_key_name, {})
 
     def convert_val(val):
         val = val.strip()
         try:
             v = float(val)
-            if v.is_integer():
-                return int(v)
-            return v
+            return int(v) if v.is_integer() else v
         except:
             return val
 
+    # -------------------------
+    # Parse file
+    # -------------------------
     with input_file.open() as f:
         for raw in f:
             line = raw.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
 
-            # Split by comma first
-            segments = [seg.strip() for seg in line.split(",")]
+            segments = [s.strip() for s in line.split(",")]
 
+            hierarchy_parts = []
             attr_dict = {}
-            hierarchy_key_candidate = None
+            current_attr = None
 
             for seg in segments:
                 if "=" in seg:
-                    k, v = [s.strip() for s in seg.split("=", 1)]
-                    attr_dict[k] = convert_val(v)
+                    # New attribute starts
+                    left, right = seg.split("=", 1)
+                    attr = left.strip().split()[-1]
+                    val = convert_val(right)
+
+                    if isinstance(val, list):
+                        attr_dict[attr] = val
+                    else:
+                        attr_dict[attr] = [val]
+
+                    current_attr = attr
                 else:
-                    # If segment has no '=', it might be hierarchy part
-                    if hierarchy_key_candidate is None:
-                        hierarchy_key_candidate = seg
+                    # Continuation of previous attribute
+                    if current_attr is not None:
+                        attr_dict[current_attr].append(convert_val(seg))
+                    else:
+                        hierarchy_parts.append(seg)
 
-            # If hierarchy key candidate contains colon, split for nested dict
-            hierarchy_keys = hierarchy_key_candidate.split(":") if hierarchy_key_candidate else ["unnamed"]
+            # Convert single-value lists to scalars
+            for k, v in list(attr_dict.items()):
+                if len(v) == 1:
+                    attr_dict[k] = v[0]
+
+            # -------------------------
+            # Build hierarchy
+            # -------------------------
+            hierarchy_str = " ".join(hierarchy_parts)
+            hierarchy = [h.strip() for h in hierarchy_str.split(":")]
+
             current = result[super_key_name]
-            for k in hierarchy_keys[:-1]:
-                if k not in current or not isinstance(current[k], dict):
-                    current[k] = {}
-                current = current[k]
+            for key in hierarchy[:-1]:
+                current = current.setdefault(key, {})
 
-            last_key = hierarchy_keys[-1]
+            last_key = hierarchy[-1]
 
-            # Handle multiple definitions of the same last_key
+            # -------------------------
+            # Assign attributes
+            # -------------------------
             if last_key in current:
                 if isinstance(current[last_key], list):
                     current[last_key].append(attr_dict)
@@ -89,7 +106,9 @@ def super_dictionary_creator(
             else:
                 current[last_key] = attr_dict
 
-    # Export JSON if requested
+    # -------------------------
+    # Export JSON
+    # -------------------------
     if export_json:
         out_file = scratch / filename
         with open(out_file, "w") as f:
@@ -97,26 +116,4 @@ def super_dictionary_creator(
         print(f"\n✅ Super dictionary exported to: {out_file}")
 
     return result
-
-
-# --- Example Usage ---
-if __name__ == "__main__":
-    from types import SimpleNamespace
-
-    input_text = """
-    species = a, b, c
-    interaction primary: aa: type = gs, sigma = 1.414, cutoff = 3.5, epsilon = 2.01
-    interaction primary: ab: type = gs, sigma = 1.414, cutoff = 3.5, epsilon = 2.5
-    interaction secondary: aa: type = ghc, sigma = 1.02, cutoff = 3.2, epsilon = 2.0
-    profile: iteration_max = 5000, tolerance = 0.00001, alpha = 0.1
-    external: d: position = 0.0,0.0,0.0
-    external: d: position = 60.0,0.0,0.0
-    """
-
-    tmp_file = Path("tmp_input.in")
-    tmp_file.write_text(input_text)
-
-    ctx = SimpleNamespace(input_file=tmp_file, scratch_dir=".")
-    super_dict = super_dictionary_creator(ctx, export_json=True)
-    print(json.dumps(super_dict, indent=2))
 
