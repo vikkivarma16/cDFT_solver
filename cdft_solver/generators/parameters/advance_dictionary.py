@@ -11,12 +11,16 @@ def super_dictionary_creator(
     super_key_name="system"
 ):
     """
-    Generic hierarchical dictionary builder from input lines with '=' and optional comma-separated key=value pairs.
+    Universal dictionary builder from hierarchical input.
 
-    - Works for any input format with key=value and optional colons/spaces hierarchy.
-    - Handles multiple key=value pairs separated by comma on the same line.
-    - Can merge into an existing base dictionary.
+    Rules:
+    - Leftmost key = super key (default: 'system')
+    - Key=value pairs after first '=' can be comma-separated
+      - Comma separates multiple key=value only if segment contains '='
+      - Otherwise, entire segment is part of the value
     """
+
+    # Determine input file and output dir
     if ctx is not None:
         input_file = input_file or ctx.input_file
         scratch = Path(ctx.scratch_dir)
@@ -32,65 +36,54 @@ def super_dictionary_creator(
     if super_key_name not in result:
         result[super_key_name] = {}
 
-    def convert_val(val):
-        val = val.strip()
-        try:
-            v = float(val)
-            if v.is_integer():
-                return int(v)
-            return v
-        except:
-            return val
-
-    # -----------------------------
-    # Parse file
-    # -----------------------------
     with input_file.open() as f:
         for raw in f:
             line = raw.strip()
             if not line or line.startswith("#"):
                 continue
 
-            # Handle multiple comma-separated key=value pairs
-            # Step 1: Find first '=' in line (for hierarchy detection)
+            # Split leftmost key and rest
             if "=" not in line:
-                continue
-            lhs, rhs_all = line.split("=", 1)
-            lhs_keys = [k.strip() for k in lhs.replace(":", " ").split() if k.strip()]
+                continue  # skip lines without '='
+            left, right = line.split("=", 1)
+            left = left.strip()
+            right = right.strip()
 
-            # Step 2: Split rhs into multiple key=value by commas, if any
-            rhs_pairs = [rhs_all.strip()]
-            if ',' in rhs_all:
-                parts = rhs_all.split(',')
-                rhs_pairs = [p.strip() for p in parts if p.strip()]
-
-            # Step 3: Assign to dictionary
+            # Hierarchy: detect colons in left key
+            hierarchy = [k.strip() for k in left.split(":")]
             current = result[super_key_name]
-            for i, k in enumerate(lhs_keys):
-                if i == len(lhs_keys) - 1:
-                    # last key → assign dict for multiple rhs pairs
-                    if len(rhs_pairs) == 1:
-                        current[k] = convert_val(rhs_pairs[0])
-                    else:
-                        # store each comma-separated key=value pair
-                        temp_dict = {}
-                        for pair in rhs_pairs:
-                            if "=" in pair:
-                                subk, subv = pair.split("=", 1)
-                                temp_dict[subk.strip()] = convert_val(subv)
-                            else:
-                                # if no '=', store as value list
-                                temp_dict[pair] = None
-                        current[k] = temp_dict
-                else:
-                    # intermediate key → ensure dict
-                    if k not in current or not isinstance(current[k], dict):
-                        current[k] = {}
-                    current = current[k]
+            for k in hierarchy[:-1]:
+                if k not in current or not isinstance(current[k], dict):
+                    current[k] = {}
+                current = current[k]
 
-    # -----------------------------
+            # Process right side
+            last_key = hierarchy[-1]
+
+            # If multiple comma-separated segments exist
+            segments = [seg.strip() for seg in right.split(",")]
+            # If any segment contains '=', treat as multiple key=value
+            if any("=" in seg for seg in segments):
+                if last_key not in current or not isinstance(current[last_key], dict):
+                    current[last_key] = {}
+                for seg in segments:
+                    if "=" not in seg:
+                        continue
+                    k, v = [s.strip() for s in seg.split("=", 1)]
+                    try:
+                        v_float = float(v)
+                        if v_float.is_integer():
+                            v = int(v_float)
+                        else:
+                            v = v_float
+                    except:
+                        pass
+                    current[last_key][k] = v
+            else:
+                # Treat entire right as value
+                current[last_key] = right
+
     # Export JSON if requested
-    # -----------------------------
     if export_json:
         out_file = scratch / filename
         with open(out_file, "w") as f:
@@ -100,17 +93,17 @@ def super_dictionary_creator(
     return result
 
 
-# --- Example ---
+# --- Example usage ---
 if __name__ == "__main__":
     from types import SimpleNamespace
 
     input_text = """
     species = a, b, c
-    interaction primary: aa type=gs, sigma=1.414, cutoff=3.5, epsilon=2.01
-    interaction primary: ab type=gs, sigma=1.414, cutoff=3.5, epsilon=2.5
-    profile iteration_max=5000, tolerance=0.00001, alpha=0.1
-    external d position=0.0,0.0,0.0
-    external d position=60.0,0.0,0.0
+    interaction primary: aa type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.01
+    interaction primary: ab type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.5
+    profile iteration_max = 5000, tolerance = 0.00001, alpha = 0.1
+    external: d position = 0.0,0.0,0.0
+    external: d position = 60.0,0.0,0.0
     """
 
     tmp_file = Path("tmp_input.in")
