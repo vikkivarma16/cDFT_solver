@@ -2,8 +2,9 @@
 Isochores subpackage
 
 Contains engines, calculators, and data generators
-for running isochores DFT minimization.
+for running DFT minimization and exporting the files to the scratch directory.
 """
 
-from .utils import get_unique_dir
-#from .executor_dft_main import main
+
+from .utils import create_unique_scratch_dir, ExecutionContext
+
