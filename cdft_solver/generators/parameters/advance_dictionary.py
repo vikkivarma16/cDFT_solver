@@ -175,19 +175,19 @@ def super_dictionary_creator(
     
     
     def update_from_base(result, base):
-    """
-    Recursively update `result` dictionary with values from `base`.
-    Only keys present in `base` are updated/overwritten.
-    """
-    for k, v in base.items():
-        if k in result:
-            if isinstance(result[k], dict) and isinstance(v, dict):
-                update_from_base(result[k], v)
+        """
+            Recursively update `result` dictionary with values from `base`.
+            Only keys present in `base` are updated/overwritten.
+        """
+        for k, v in base.items():
+            if k in result:
+                if isinstance(result[k], dict) and isinstance(v, dict):
+                    update_from_base(result[k], v)
+                else:
+                    result[k] = v
             else:
-                result[k] = v
-        else:
-            # key from base does not exist in result, ignore
-            pass
+                # key from base does not exist in result, ignore
+                pass
     if base_dict:
         update_from_base(result, base_dict)
 
