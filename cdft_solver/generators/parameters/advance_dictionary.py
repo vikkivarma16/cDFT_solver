@@ -105,8 +105,8 @@ def super_dictionary_creator(
             # ====================================
             before_eq = line.split("=", 1)[0].strip()
 
-            # remove the first attribute token from the end
-            attr_token = attr_order[0] if attr_order else ""
+            # remove attribute token from the end
+            attr_token = attr_order[0]
             tokens = before_eq.split()
             if tokens and tokens[-1] == attr_token:
                 tokens = tokens[:-1]
@@ -120,21 +120,7 @@ def super_dictionary_creator(
             for key in hierarchy[:-1]:
                 current = current.setdefault(key, {})
 
-            last_key = hierarchy[-1] if hierarchy else None
-
-            # -------------------------
-            # SAFE PROMOTION RULE
-            # -------------------------
-            if not last_key:
-                # no hierarchy key, promote attributes
-                if len(attributes) == 1:
-                    # single attribute → use its name as key
-                    single_key, single_val = next(iter(attributes.items()))
-                    current[single_key] = single_val
-                    continue
-                else:
-                    # multiple attributes → store under default empty key
-                    last_key = ""
+            last_key = hierarchy[-1] if hierarchy else ""
 
             # handle repeated keys
             if last_key in current:
