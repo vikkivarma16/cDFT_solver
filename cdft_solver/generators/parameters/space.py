@@ -96,7 +96,7 @@ def space_confinement(ctx, export_json=True, output_name="input_data_space_confi
     if export_json:
         out_file = Path(scratch) / output_name
         out_file.write_text(json.dumps(out_dict, indent=4))
-        print(f"✅ Space confinement exported: {out_file}")
+        print(f"✅ Space confinement exported to: {out_file}")
 
     return out_dict
 
