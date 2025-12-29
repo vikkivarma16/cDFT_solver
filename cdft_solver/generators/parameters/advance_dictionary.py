@@ -13,14 +13,12 @@ def super_dictionary_creator(
     """
     Universal dictionary builder from hierarchical input.
 
-    Rules:
-    - Leftmost key = super key (default: 'system')
-    - Key=value pairs after first '=' can be comma-separated
-      - Comma separates multiple key=value only if segment contains '='
-      - Otherwise, entire segment is part of the value
+    Handles:
+    - Hierarchy with colon
+    - Inline attributes after space in last key
+      e.g. 'aa type' -> key 'aa', {'type': 'gs', ...}
+    - Comma-separated key=value pairs
     """
-
-    # Determine input file and output dir
     if ctx is not None:
         input_file = input_file or ctx.input_file
         scratch = Path(ctx.scratch_dir)
@@ -31,10 +29,19 @@ def super_dictionary_creator(
     input_file = Path(input_file)
     scratch.mkdir(parents=True, exist_ok=True)
 
-    # Initialize dictionary
     result = base_dict.copy() if base_dict else {}
     if super_key_name not in result:
         result[super_key_name] = {}
+
+    def convert_val(val):
+        val = val.strip()
+        try:
+            v = float(val)
+            if v.is_integer():
+                return int(v)
+            return v
+        except:
+            return val
 
     with input_file.open() as f:
         for raw in f:
@@ -42,14 +49,14 @@ def super_dictionary_creator(
             if not line or line.startswith("#"):
                 continue
 
-            # Split leftmost key and rest
             if "=" not in line:
-                continue  # skip lines without '='
+                continue
+
             left, right = line.split("=", 1)
             left = left.strip()
             right = right.strip()
 
-            # Hierarchy: detect colons in left key
+            # Handle hierarchy
             hierarchy = [k.strip() for k in left.split(":")]
             current = result[super_key_name]
             for k in hierarchy[:-1]:
@@ -57,31 +64,42 @@ def super_dictionary_creator(
                     current[k] = {}
                 current = current[k]
 
-            # Process right side
             last_key = hierarchy[-1]
 
-            # If multiple comma-separated segments exist
-            segments = [seg.strip() for seg in right.split(",")]
-            # If any segment contains '=', treat as multiple key=value
-            if any("=" in seg for seg in segments):
+            # Handle space in last key for inline attributes
+            if " " in last_key:
+                tokens = last_key.split()
+                last_key = tokens[0]
+                inline_attrs = tokens[1:]
                 if last_key not in current or not isinstance(current[last_key], dict):
                     current[last_key] = {}
-                for seg in segments:
-                    if "=" not in seg:
-                        continue
-                    k, v = [s.strip() for s in seg.split("=", 1)]
-                    try:
-                        v_float = float(v)
-                        if v_float.is_integer():
-                            v = int(v_float)
-                        else:
-                            v = v_float
-                    except:
-                        pass
-                    current[last_key][k] = v
+                # assign inline attributes with default None, will be overwritten if in right-hand side
+                for attr in inline_attrs:
+                    if attr not in current[last_key]:
+                        current[last_key][attr] = None
             else:
-                # Treat entire right as value
-                current[last_key] = right
+                inline_attrs = []
+
+            # Split comma-separated segments
+            segments = [seg.strip() for seg in right.split(",")]
+
+            # Process key=value pairs
+            for seg in segments:
+                if "=" in seg:
+                    k, v = [s.strip() for s in seg.split("=", 1)]
+                    v = convert_val(v)
+                    if inline_attrs:
+                        # assign to last_key dictionary
+                        current[last_key][k] = v
+                    else:
+                        # no inline attributes, assign to last_key directly
+                        current[last_key] = {k: v}
+                else:
+                    # segment without '=', assign as value
+                    if inline_attrs:
+                        current[last_key][seg] = None
+                    else:
+                        current[last_key] = seg
 
     # Export JSON if requested
     if export_json:
@@ -93,14 +111,14 @@ def super_dictionary_creator(
     return result
 
 
-# --- Example usage ---
+# --- Example ---
 if __name__ == "__main__":
     from types import SimpleNamespace
 
     input_text = """
     species = a, b, c
-    interaction primary: aa type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.01
-    interaction primary: ab type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.5
+    interaction primary: aa type = gs, sigma = 1.414, cutoff = 3.5, epsilon = 2.01
+    interaction primary: ab type = gs, sigma = 1.414, cutoff = 3.5, epsilon = 2.5
     profile iteration_max = 5000, tolerance = 0.00001, alpha = 0.1
     external: d position = 0.0,0.0,0.0
     external: d position = 60.0,0.0,0.0
