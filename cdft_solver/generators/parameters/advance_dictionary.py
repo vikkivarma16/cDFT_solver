@@ -51,7 +51,7 @@ def super_dictionary_creator(
                 continue
 
             # Split hierarchy from left side of first '='
-            left, right = line.split("=", 1)
+            left, right = line.split(" ", 1)
             left = left.strip()
             right = right.strip()
 
