@@ -63,7 +63,11 @@ def super_dictionary_creator(
             # -------------------------
             # 2. Extract hierarchy
             # -------------------------
-            left_parts = [p.strip() for p in left.split(":", " ")]
+            #left_parts = [p.strip() for p in left.split(":", " ")]
+            import re
+
+            left_parts = [p for p in re.split(r'[:\s]+', left) if p]
+
 
             # last hierarchy block may contain attribute word → keep only first token
             last_block_tokens = left_parts[-1].split()
