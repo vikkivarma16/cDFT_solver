@@ -174,11 +174,12 @@ def super_dictionary_creator(
         return new_d
 
     # Apply to result
-    result = preserve_and_promote(result[super_key_name])
+    final_result = preserve_and_promote(result[super_key_name])
 
-        
+    result  = {}
+    result[super_key_name] =  final_result
     
-
+    
     #result[super_key_name] = preserve_and_promote(result[super_key_name])
     
     
