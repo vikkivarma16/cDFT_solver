@@ -10,13 +10,14 @@ def super_dictionary_creator(
     super_key_name="system"
 ):
     """
-    Universal dictionary builder from hierarchical input.
+    Universal dictionary builder.
 
-    Attribute parsing rules:
-    - Attributes are detected strictly by '='
-    - Attribute name = last token before '='
-    - Values following without '=' belong to the last attribute
-    - Multiple values become a list
+    Correct rules:
+    - Split line ONCE at first '='
+    - Hierarchy comes ONLY from left part
+    - Attributes come ONLY from right part
+    - Attributes detected strictly by '='
+    - Comma values without '=' belong to previous attribute
     """
 
     # -------------------------
@@ -52,59 +53,61 @@ def super_dictionary_creator(
             if not line or line.startswith("#") or "=" not in line:
                 continue
 
-            segments = [s.strip() for s in line.split(",")]
+            # -------------------------
+            # 1. Split ONCE at first '='
+            # -------------------------
+            left, right = line.split("=", 1)
+            left = left.strip()
+            right = right.strip()
 
-            hierarchy_parts = []
-            attr_dict = {}
+            # -------------------------
+            # 2. Extract hierarchy
+            # -------------------------
+            left_parts = [p.strip() for p in left.split(":")]
+
+            # last hierarchy block may contain attribute word → keep only first token
+            last_block_tokens = left_parts[-1].split()
+            object_key = last_block_tokens[0]
+
+            hierarchy = left_parts[:-1]
+
+            current = result[super_key_name]
+            for h in hierarchy:
+                current = current.setdefault(h, {})
+
+            # -------------------------
+            # 3. Parse attributes from RIGHT
+            # -------------------------
+            segments = [s.strip() for s in right.split(",") if s.strip()]
+            attrs = {}
             current_attr = None
 
             for seg in segments:
                 if "=" in seg:
-                    # New attribute starts
-                    left, right = seg.split("=", 1)
-                    attr = left.strip().split()[-1]
-                    val = convert_val(right)
-
-                    if isinstance(val, list):
-                        attr_dict[attr] = val
-                    else:
-                        attr_dict[attr] = [val]
-
-                    current_attr = attr
+                    k, v = seg.split("=", 1)
+                    k = k.strip().split()[-1]
+                    v = convert_val(v)
+                    attrs[k] = [v]
+                    current_attr = k
                 else:
-                    # Continuation of previous attribute
                     if current_attr is not None:
-                        attr_dict[current_attr].append(convert_val(seg))
-                    else:
-                        hierarchy_parts.append(seg)
+                        attrs[current_attr].append(convert_val(seg))
 
-            # Convert single-value lists to scalars
-            for k, v in list(attr_dict.items()):
+            # flatten single-element lists
+            for k, v in attrs.items():
                 if len(v) == 1:
-                    attr_dict[k] = v[0]
+                    attrs[k] = v[0]
 
             # -------------------------
-            # Build hierarchy
+            # 4. Assign object
             # -------------------------
-            hierarchy_str = " ".join(hierarchy_parts)
-            hierarchy = [h.strip() for h in hierarchy_str.split(":")]
-
-            current = result[super_key_name]
-            for key in hierarchy[:-1]:
-                current = current.setdefault(key, {})
-
-            last_key = hierarchy[-1]
-
-            # -------------------------
-            # Assign attributes
-            # -------------------------
-            if last_key in current:
-                if isinstance(current[last_key], list):
-                    current[last_key].append(attr_dict)
+            if object_key in current:
+                if isinstance(current[object_key], list):
+                    current[object_key].append(attrs)
                 else:
-                    current[last_key] = [current[last_key], attr_dict]
+                    current[object_key] = [current[object_key], attrs]
             else:
-                current[last_key] = attr_dict
+                current[object_key] = attrs
 
     # -------------------------
     # Export JSON
