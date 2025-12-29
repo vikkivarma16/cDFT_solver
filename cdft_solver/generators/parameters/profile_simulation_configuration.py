@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-def profile_parameters(ctx, export_json=True, filename="input_profile_parameters.json"):
+def profile_simulation_configurations(ctx, export_json=True, filename="input_profile_parameters.json"):
     """
     Parse density profile iteration parameters from an input file.
 
