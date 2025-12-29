@@ -3,7 +3,6 @@ from .space import space
 
 __all__ = [
     "pair_interactions",
-    "box_parameters",
-    "confinement_parameters",
+    "space",
 ]
 
