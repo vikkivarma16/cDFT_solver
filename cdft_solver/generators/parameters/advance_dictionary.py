@@ -208,9 +208,8 @@ def super_dictionary_creator(
                 pass
     if base_dict:
         print ("\nWarning: udpated the dictionary with the supplied values, and overridden the parameters supplied from the input file.")
-        result = update_from_base_recursive(result, base_dict)
-
-
+        result_final = update_from_base_recursive(result, base_dict)
+        result  =  result_final
 
     # -------------------------
     # Export JSON
