@@ -182,7 +182,6 @@ def super_dictionary_creator(
     
     #result[super_key_name] = preserve_and_promote(result[super_key_name])
     
-    
     def update_from_base_recursive(result, base):
         """
         Recursively search `result` for keys in `base`.
@@ -196,7 +195,7 @@ def super_dictionary_creator(
                 # recursively update matching dict
                 update_from_base_recursive(result[k], v)
             else:
-                # search deeper
+                # search deeper in nested dicts/lists
                 for rk, rv in result.items():
                     if isinstance(rv, dict):
                         update_from_base_recursive(rv, {k: v})
@@ -205,11 +204,14 @@ def super_dictionary_creator(
                             if isinstance(item, dict):
                                 update_from_base_recursive(item, {k: v})
 
-                pass
-       
+    # Usage:
     if base_dict:
-        print ("\nWarning: udpated the dictionary with the supplied values, and overridden the parameters supplied from the input file.")
-        update_from_base_recursive(result, base_dict)
+        print("\nWarning: updated the dictionary with the supplied values, and overridden the parameters supplied from the input file.")
+        update_from_base_recursive(result, base_dict)  # in-place update
+
+    
+    
+   
 
     # -------------------------
     # Export JSON
