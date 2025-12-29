@@ -16,12 +16,11 @@ def super_dictionary_creator(
     Features:
     - Leftmost key = super key (default: 'system')
     - Hierarchy detected via colons in keys
-    - Inline attributes after space in last key handled properly:
+    - Inline attributes after space in last key handled properly
       e.g., 'aa type = gs, sigma=1.414' → {'aa': {'type': 'gs', 'sigma': 1.414}}
     - Comma-separated key=value pairs
     - Can update a base dictionary if provided
     """
-
     # -------------------------
     # Determine input file and scratch
     # -------------------------
@@ -61,10 +60,7 @@ def super_dictionary_creator(
     with input_file.open() as f:
         for raw in f:
             line = raw.strip()
-            if not line or line.startswith("#"):
-                continue
-
-            if "=" not in line:
+            if not line or line.startswith("#") or "=" not in line:
                 continue
 
             left, right = line.split("=", 1)
@@ -80,29 +76,31 @@ def super_dictionary_creator(
                 current = current[k]
 
             # Last key may have inline attributes, e.g., "aa type"
-            last_key = hierarchy[-1]
-            inline_attrs = []
-            if " " in last_key:
-                tokens = last_key.split()
-                last_key = tokens[0]
-                inline_attrs = tokens[1:]
+            last_key_tokens = hierarchy[-1].split()
+            last_key = last_key_tokens[0]
+            inline_attrs = last_key_tokens[1:]
 
-            # Ensure last_key is a dict
             if last_key not in current or not isinstance(current[last_key], dict):
                 current[last_key] = {}
 
-            # Split right-hand side by comma
-            segments = [seg.strip() for seg in right.split(",")]
+            # If inline attributes exist, assign them as keys with None (will be overwritten if present on RHS)
+            for attr in inline_attrs:
+                current[last_key][attr] = None
 
+            # Split right-hand side by comma
+            segments = [seg.strip() for seg in right.split(",") if seg.strip()]
+
+            # Process all segments
             for seg in segments:
                 if "=" in seg:
                     k, v = [s.strip() for s in seg.split("=", 1)]
-                    v = convert_val(v)
-                    # Assign to inline attribute if matches, else just add to dict
-                    current[last_key][k] = v
+                    current[last_key][k] = convert_val(v)
                 else:
-                    # segment without '=', optional assign None
-                    current[last_key][seg] = None
+                    # If segment has no '=', treat it as the value of first inline attribute or "type"
+                    if inline_attrs:
+                        current[last_key][inline_attrs[0]] = convert_val(seg)
+                    else:
+                        current[last_key]["type"] = convert_val(seg)
 
     # -------------------------
     # Export JSON if requested
