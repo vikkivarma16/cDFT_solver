@@ -1,5 +1,8 @@
+# cdft_solver/utils/super_dict.py
 import json
 from pathlib import Path
+import re
+
 
 def super_dictionary_creator(
     ctx=None,
@@ -7,25 +10,35 @@ def super_dictionary_creator(
     base_dict=None,
     export_json=False,
     filename="super_dictionary.json",
-    super_key_name="system"
+    super_key_name="system",
 ):
     """
-    Universal dictionary builder using a strict two-pass algorithm:
+    Universal dictionary builder from hierarchical input.
 
-    PASS 1 (attributes):
-      - Split line by commas
-      - Any segment containing '=' defines an attribute
-      - Attribute name = last token before '='
-      - Values without '=' belong to the previous attribute
+    Algorithm (strictly implemented):
 
-    PASS 2 (hierarchy):
-      - Everything BEFORE the first '=' contains hierarchy
-      - Last token before '=' is NOT hierarchy (it is attribute name)
-      - Remaining tokens define hierarchy via ':'
+    PHASE 1 — ATTRIBUTE EXTRACTION
+    --------------------------------
+    • Split line by commas
+    • Any segment containing '=' defines a NEW attribute
+        - attribute name = last word to the LEFT of '='
+        - attribute value = everything to the RIGHT of '='
+    • Segments WITHOUT '=' belong to the PREVIOUS attribute
+      (multi-value attributes)
+
+    PHASE 2 — HIERARCHY EXTRACTION
+    --------------------------------
+    • Take text BEFORE the FIRST '='
+    • Remove the attribute name (last token)
+    • Remaining text defines hierarchy
+    • Split hierarchy by ':' or whitespace
+    • Last hierarchy key receives attribute dict
+
+    Repeated keys → stored as lists
     """
 
     # -------------------------
-    # Resolve input & output
+    # Input handling
     # -------------------------
     if ctx is not None:
         input_file = input_file or ctx.input_file
@@ -34,22 +47,26 @@ def super_dictionary_creator(
         if input_file is None:
             raise ValueError("No input file or ctx provided.")
         scratch = Path(".")
+
     input_file = Path(input_file)
     scratch.mkdir(parents=True, exist_ok=True)
 
     result = base_dict.copy() if base_dict else {}
     result.setdefault(super_key_name, {})
 
-    def convert_val(v):
-        v = v.strip()
+    # -------------------------
+    # Helpers
+    # -------------------------
+    def convert(val):
+        val = val.strip()
         try:
-            f = float(v)
+            f = float(val)
             return int(f) if f.is_integer() else f
         except:
-            return v
+            return val
 
     # -------------------------
-    # Parse file
+    # Main parsing loop
     # -------------------------
     with input_file.open() as f:
         for raw in f:
@@ -57,68 +74,94 @@ def super_dictionary_creator(
             if not line or line.startswith("#") or "=" not in line:
                 continue
 
-            # ==========================================================
-            # PASS 1: Extract attributes FIRST
-            # ==========================================================
-            segments = [s.strip() for s in line.split(",") if s.strip()]
+            # ====================================
+            # PHASE 1 — ATTRIBUTE EXTRACTION
+            # ====================================
+            segments = [s.strip() for s in line.split(",")]
+
             attributes = {}
+            attr_order = []
             current_attr = None
 
             for seg in segments:
                 if "=" in seg:
                     left, right = seg.split("=", 1)
                     attr = left.strip().split()[-1]
-                    val = convert_val(right)
-                    attributes[attr] = [val]
+                    val = convert(right)
+
+                    attributes[attr] = val
+                    attr_order.append(attr)
                     current_attr = attr
                 else:
                     # continuation value
                     if current_attr is not None:
-                        attributes[current_attr].append(convert_val(seg))
+                        prev = attributes[current_attr]
+                        if not isinstance(prev, list):
+                            attributes[current_attr] = [prev]
+                        attributes[current_attr].append(convert(seg))
 
-            # flatten lists of length 1
-            for k, v in attributes.items():
-                if len(v) == 1:
-                    attributes[k] = v[0]
+            # ====================================
+            # PHASE 2 — HIERARCHY EXTRACTION
+            # ====================================
+            before_eq = line.split("=", 1)[0].strip()
 
-            # ==========================================================
-            # PASS 2: Extract hierarchy
-            # ==========================================================
-            left_of_first_equal = line.split("=", 1)[0].strip()
+            # remove attribute token from the end
+            attr_token = attr_order[0]
+            tokens = before_eq.split()
+            if tokens and tokens[-1] == attr_token:
+                tokens = tokens[:-1]
 
-            # remove attribute token at end
-            tokens = left_of_first_equal.split()
-            hierarchy_str = " ".join(tokens[:-1])
+            hierarchy_text = " ".join(tokens)
 
-            hierarchy = [h.strip() for h in hierarchy_str.split(":") if h.strip()]
-            if not hierarchy:
-                continue
+            # split hierarchy by ':' OR whitespace
+            hierarchy = [h for h in re.split(r"[:\s]+", hierarchy_text) if h]
 
             current = result[super_key_name]
-            for h in hierarchy[:-1]:
-                current = current.setdefault(h, {})
+            for key in hierarchy[:-1]:
+                current = current.setdefault(key, {})
 
-            final_key = hierarchy[-1]
+            last_key = hierarchy[-1] if hierarchy else ""
 
-            # ==========================================================
-            # Assign attributes
-            # ==========================================================
-            if final_key in current:
-                if isinstance(current[final_key], list):
-                    current[final_key].append(attributes)
+            # handle repeated keys
+            if last_key in current:
+                if isinstance(current[last_key], list):
+                    current[last_key].append(attributes)
                 else:
-                    current[final_key] = [current[final_key], attributes]
+                    current[last_key] = [current[last_key], attributes]
             else:
-                current[final_key] = attributes
+                current[last_key] = attributes
 
     # -------------------------
     # Export JSON
     # -------------------------
     if export_json:
-        out_file = scratch / filename
-        with open(out_file, "w") as f:
+        out = scratch / filename
+        with open(out, "w") as f:
             json.dump(result, f, indent=4)
-        print(f"\n✅ Super dictionary exported to: {out_file}")
+        print(f"\n✅ Super dictionary exported to: {out}")
 
     return result
+
+
+# -------------------------------------------------
+# Example usage
+# -------------------------------------------------
+if __name__ == "__main__":
+    from types import SimpleNamespace
+
+    input_text = """
+    species = a, b, c
+    interaction primary: aa type = gs, sigma = 1.414, cutoff = 3.5, epsilon = 2.01
+    interaction primary: ab type = gs, sigma = 1.414, cutoff = 3.5, epsilon = 2.5
+    interaction primary: ac type = ma, sigma = 1.0, cutoff = 3.5, epsilon = 0.1787, m = 12, n = 6, lambda = 0.477246
+    interaction secondary: aa type = ghc, sigma = 1.02, cutoff = 3.2, epsilon = 2.0
+    profile iteration_max = 5000, tolerance = 0.00001, alpha = 0.1
+    """
+
+    tmp = Path("tmp_input.in")
+    tmp.write_text(input_text)
+
+    ctx = SimpleNamespace(input_file=tmp, scratch_dir=".")
+    d = super_dictionary_creator(ctx, export_json=True)
+    print(json.dumps(d, indent=2))
 
