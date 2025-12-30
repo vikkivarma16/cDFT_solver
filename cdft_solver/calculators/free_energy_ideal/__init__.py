@@ -6,4 +6,4 @@ for running isochores DFT minimization.
 """
 
 
-from .calculator_free_energy_ideal import free_energy_ideal
+from .ideal import free_energy_ideal

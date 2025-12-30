@@ -6,4 +6,4 @@ for running isochores DFT minimization.
 """
 
 
-from .calculator_integrated_strength_uniform import vk_uniform
+from .integrated_strength_radial_kernal import vij_radial_kernel
