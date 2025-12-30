@@ -1,117 +1,191 @@
+# cdft_solver/external/external_potential_from_dict.py
+
+"""
+External Potential Generator (Dictionary-Driven)
+
+Computes the potential on a spatial grid due to external species
+defined in a nested dictionary. Uses isotropic pair potentials.
+"""
+
 import json
 import numpy as np
 from pathlib import Path
+import matplotlib.pyplot as plt
+from cdft_solver.generators.potential.pair_potential_isotropic import pair_potential_isotropic as ppi
 
 
-def r_k_space_spherical(ctx):
+def external_potential_grid(
+    ctx=None,
+    data_dict=None,
+    grid_coordinates=None,
+    export_json=True,
+    filename="supplied_data_external_potential.json",
+    plot=False
+):
     """
-    Generate spherical-symmetry grids (r, theta, phi) based on confinement input.
+    Compute external potentials from a dictionary and a spatial grid.
 
-    Dimension behavior
-    ------------------
-    dim = 1 : r only (theta = 0, phi = 0)
-    dim = 2 : r, theta (phi = 0)
-    dim = 3 : r, theta, phi
+    Parameters
+    ----------
+    ctx : object, optional
+        Provides ctx.scratch_dir for exporting JSON.
+    data_dict : dict
+        Dictionary containing `system` -> `external` -> `species` and `interaction`.
+    grid_points : int or list of int
+        Number of points in each spatial direction (for info only if grid_coordinates provided).
+    grid_coordinates : np.ndarray
+        Nx3 array of [x, y, z] coordinates where potential should be evaluated.
+    export_json : bool
+        If True, export the result as JSON.
+    filename : str
+        Name of the JSON file if exported.
 
-    Output
-    ------
-    supplied_data_r_space.txt : columns [r, theta, phi]
-    supplied_data_k_space.txt : columns [kr, ktheta, kphi]
-
-    All files written to ctx.scratch_dir
+    Returns
+    -------
+    dict
+        {
+            "species": [...],
+            "grid_coordinates": [[x, y, z], ...],
+            "external_potentials": {
+                "a": [...],  # potential values at each grid point
+                "b": [...],
+                ...
+            }
+        }
     """
 
-    if ctx is None or not hasattr(ctx, "scratch_dir"):
-        raise ValueError("ctx.scratch_dir must be provided")
+    if data_dict is None:
+        raise ValueError("data_dict must be provided")
+    if grid_coordinates is None:
+        raise ValueError("grid_coordinates must be provided as Nx3 array")
 
-    scratch = Path(ctx.scratch_dir)
-    scratch.mkdir(parents=True, exist_ok=True)
+    # -------------------------
+    # Recursive search helper
+    # -------------------------
+    def find_key_recursive(d, key):
+        if not isinstance(d, dict):
+            return None
+        if key in d:
+            return d[key]
+        for v in d.values():
+            if isinstance(v, dict):
+                found = find_key_recursive(v, key)
+                if found is not None:
+                    return found
+        return None
+        
+    def find_system_species(d):
+        """
+        Recursively search for the first 'species' key
+        that is NOT inside an 'external' dictionary.
+        """
+        if not isinstance(d, dict):
+            return None
 
-    input_file = scratch / "input_data_space_confinement_parameters.json"
-    if not input_file.exists():
-        raise FileNotFoundError(f"Missing confinement file: {input_file}")
+        for k, v in d.items():
+            if k == "external":
+                continue
+            if k == "species" and isinstance(v, list):
+                return v
+            if isinstance(v, dict):
+                found = find_system_species(v)
+                if found is not None:
+                    return found
+        return None
 
-    # --------------------------------------------------
-    # Load confinement parameters
-    # --------------------------------------------------
-    with open(input_file, "r") as f:
-        data = json.load(f)
 
-    params = data["space_confinement_parameters"]
-    dim = int(params["space_properties"]["dimension"])
+    # -------------------------
+    # Extract system & external info
+    # -------------------------
+    
 
-    box_length = params["box_properties"]["box_length"]
-    box_points = params["box_properties"]["box_points"]
+    external = find_key_recursive(data_dict, "external")
+    if not external:
+        raise KeyError("No 'external' key found in system")
 
-    # --------------------------------------------------
-    # Build spherical grids
-    # --------------------------------------------------
-    # r direction (always present)
-    Rmax = box_length[0]
-    Nr = int(box_points[0])
-    r = np.linspace(0.0, Rmax, Nr)
+    external_species = external.get("species")
+    if external_species is None:
+        raise KeyError("No 'species' defined under 'external'")
 
-    # theta direction
-    if dim >= 2:
-        Ntheta = int(box_points[1])
-        theta = np.linspace(0.0, np.pi, Ntheta)
-    else:
-        theta = np.array([0.0])
+    # System species (for interaction check)
+    system_species = find_system_species(data_dict)
+    if not system_species:
+        raise KeyError("No system species found outside 'external'")
 
-    # phi direction
-    if dim == 3:
-        Nphi = int(box_points[2])
-        phi = np.linspace(0.0, 2.0 * np.pi, Nphi, endpoint=False)
-    else:
-        phi = np.array([0.0])
+    # Check all interactions are defined
+    interactions = external.get("interaction", {})
+    for s in system_species:
+        for es in external_species if isinstance(external_species, list) else [external_species]:
+            pair_key = f"{s}{es}" if f"{s}{es}" in interactions else f"{es}{s}"
+            if pair_key not in interactions:
+                raise ValueError(f"Missing interaction definition for pair {s}-{es}")
 
-    # --------------------------------------------------
-    # Meshgrid (r, theta, phi)
-    # --------------------------------------------------
-    R, THETA, PHI = np.meshgrid(r, theta, phi, indexing="ij")
+    # -------------------------
+    # Compute external potential
+    # -------------------------
+    grid_coordinates = np.array(grid_coordinates)
+    N_grid = grid_coordinates.shape[0]
 
-    r_data = np.column_stack([
-        R.flatten(),
-        THETA.flatten(),
-        PHI.flatten()
-    ])
+    external_potentials = {s: np.zeros(N_grid, dtype=float) for s in system_species}
 
-    # --------------------------------------------------
-    # k-space (FFT-consistent)
-    # --------------------------------------------------
-    dr = Rmax / (Nr - 1)
-    kr = np.fft.fftfreq(Nr, d=dr) * 2.0 * np.pi
+    # For each external species, get positions and potentials
+    for es in external_species if isinstance(external_species, list) else [external_species]:
+        es_positions = np.array(external.get(es, {}).get("position", []))
+        if es_positions.size == 0:
+            raise ValueError(f"No positions defined for external species {es}")
 
-    if dim >= 2:
-        dtheta = np.pi / (Ntheta - 1)
-        ktheta = np.fft.fftfreq(Ntheta, d=dtheta) * 2.0 * np.pi
-    else:
-        ktheta = np.array([0.0])
+        for s in system_species:
+            pair_key = f"{s}{es}" if f"{s}{es}" in interactions else f"{es}{s}"
+            pot_dict = interactions[pair_key]
+            pot_func = ppi(pot_dict)
 
-    if dim == 3:
-        dphi = 2.0 * np.pi / Nphi
-        kphi = np.fft.fftfreq(Nphi, d=dphi) * 2.0 * np.pi
-    else:
-        kphi = np.array([0.0])
+            # Compute distances from all external particles of this species
+            for pos in es_positions:
+                r_vec = grid_coordinates - pos  # Nx3
+                r_mag = np.linalg.norm(r_vec, axis=1)
+                external_potentials[s] += pot_func(r_mag)
 
-    KR, KTHETA, KPHI = np.meshgrid(kr, ktheta, kphi, indexing="ij")
+    # -------------------------
+    # Prepare output
+    # -------------------------
+    result = {
+        "species": system_species,
+        "grid_coordinates": grid_coordinates.tolist(),
+        "external_potentials": {s: external_potentials[s].tolist() for s in system_species}
+    }
 
-    k_data = np.column_stack([
-        KR.flatten(),
-        KTHETA.flatten(),
-        KPHI.flatten()
-    ])
+    if export_json and ctx is not None:
+        scratch_dir = Path(ctx.scratch_dir)
+        scratch_dir.mkdir(parents=True, exist_ok=True)
+        out_file = scratch_dir / filename
+        with open(out_file, "w") as f:
+            json.dump(result, f, indent=2)
+        print(f"✅ External potentials exported to {out_file}")
+        
+        
+    if plot and ctx is not None:
+        scratch_dir = Path(ctx.scratch_dir)
+        plot_dir = scratch_dir / "plots"
+        plot_dir.mkdir(parents=True, exist_ok=True)
+        
+        for s in system_species:
+            plt.figure(figsize=(6, 4))
+            plt.scatter(range(N_grid), external_potentials[s], s=5, c='blue')
+            plt.title(f"External Potential for Species '{s}'")
+            plt.xlabel("Grid point index")
+            plt.ylabel("Potential")
+            plt.grid(True)
+            
+            y_min = -10
+            y_max = 10
+            plt.ylim(y_min, y_max)
+            
+            plot_file = plot_dir / f"external_potential_{s}.png"
+            plt.savefig(plot_file, dpi=150)
+            plt.close()
+            print(f"✅ Plot saved: {plot_file}")
 
-    # --------------------------------------------------
-    # Save
-    # --------------------------------------------------
-    r_file = scratch / "supplied_data_r_space.txt"
-    k_file = scratch / "supplied_data_k_space.txt"
 
-    np.savetxt(r_file, r_data, header="r theta phi")
-    np.savetxt(k_file, k_data, header="kr ktheta kphi")
 
-    print(f"✅ Spherical r-space saved to {r_file}")
-    print(f"✅ Spherical k-space saved to {k_file}")
+    return result
 
-    return r_file, k_file
