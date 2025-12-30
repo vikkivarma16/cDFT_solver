@@ -1,96 +1,100 @@
 import json
-import numpy as np
 import sympy as sp
-from sympy import log
 from pathlib import Path
-from cdft_solver.generators.potential_splitter.generator_potential_splitter_mf import meanfield_potentials
 
-
-def free_energy_ideal(ctx):
+def free_energy_ideal(ctx=None, hc_data=None, export_json=True, filename="Solution_ideal.json"):
     """
     Computes the symbolic ideal (entropic) part of the free energy for a multi-species system.
 
     Parameters
     ----------
-    ctx : object
-        Context with attributes:
-            - scratch_dir : str or Path → working directory
-            - input_file  : str or Path → path to JSON defining interactions
+    ctx : object, optional
+        Must have `scratch_dir` for exporting JSON.
+    hc_data : dict
+        {
+            "species": [...],   # list of species names
+            "potentials": {...} # ignored here
+        }
+    export_json : bool
+        If True, export symbolic result to JSON
+    filename : str
+        JSON output filename
 
     Returns
     -------
     dict
         {
             "species": [...],
-            "free_energy_symbolic": sympy.Expr,
-            "free_energy_func": callable (numeric evaluator)
+            "variables": [sympy.Symbol, ...],
+            "function": sympy.Lambda,
+            "expression": sympy.Expr
         }
     """
 
-    # -------------------------
-    # Setup paths
-    # -------------------------
-    scratch = Path(ctx.scratch_dir)
-    input_file = Path(ctx.input_file)
-    scratch.mkdir(parents=True, exist_ok=True)
-    output_file = scratch / "Solution_ideal.json"
+    if hc_data is None or not isinstance(hc_data, dict):
+        raise ValueError("hc_data must be provided as a dictionary with 'species' key")
+
+    species = list(hc_data.get("species", []))
+    if not species:
+        raise ValueError("No species found in hc_data")
 
     # -------------------------
-    # Load species list (reuse same potential loader for consistency)
+    # Define symbolic densities
     # -------------------------
-    potential_data = meanfield_potentials(ctx, mode="meanfield")
-    species = potential_data["species"]
-
-    nelement = len(species)
-    if nelement == 0:
-        raise ValueError("No species found in input data.")
-
-    # -------------------------
-    # Define density symbols
-    # -------------------------
-    densities = [sp.symbols(f"rho_{i}") for i in range(nelement)]
+    densities = [sp.symbols(f"rho_{s}") for s in species]
 
     # -------------------------
     # Construct ideal free energy
-    # f_ideal = sum_i [ rho_i * (log(rho_i) - 1) ]
     # -------------------------
-    f_ideal = sum(rho * (sp.log(rho) - 1) for rho in densities)
+    f_ideal_expr = sum(rho * (sp.log(rho) - 1) for rho in densities)
 
     # -------------------------
-    # Create a numeric evaluator
+    # Treat as symbolic function
     # -------------------------
-    f_ideal_func = sp.lambdify(densities, f_ideal, "numpy")
+    f_ideal_func = sp.Lambda(tuple(densities), f_ideal_expr)
 
     # -------------------------
-    # Save to JSON
-    # -------------------------
-    with open(output_file, "w") as f:
-        json.dump({
-            "species": species,
-            "densities": [str(sym) for sym in densities],
-            "f_ideal": str(f_ideal)
-        }, f, indent=4)
-
-    # -------------------------
-    # Return both symbolic and functional forms
+    # Prepare result
     # -------------------------
     result = {
-        "species": species,
-        "densities": [str(sym) for sym in densities],
-        "f_ideal": f_ideal
+        "variables": densities,
+        "function": f_ideal_func,
+        "expression": f_ideal_expr
     }
 
-    return result
+    # -------------------------
+    # Optional JSON export
+    # -------------------------
+    if export_json and ctx is not None and hasattr(ctx, "scratch_dir"):
+        scratch = Path(ctx.scratch_dir)
+        scratch.mkdir(parents=True, exist_ok=True)
+        out_file = scratch / filename
 
+        with open(out_file, "w") as f:
+            json.dump({
+                "species": species,
+                "variables": [str(v) for v in densities],
+                "function": str(f_ideal_func),
+                "expression": str(f_ideal_expr)
+            }, f, indent=4)
+
+        print(f"✅ Ideal free energy exported: {out_file}")
+
+    return result
 
 
 # Example usage
 if __name__ == "__main__":
     class Ctx:
         scratch_dir = "."
-        input_file = "interactions.json"
 
-    out = free_energy_ideal(Ctx())
+    hc_data_example = {
+        "species": ["A", "B", "C"],
+        "potentials": {}  # ignored here
+    }
+
+    out = free_energy_ideal(Ctx(), hc_data=hc_data_example)
     print("Species:", out["species"])
-    print("Symbolic Ideal Free Energy:", out["f_ideal"])
+    print("Variables:", out["variables"])
+    print("Symbolic Ideal Free Energy:", out["expression"])
 

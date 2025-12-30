@@ -1,102 +1,148 @@
-# Corrected symbolic two-point style version of free_energy_void_z
-# Fully consistent with the SMF two-point symbolic style (densities_z_i, densities_zs_i)
-
 import sympy as sp
 import numpy as np
+import json
 from pathlib import Path
 
-def free_energy_void_z(ctx):
+def free_energy_void_z(ctx=None, hc_data=None, export_json=True, filename="Solution_void_z.json"):
     """
-    Cavity Mean-Field (CMF) free-energy kernel in symbolic two-point form.
+    Cavity Mean-Field (CMF) two-point free-energy kernel:
 
-    Unlike the EMF version, here we apply void-volume corrections but keep the
-    kernel strictly symbolic using densities_z_i and densities_zs_i.
+        f(z, zs) = 1/2 ∑_{i,j} rho_i(z) * v_ij * rho_j(zs)
+                   / [ volume_factor_i(z) * volume_factor_j(zs) ]
+
+    Notes
+    -----
+    • Void-volume corrections applied at BOTH points
+    • No spatial integration performed
+    • Fully symbolic kernel
     """
 
-    from cdft_solver.generators.potential_splitter.generator_potential_splitter_mf import meanfield_potentials
-    from cdft_solver.generators.potential_splitter.generator_potential_splitter_hc import hard_core_potentials
+    # -------------------------
+    # Validate input
+    # -------------------------
+    if hc_data is None or not isinstance(hc_data, dict):
+        raise ValueError("hc_data must be provided as a dictionary")
+
+    species = list(hc_data.get("species", []))
+    sigma_raw = hc_data.get("sigma", [])
+    flag_raw  = hc_data.get("flag", [])
+
+    n_species = len(species)
+    if n_species == 0:
+        raise ValueError("No species provided")
 
     # -------------------------
-    # Setup
+    # Extract diagonal sigma / flag
     # -------------------------
-    scratch = Path(ctx.scratch_dir)
-    input_file = Path(ctx.input_file)
-    scratch.mkdir(parents=True, exist_ok=True)
+    def extract_diagonal(data, n, name="array"):
+        arr = np.asarray(data)
+        if arr.ndim == 1 and arr.size == n:
+            return arr.tolist()
+        if arr.ndim == 1 and arr.size == n * n:
+            return arr.reshape((n, n)).diagonal().tolist()
+        if arr.ndim == 2 and arr.shape == (n, n):
+            return arr.diagonal().tolist()
+        raise ValueError(f"{name} must be length-{n}, {n}x{n}, or flat length-{n*n}")
+
+    sigmai = [float(s) for s in extract_diagonal(sigma_raw, n_species, "sigma")]
+    flag   = [int(f)   for f in extract_diagonal(flag_raw,  n_species, "flag")]
 
     # -------------------------
-    # Load potentials and HC data
-    # -------------------------
-    pot_data = meanfield_potentials(ctx, mode="meanfield")
-    hc_data = hard_core_potentials(ctx)
-
-    species = sorted(hc_data.keys())
-    nelement = len(species)
-
-    sigmai = [hc_data[s]["sigma_eff"] for s in species]
-    flag   = [hc_data[s]["flag"] for s in species]
-
-    # -------------------------
-    # Two symbolic spatial coordinates
+    # Coordinates
     # -------------------------
     z, zs = sp.symbols("z zs", real=True)
 
     # -------------------------
-    # Define two-point symbolic densities
+    # Two-point densities
     # -------------------------
-    densities_z  = [sp.symbols(f"densities_z_{i}")  for i in range(nelement)]
-    densities_zs = [sp.symbols(f"densities_zs_{i}") for i in range(nelement)]
+    rho_z  = [sp.symbols(f"rho_{s}_z")  for s in species]
+    rho_zs = [sp.symbols(f"rho_{s}_zs") for s in species]
 
     # -------------------------
-    # Pair interaction kernels (symbolic)
+    # Pair interactions
     # -------------------------
-    vij = [[sp.symbols(f"v_{i}_{j}") for j in range(nelement)] for i in range(nelement)]
+    vij = [[sp.symbols(f"v_{species[i]}_{species[j]}")
+            for j in range(n_species)]
+            for i in range(n_species)]
 
     # -------------------------
-    # Compute void-volume correction factors at z and zs
+    # Void-volume correction factors
     # -------------------------
-    # Here we only apply the correction at *one* point (zs), consistent with
-    # a cavity correction acting on the receiving density.
-
+    volume_factor_z  = []
     volume_factor_zs = []
-    for j in range(nelement):
-        vf = 1
-        for i in range(nelement):
-            if flag[i] == 1 and j != i:
-                avg_p_vol = sigmai[i]**3
-                term = (sp.pi/6) * avg_p_vol * densities_zs[i]
-                vf -= term
-        volume_factor_zs.append(vf)
-        
-        
-    volume_factor_z = []
-    for j in range(nelement):
-        vf = 1
-        for i in range(nelement):
-            if flag[i] == 1 and j != i:
-                avg_p_vol = sigmai[i]**3
-                term = (sp.pi/6) * avg_p_vol * densities_z[i]
-                vf -= term
-        volume_factor_z.append(vf)
+
+    for j in range(n_species):
+        vf_z  = 1
+        vf_zs = 1
+        for i in range(n_species):
+            if flag[i] == 1 and i != j:
+                avg_p_vol = sigmai[i] ** 3
+                term_z  = (sp.pi / 6) * avg_p_vol * rho_z[i]
+                term_zs = (sp.pi / 6) * avg_p_vol * rho_zs[i]
+                vf_z  -= term_z
+                vf_zs -= term_zs
+        volume_factor_z.append(vf_z)
+        volume_factor_zs.append(vf_zs)
 
     # -------------------------
-    # CMF free-energy kernel
+    # CMF two-point kernel
     # -------------------------
-    f_mf = 0
-    for i in range(nelement):
-        for j in range(nelement):
-            f_mf += sp.Rational(1,2) * densities_z[i] * vij[i][j] * densities_zs[j] / (volume_factor_zs[j]*volume_factor_z[i])
+    f_void_z = 0
+    for i in range(n_species):
+        for j in range(n_species):
+            f_void_z += (
+                sp.Rational(1, 2)
+                * rho_z[i]
+                * vij[i][j]
+                * rho_zs[j]
+                / (volume_factor_z[i] * volume_factor_zs[j])
+            )
 
     # -------------------------
-    # Package symbolic result
+    # Flatten variables
     # -------------------------
-    return {
-        "species": species,
-        "sigma_eff": sigmai,
-        "flag": flag,
-        "densities_z": densities_z,
-        "densities_zs": densities_zs,
-        "vij": vij,
-        "volume_factor_zs": volume_factor_zs,
-        "voluem_factor_z": volume_factor_z,
-        "f_mf_two_point": f_mf,
+    flat_vars = tuple(
+        rho_z +
+        rho_zs +
+        [vij[i][j] for i in range(n_species) for j in range(n_species)]
+    )
+
+    f_void_z_func = sp.Lambda(flat_vars, f_void_z)
+
+    # -------------------------
+    # Result dictionary
+    # -------------------------
+    result = {
+        "variables": flat_vars,
+        "function": f_void_z_func,
+        "expression": f_void_z,
     }
+
+    # -------------------------
+    # Optional JSON export
+    # -------------------------
+    if export_json and ctx is not None and hasattr(ctx, "scratch_dir"):
+        scratch = Path(ctx.scratch_dir)
+        scratch.mkdir(parents=True, exist_ok=True)
+        out_file = scratch / filename
+
+        with open(out_file, "w") as f:
+            json.dump(
+                {
+                    "species": species,
+                    "sigma_eff": sigmai,
+                    "flag": flag,
+                    "volume_factor_z":  [str(vf) for vf in volume_factor_z],
+                    "volume_factor_zs": [str(vf) for vf in volume_factor_zs],
+                    "variables": [str(v) for v in flat_vars],
+                    "function": str(f_void_z_func),
+                    "expression": str(f_void_z),
+                },
+                f,
+                indent=4,
+            )
+
+        print(f"✅ Void CMF(z,zs) kernel exported: {out_file}")
+
+    return result
+

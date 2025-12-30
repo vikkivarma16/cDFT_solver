@@ -1,141 +1,159 @@
-def free_energy_void(ctx):
+import numpy as np
+import sympy as sp
+import json
+from pathlib import Path
+
+def free_energy_void(ctx=None, hc_data=None, export_json=True, filename="Solution_void.json"):
     """
-    Computes the symbolic cavity mean field (CMF) free energy for a multi-species system,
-    including eta correction later supplied by the void particle correlation.
-    needs voids-particles correlation data
-    The function:
-      - Loads mean-field potentials and hard-core parameters
-      - Constructs the symbolic EMF free energy density
-      - Returns all symbols and expressions for downstream processing
+    Computes the symbolic cavity mean-field (CMF) free energy for a multi-species system
+    using void corrections.
 
     Parameters
     ----------
-    ctx : object
-        Context with attributes:
-            - scratch_dir : Path to scratch/output directory
-            - input_file  : Path to the input JSON file
+    ctx : object, optional
+        Must have `scratch_dir` for exporting JSON.
+    hc_data : dict
+        Hard-core / species data, e.g.,
+        {
+            "species": [...],
+            "sigma": [...],
+            "flag": [...]
+        }
+    export_json : bool
+        Whether to save symbolic results to JSON.
+    filename : str
+        JSON output filename.
 
     Returns
     -------
     dict
         {
             "species": [...],
-            "sigma_eff": [...],
-            "flag": [...],
-            "densities_symbols": [...],
-            "interaction_symbols": [[...], [...]],
+            "densities": [...],
+            "vij": [[...], [...]],
             "volume_factors": [...],
-            "f_mf_symbolic": sympy.Expr
+            "variables": tuple,
+            "f_void_func": sympy.Lambda,
+            "f_void": sympy.Expr
         }
     """
-    import numpy as np
-    import sympy as sp
-    from pathlib import Path
-    from cdft_solver.generators.potential_splitter.generator_potential_splitter_mf import meanfield_potentials
-    from cdft_solver.generators.potential_splitter.generator_potential_splitter_hc import hard_core_potentials
-
-    # -------------------------
-    # Setup paths
-    # -------------------------
-    scratch = Path(ctx.scratch_dir)
-    input_file = Path(ctx.input_file)
-    scratch.mkdir(parents=True, exist_ok=True)
-    output_file = scratch / "Solution_void.json"
-
-    # -------------------------
-    # Load data
-    # -------------------------
-    potential_data = meanfield_potentials(ctx, mode="meanfield")
-    hc_data = hard_core_potentials(ctx)
 
     if hc_data is None or not isinstance(hc_data, dict):
-        raise ValueError("Hard-core data could not be loaded or is invalid.")
+        raise ValueError("hc_data must be provided as a dictionary")
 
-    if potential_data is None or "species" not in potential_data:
-        raise ValueError("Mean-field potential data is missing or invalid.")
+    species = list(hc_data.get("species", []))
+    sigma_raw = hc_data.get("sigma", [])
+    flag_raw = hc_data.get("flag", [])
+
+    n_species = len(species)
+    if n_species == 0:
+        raise ValueError("No species provided in hc_data")
+
+    if not (len(species) == len(sigma_raw) == len(flag_raw)):
+        raise ValueError("Length mismatch between species, sigma, and flag")
 
     # -------------------------
-    # Species and parameters
+    # Extract sigma and flag
     # -------------------------
-    species = sorted(hc_data.keys())  # ensure consistent order
-    nelement = len(species)
-    sigmai = [hc_data[s]["sigma_eff"] for s in species]
-    flag = [hc_data[s]["flag"] for s in species]
+    def extract_diagonal(data, n, name="array"):
+        arr = np.asarray(data)
+        if arr.ndim == 1 and arr.size == n:
+            return arr.tolist()
+        if arr.ndim == 1 and arr.size == n*n:
+            return arr.reshape((n,n)).diagonal().tolist()
+        if arr.ndim == 2 and arr.shape == (n,n):
+            return arr.diagonal().tolist()
+        raise ValueError(f"{name} must be length-{n}, {n}x{n}, or flat length-{n*n} array")
+
+    sigmai = [float(s) for s in extract_diagonal(sigma_raw, n_species, name="sigma")]
+    flag = [int(f) for f in extract_diagonal(flag_raw, n_species, name="flag")]
 
     # -------------------------
-    # Define symbols
+    # Symbolic densities
     # -------------------------
-    densities = [sp.symbols(f"rho_{i}") for i in range(len(sigmai))]
-    vij = [[sp.symbols(f"v_{i}_{j}") for j in range(nelement)] for i in range(nelement)]
+    densities = [sp.symbols(f"rho_{s}") for s in species]
+
+    # -------------------------
+    # Symbolic interactions
+    # -------------------------
+    vij = [[sp.symbols(f"v_{species[i]}_{species[j]}") for j in range(n_species)]
+           for i in range(n_species)]
 
     # -------------------------
     # Compute volume correction factors
     # -------------------------
-    volume_factor = []
-    for j in range(nelement):
+    volume_factors = []
+    for j in range(n_species):
         factor = 0
-        for i in range(nelement):
-            if flag[i] == 1 and j != i:
-                # average pair volume correction
-                avg_p_vol = sigmai[i]  ** 3.0
-                term =  (np.pi / 6) * avg_p_vol *densities[i]
+        for i in range(n_species):
+            if flag[i] == 1 and i != j:
+                avg_p_vol = sigmai[i] ** 3
+                term = (sp.pi / 6) * avg_p_vol * densities[i]
                 factor += term
-        volume_factor.append(1 - factor)
+        volume_factors.append(1 - factor)
 
     # -------------------------
-    # Construct mean-field free energy (symbolic)
+    # Symbolic CMF free energy
     # -------------------------
-    f_mf = 0
-    for i in range(nelement):
-        for j in range(nelement):
-            f_mf += sp.Rational(1, 2) * vij[i][j] * densities[i] * densities[j] / (volume_factor[j]*volume_factor[i])
+    f_void = 0
+    for i in range(n_species):
+        for j in range(n_species):
+            f_void += sp.Rational(1, 2) * vij[i][j] * densities[i] * densities[j] / (
+                volume_factors[i] * volume_factors[j]
+            )
 
     # -------------------------
-    # solver results
+    # Flatten all variables for Lambda
+    # -------------------------
+    flat_vars = tuple(densities + [vij[i][j] for i in range(n_species) for j in range(n_species)])
+    f_void_func = sp.Lambda(flat_vars, f_void)
+
+    # -------------------------
+    # Prepare result
     # -------------------------
     result = {
-        "species": species,
-        "sigma_eff": sigmai,
-        "flag": flag,
-        "densities": [str(d) for d in densities],
-        "vij": [[str(vij[i][j]) for j in range(nelement)] for i in range(nelement)],
-        "volume_factors": [str(vf) for vf in volume_factor],
-        "f_mf": f_mf,
+        "variables": flat_vars,
+        "function": f_void_func,
+        "expression": f_void,
     }
 
     # -------------------------
-    # (Optional) Export JSON for downstream use
+    # Optional JSON export
     # -------------------------
-    try:
-        import json
-        json_output = {
-            "species": species,
-            "sigma_eff": sigmai,
-            "flag": flag,
-            "densities": [str(d) for d in densities],
-            "vij": [[str(vij[i][j]) for j in range(nelement)] for i in range(nelement)],
-            "volume_factors": [sp.simplify(vf).__str__() for vf in volume_factor],
-            "f_mf": sp.simplify(f_mf).__str__(),
-        }
-        with open(output_file, "w") as f:
-            json.dump(json_output, f, indent=4)
-    except Exception as e:
-        print(f"Warning: Could not export symbolic EMF free energy to JSON: {e}")
+    if export_json and ctx is not None and hasattr(ctx, "scratch_dir"):
+        scratch = Path(ctx.scratch_dir)
+        scratch.mkdir(parents=True, exist_ok=True)
+        out_file = scratch / filename
+        with open(out_file, "w") as f:
+            json.dump({
+                "species": species,
+                "sigma_eff": sigmai,
+                "flag": flag,
+                "volume_factors": [str(vf) for vf in volume_factors],
+                "variables": [str(v) for v in flat_vars],
+                "function": str(f_void_func),
+                "expression": str(f_void),
+            }, f, indent=4)
+        print(f"✅ Void free energy exported: {out_file}")
 
     return result
 
 
-# Example standalone test
+# Example usage
 if __name__ == "__main__":
-    class DummyCtx:
+    class Ctx:
         scratch_dir = "."
-        input_file = "interactions.json"
 
-    out = free_energy_EMF(DummyCtx())
+    hc_data_example = {
+        "species": ["A", "B"],
+        "sigma": [1.0, 0.8],
+        "flag": [1, 0]
+    }
+
+    out = free_energy_void(Ctx(), hc_data=hc_data_example)
     print("Species:", out["species"])
-    print("σ_eff:", out["sigma_eff"])
-    print("Flags:", out["flag"])
-    print("Densities:", out["densities_symbols"])
-    print("Interactions:", out["interaction_symbols"])
-    print("Free energy symbolic expression:\n", out["f_mf_symbolic"])
+    print("Densities:", out["densities"])
+    print("Volume factors:", out["volume_factors"])
+    print("Flattened variables tuple:", out["variables"])
+    print("Symbolic void free energy:\n", out["f_void"])
 

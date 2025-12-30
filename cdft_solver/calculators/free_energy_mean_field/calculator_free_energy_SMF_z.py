@@ -1,69 +1,104 @@
-# Two-point SMF free-energy generator
-# Analogous to EMF two-point version but without volume-factor corrections.
-
 import sympy as sp
-import numpy as np
+import json
 from pathlib import Path
 
-def free_energy_SMF_z(ctx):
+def free_energy_SMF_z(ctx=None, hc_data=None, export_json=True, filename="Solution_SMF_z.json"):
     """
-    Standard Mean-Field (SMF) free-energy functional in two-point form:
+    Standard Mean-Field (SMF) two-point free-energy kernel:
 
-        F = 1/2 ∑_{i,j} ∫ dz ∫ dzs  densities_i(z)  V_ij(|z - zs|)  densities_j(zs)
+        f(z, zs) = 1/2 ∑_{i,j} rho_i(z) * v_ij * rho_j(zs)
 
-    This version introduces two spatial arguments z and zs so that the
-    free-energy kernel is explicitly a two-point functional.
+    Notes
+    -----
+    • No volume-factor or hard-core corrections
+    • Fully symbolic two-point kernel
+    • No spatial integration performed
     """
 
-    from cdft_solver.generators.potential_splitter.generator_potential_splitter_mf import meanfield_potentials
+    # -------------------------
+    # Validate input
+    # -------------------------
+     if hc_data is None or not isinstance(hc_data, dict):
+        raise ValueError("hc_data must be provided as a dictionary")
+
+    species = list(hc_data.get("species", []))
+    n_species = len(species)
+
+    if n_species == 0:
+        raise ValueError("species list is empty")
 
     # -------------------------
-    # Setup
+    # Spatial coordinates
     # -------------------------
-    scratch = Path(ctx.scratch_dir)
-    input_file = Path(ctx.input_file)
-    scratch.mkdir(parents=True, exist_ok=True)
+    z, zs = sp.symbols("z zs", real=True)
 
     # -------------------------
-    # Load interaction data
+    # Two-point density symbols
     # -------------------------
-    pot_data = meanfield_potentials(ctx, mode="meanfield")
-    species = pot_data["species"]
-    nelement = len(species)
-
-    if nelement == 0:
-        raise ValueError("No species detected in potential file.")
+    rho_z  = [sp.symbols(f"rho_{s}_z")  for s in species]
+    rho_zs = [sp.symbols(f"rho_{s}_zs") for s in species]
 
     # -------------------------
-    # Define two-point density fields
+    # Pair interaction symbols
     # -------------------------
-
-    densities_z  = [sp.symbols(f"densities_z_{i}")  for i in range(nelement)]
-    densities_zs = [sp.symbols(f"densities_zs_{i}") for i in range(nelement)]
-
-    # -------------------------
-    # Define interaction kernels V_ij(|z - zs|)
-    # -------------------------
-    r = sp.Abs(z - zs)
-    vij = [[sp.symbols(f"v_{i}_{j}") for j in range(nelement)] for i in range(nelement)]
+    vij = [[sp.symbols(f"v_{species[i]}_{species[j]}")
+            for j in range(n_species)]
+            for i in range(n_species)]
 
     # -------------------------
-    # Construct two-point SMF free-energy density
+    # SMF two-point kernel
     # -------------------------
-    f_mf = 0
-    for i in range(nelement):
-        for j in range(nelement):
-            f_mf += sp.Rational(1,2) * densities_z[i] * vij[i][j] * densities_zs[j]
+    f_smf_z = 0
+    for i in range(n_species):
+        for j in range(n_species):
+            f_smf_z += (
+                sp.Rational(1, 2)
+                * rho_z[i]
+                * vij[i][j]
+                * rho_zs[j]
+            )
 
     # -------------------------
-    # Return symbolic structure
+    # Flatten variables
     # -------------------------
-    return {
-        "species": species,
-        "densities_z": densities_z,
-        "densities_zs": densities_zs,
-        "vij": vij,
-        "f_mf_two_point": f_mf,
+    flat_vars = tuple(
+        rho_z +
+        rho_zs +
+        [vij[i][j] for i in range(n_species) for j in range(n_species)]
+    )
+
+    f_smf_z_func = sp.Lambda(flat_vars, f_smf_z)
+
+    # -------------------------
+    # Result dictionary
+    # -------------------------
+    result = {
+        "variables": flat_vars,
+        "function": f_smf_z_func,
+        "expression": f_smf_z,
     }
 
+    # -------------------------
+    # Optional JSON export
+    # -------------------------
+    if export_json and ctx is not None and hasattr(ctx, "scratch_dir"):
+        scratch = Path(ctx.scratch_dir)
+        scratch.mkdir(parents=True, exist_ok=True)
+        out_file = scratch / filename
+
+        with open(out_file, "w") as f:
+            json.dump(
+                {
+                    "species": species,
+                    "variables": [str(v) for v in flat_vars],
+                    "function": str(f_smf_z_func),
+                    "expression": str(f_smf_z),
+                },
+                f,
+                indent=4,
+            )
+
+        print(f"✅ SMF(z,zs) kernel exported: {out_file}")
+
+    return result
 

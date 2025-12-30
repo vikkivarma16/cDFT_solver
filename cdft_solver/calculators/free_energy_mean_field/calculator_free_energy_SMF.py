@@ -1,108 +1,113 @@
 import json
 import numpy as np
 import sympy as sp
-from sympy import diff, log
 from pathlib import Path
-from scipy import integrate
-from cdft_solver.generators.potential_splitter.generator_potential_splitter_mf import meanfield_potentials
 
-
-def free_energy_SMF(ctx):
+def free_energy_SMF(ctx=None, hc_data=None, export_json=True, filename="Solution_SMF.json"):
     """
-    Computes the symbolic mean-field (SMF) free energy for a multi-species system.
+    Computes the symbolic mean-field (SMF) free energy for a multi-species system
+    without hard-core corrections.
 
     Parameters
     ----------
-    ctx : object
-        Context with attributes:
-            - scratch_dir : str or Path → working directory
-            - input_file  : str or Path → path to JSON defining interactions
+    ctx : object, optional
+        Must have `scratch_dir` for exporting JSON.
+    hc_data : dict
+        Species information, e.g.,
+        {
+            "species": [...],
+            "sigma": [...],  # optional
+            "flag": [...]    # optional
+        }
+    export_json : bool
+        Whether to save symbolic results to JSON.
+    filename : str
+        JSON output filename.
 
     Returns
     -------
     dict
         {
             "species": [...],
-            "free_energy_symbolic": sympy.Expr,
-            "free_energy_func": callable (numeric evaluator)
+            "densities": [...],
+            "vij": [[...], [...]],
+            "variables": tuple,
+            "f_mf_func": sympy.Lambda,
+            "f_mf": sympy.Expr
         }
     """
 
-    # -------------------------
-    # Setup paths
-    # -------------------------
-    scratch = Path(ctx.scratch_dir)
-    input_file = Path(ctx.input_file)
-    scratch.mkdir(parents=True, exist_ok=True)
-    output_file = scratch / "Solution_SMF.json"
+    if hc_data is None or not isinstance(hc_data, dict):
+        raise ValueError("hc_data must be provided as a dictionary with 'species'")
+
+    species = list(hc_data.get("species", []))
+    n_species = len(species)
+    if n_species == 0:
+        raise ValueError("No species provided in hc_data.")
 
     # -------------------------
-    # Load potentials and species
+    # Symbolic densities
     # -------------------------
-    potential_data = meanfield_potentials(ctx, mode="meanfield")
-    species = potential_data["species"]
-    interactions = potential_data["interactions"]
-
-    nelement = len(species)
-    if nelement == 0:
-        raise ValueError("No species found in input data.")
+    densities = [sp.symbols(f"rho_{s}") for s in species]
 
     # -------------------------
-    # Define densities and interaction symbols
+    # Symbolic interaction symbols
     # -------------------------
-    densities = [sp.symbols(f"rho_{i}") for i in range(nelement)]
-    vij = [[sp.symbols(f"v_{i}_{j}") for j in range(nelement)] for i in range(nelement)]
+    vij = [[sp.symbols(f"v_{species[i]}_{species[j]}") for j in range(n_species)]
+           for i in range(n_species)]
 
     # -------------------------
-    # Construct mean-field free energy
+    # Construct symbolic SMF free energy
     # -------------------------
-    f_mf = 0
-    for i in range(nelement):
-        for j in range(nelement):
-            f_mf += sp.Rational(1, 2) * vij[i][j] * densities[i] * densities[j]
+    f_mf = sum(sp.Rational(1, 2) * vij[i][j] * densities[i] * densities[j]
+               for i in range(n_species) for j in range(n_species))
 
     # -------------------------
-    # Substitute interaction parameters
-    # (You can later map vij[i][j] from potentials if available)
+    # Flatten all variables into 1D tuple for Lambda
     # -------------------------
-    # Example: If needed, you can fill in vij[i][j] = interaction strength
-    # from interactions["primary"][f"{species[i]}{species[j]}"]["epsilon"]
+    flat_vars = tuple(densities + [vij[i][j] for i in range(n_species) for j in range(n_species)])
+    f_mf_func = sp.Lambda(flat_vars, f_mf)
 
     # -------------------------
-    # Create a numeric evaluator
-    # -------------------------
-    f_mf_func = sp.lambdify(densities, f_mf, "numpy")
-
-    # -------------------------
-    # Return both symbolic and functional forms
+    # Prepare result
     # -------------------------
     result = {
-    "species": species,
-    "densities": [str(sym) for sym in densities],
-    "vij": [[str(v) for v in row] for row in vij],
-    "f_mf": f_mf,
-}
+        "variables": flat_vars,
+        "function": f_mf_func,
+        "expression": f_mf,
+    }
 
-
-    with open(output_file, "w") as f:
-        json.dump({
-        "species": species,
-        "densities": [str(sym) for sym in densities],
-        "vij": [[str(v) for v in row] for row in vij],
-        "f_mf": str(f_mf)
-    }, f, indent=4)
+    # -------------------------
+    # Optional JSON export
+    # -------------------------
+    if export_json and ctx is not None and hasattr(ctx, "scratch_dir"):
+        scratch = Path(ctx.scratch_dir)
+        scratch.mkdir(parents=True, exist_ok=True)
+        out_file = scratch / filename
+        with open(out_file, "w") as f:
+            json.dump({
+                "species": species,
+                "variables": [str(v) for v in flat_vars],
+                "function": str(f_mf_func),
+                "expression": str(f_mf),
+            }, f, indent=4)
+        print(f"✅ SMF free energy exported: {out_file}")
 
     return result
-
 
 
 # Example usage
 if __name__ == "__main__":
     class Ctx:
         scratch_dir = "."
-        input_file = "interactions.json"
+    
+    hc_data_example = {
+        "species": ["A", "B"]
+    }
 
-    out = free_energy_SMF(Ctx())
+    out = free_energy_SMF(Ctx(), hc_data=hc_data_example)
     print("Species:", out["species"])
-    print("Symbolic Free Energy:", out["free_energy_symbolic"])
+    print("Densities:", out["densities"])
+    print("Flattened variables tuple:", out["variables"])
+    print("Symbolic SMF free energy:\n", out["f_mf"])
 
