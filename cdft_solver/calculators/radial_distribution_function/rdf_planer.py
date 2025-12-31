@@ -18,6 +18,61 @@ def hankel_transform_2d(f_r, r, k_grid):
 def inverse_hankel_transform_2d(F_k, r, k_grid):
     dk = k_grid[1] - k_grid[0]
     return (j0(np.outer(k_grid, r)).T @ (k_grid * F_k)) * dk / (2*np.pi)
+    
+    
+    
+    
+import numpy as np
+
+def solve_oz_realspace_planar(h_r, densities, r_grid, z_grid):
+    """
+    Solve the planar OZ equation in real space:
+        c = h * (I + rho * h)^(-1)
+    for multicomponent, z-dependent systems.
+
+    Parameters
+    ----------
+    h_r : ndarray
+        Total correlation function, shape (Ns, Ns, Nz, Nz, Nr)
+        h_r[a,b,i,j,r] corresponds to species a,b, planes z_i,z_j, and radial point r.
+    densities : array_like
+        Species densities, shape (Ns,)
+    r_grid : ndarray
+        Radial grid, shape (Nr,)
+    z_grid : ndarray
+        Planar z-grid, shape (Nz,)
+
+    Returns
+    -------
+    c_r : ndarray
+        Direct correlation function, same shape as h_r
+    """
+    Ns, _, Nz, _, Nr = h_r.shape
+    Nd = Ns * Nz  # total number of species*planes
+    c_r = np.zeros_like(h_r)
+
+    # Build rho_diag: diagonal matrix in ((species, z)) space
+    rho_diag = np.repeat(densities, Nz)
+    rho_diag_matrix = np.diag(rho_diag)
+
+    for ir in range(Nr):
+        # Flatten h_r at this r: (Ns*Nz, Ns*Nz)
+        H_flat = h_r[..., ir].reshape(Ns, Ns, Nz, Nz).transpose(0,2,1,3).reshape(Nd, Nd)
+
+        # Compute c using OZ inversion
+        # C = H @ (I + rho * H)^(-1)
+        M = np.eye(Nd) + rho_diag_matrix @ H_flat
+        try:
+            C_flat = H_flat @ np.linalg.inv(M)
+        except np.linalg.LinAlgError:
+            raise RuntimeError(f"OZ inversion failed at r index {ir}, matrix may be ill-conditioned.")
+
+        # Reshape back to (Ns, Ns, Nz, Nz)
+        C_reshaped = C_flat.reshape(Ns, Nz, Ns, Nz).transpose(0,2,1,3)
+        c_r[..., ir] = C_reshaped
+
+    return c_r
+
 
 # -------------------------------------------------
 # Solve OZ in k-space
