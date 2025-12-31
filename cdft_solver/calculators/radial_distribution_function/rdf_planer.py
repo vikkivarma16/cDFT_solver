@@ -67,7 +67,7 @@ def rdf_planar(
     densities,
     sigma=None,
     supplied_data=None,
-    export=False,
+    export=True,
     plot=True,
     filename_prefix="rdf_2d"
 ):
@@ -159,6 +159,60 @@ def rdf_planar(
     # -----------------------------
     # Supplied data processing
     # -----------------------------
+    
+
+   # -----------------------------
+    # Main OZ iteration with dynamic alpha
+    # -----------------------------
+    alpha = 0.1       # initial mixing fraction
+    alpha_min = 0.01
+    relax_increase = 1.05
+    relax_decrease = 0.7
+
+    for it in range(n_iter):
+        gamma_old = gamma_r.copy()
+
+        # (1) Update c from closure
+        c_trial = closure_update_c_matrix(
+            gamma_r.reshape(Ns,Ns,Nz*Nz*Nr),
+            R_ijr.reshape(Nz*Nz*Nr),
+            pair_closures,
+            u_matrix.reshape(Ns,Ns,Nz*Nz*Nr),
+            sigma_matrix
+        )
+        c_r[:] = c_trial.reshape(Ns,Ns,Nz,Nz,Nr)
+
+        # (2) Solve OZ
+        gamma_new = solve_oz_matrix_2d(c_r, densities, r_grid, k_grid)
+
+        # (3) Dynamic alpha mixing
+        gamma_r = (1 - alpha) * gamma_old + alpha * gamma_new
+
+        # (4) Convergence check
+        err = np.max(np.abs(gamma_r - gamma_old))
+
+        # adapt alpha
+        if err > 2 * tol:
+            # possibly oscillating, reduce alpha
+            alpha = max(alpha * relax_decrease, alpha_min)
+        else:
+            # stable convergence, increase alpha gradually
+            alpha = min(alpha * relax_increase, alpha_max)
+
+        if it % 10 == 0:
+            print(f"Iteration {it} | Δγ = {err:.3e} | α = {alpha:.3f}")
+
+        if err < tol:
+            print(f"✅ Converged after {it+1} iterations")
+            break
+
+    # (5) Total correlation
+    h_r = gamma_r + c_r
+    g_r = h_r + 1.0
+
+    # -----------------------------
+    # Supplied RDF projection (if any)
+    # -----------------------------
     g_fixed = np.zeros_like(u_matrix)
     fixed_mask = np.zeros((Ns,Ns), dtype=bool)
     if supplied_data is not None:
@@ -173,34 +227,59 @@ def rdf_planar(
                 g_fixed[i,j,:,:,:] = g_sup.reshape(Nz,Nz,Nr)
                 fixed_mask[i,j] = True
 
-    # -----------------------------
-    # Main iterative OZ solver loop
-    # -----------------------------
-    for it in range(n_iter):
-        gamma_old = gamma_r.copy()
+        # Projection loop
+        for proj_it in range(n_iter):
+            h_old = h_r.copy()
 
-        # Closure update (only non-frozen)
-        c_trial = closure_update_c_matrix(gamma_r.reshape(Ns,Ns,Nz*Nz*Nr), R_ijr.reshape(Nz*Nz*Nr), pair_closures, u_matrix.reshape(Ns,Ns,Nz*Nz*Nr))
-        c_trial = c_trial.reshape(Ns,Ns,Nz,Nz,Nr)
-        for i in range(Ns):
-            for j in range(Ns):
-                if not fixed_mask[i,j]:
-                    c_r[i,j,:,:,:] = c_trial[i,j,:,:,:]
+            # (A) Enforce supplied h(r)
+            for i in range(Ns):
+                for j in range(Ns):
+                    if fixed_mask[i,j]:
+                        h_r[i,j] = g_fixed[i,j] - 1.0
 
-        # OZ solve
-        gamma_r = solve_oz_matrix_2d(c_r, densities, r_grid, k_grid)
+            # (B) Compute c from OZ (real space)
+            c_proj = solve_oz_realspace_planar(h_r, densities, r_grid, z_grid)
 
-        # Convergence check
-        err = np.max(np.abs(gamma_r - gamma_old))
-        if it % 10 == 0:
-            print(f"Iteration {it} | Δγ = {err:.3e}")
-        if err < tol:
-            print(f"✅ Converged after {it+1} iterations")
-            break
+            # (C) Freeze supplied c
+            for i in range(Ns):
+                for j in range(Ns):
+                    if fixed_mask[i,j]:
+                        c_r[i,j] = c_proj[i,j]
 
-    # Total correlation
-    h_r = gamma_r + c_r
-    g_r = h_r + 1.0
+            # (D) Update remaining c from closure
+            c_trial = closure_update_c_matrix(
+                gamma_r.reshape(Ns,Ns,Nz*Nz*Nr),
+                R_ijr.reshape(Nz*Nz*Nr),
+                pair_closures,
+                u_matrix.reshape(Ns,Ns,Nz*Nz*Nr)
+            ).reshape(Ns,Ns,Nz,Nz,Nr)
+            for i in range(Ns):
+                for j in range(Ns):
+                    if not fixed_mask[i,j]:
+                        c_r[i,j] = c_trial[i,j]
+
+            # (E) OZ solve with dynamic alpha
+            gamma_old_proj = gamma_r.copy()
+            gamma_new_proj = solve_oz_matrix_2d(c_r, densities, r_grid, k_grid)
+            gamma_r = (1 - alpha) * gamma_old_proj + alpha * gamma_new_proj
+            h_r = gamma_r + c_r
+
+            # (F) Convergence (FREE pairs only)
+            diff = 0.0
+            for i in range(Ns):
+                for j in range(Ns):
+                    if not fixed_mask[i,j]:
+                        diff = max(diff, np.max(np.abs(h_r[i,j] - h_old[i,j])))
+
+            if diff < tol:
+                print(f"✅ Projection converged in {proj_it+1} iterations")
+                break
+
+        g_r = h_r + 1.0
+
+                
+    g_r= h_r+1
+
 
     # -----------------------------
     # Export JSON
@@ -212,7 +291,7 @@ def rdf_planar(
         for i, si in enumerate(species):
             for j, sj in enumerate(species):
                 json_out["pairs"][f"{si}{sj}"] = {
-                    "r_space": r_space.tolist(),
+                    "R_ijr": R_ijr.tolist(),
                     "g_r": g_r[i,j].tolist(),
                     "h_r": h_r[i,j].tolist(),
                     "c_r": c_r[i,j].tolist(),
