@@ -588,11 +588,12 @@ def boltzmann_inversion(
     g0 = states[s0]["g_target"]
     
     enable_sigma_refinement = 0 
+    initialized = np.zeros((N, N), dtype=bool)
     for sname, sdata in states.items():
         mask = sdata["fixed_mask"]
         for i in range(N):
             for j in range(N):
-                if (mask[i, j] == True):
+                if (mask[i, j] == True ):
                     g_safe = np.maximum(g0[i, j], g_floor)
                     u_matrix[i, j] = u_matrix[j, i] = -np.log(g_safe)
                     sigma_matrix[i, j] = sigma_matrix[j, i] = detect_sigma_from_gr(r, g0[i, j])
