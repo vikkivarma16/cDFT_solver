@@ -6,6 +6,7 @@ for running isochores DFT minimization.
 """
 
 
-from .rdf_radial import rdf_isotropic
+from .rdf_radial import rdf_radial
+from .rdf_planer import rdf_planer
 from .closure import closure_update_c_matrix
 from .registry import CLOSURE_REGISTRY

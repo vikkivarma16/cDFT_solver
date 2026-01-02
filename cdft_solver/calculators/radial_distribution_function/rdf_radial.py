@@ -324,7 +324,7 @@ def find_key_recursive(d, key):
 # Main RDF driver
 # =============================
 
-def rdf_isotropic(
+def rdf_radial(
     ctx,
     rdf_config,
     grid_dict,

@@ -114,7 +114,7 @@ def solve_oz_matrix_2d(c_r_matrix, densities, r, k_grid):
 # -------------------------------------------------
 # Main 2D RDF solver
 # -------------------------------------------------
-def rdf_planar(
+def rdf_planer(
     ctx,
     rdf_config,
     r_space,           # shape (N,3), N = Nz*Nr

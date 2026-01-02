@@ -1,287 +1,217 @@
-import json
-from pathlib import Path
+import numpy as np
 import sympy as sp
-import ast
 
-from cdft_solver.calculators.free_energy_hard_core.calculator_free_energy_hard_core import free_energy_hard_core
-from cdft_solver.calculators.free_energy_mean_field.calculator_free_energy_EMF import free_energy_EMF
-from cdft_solver.calculators.free_energy_mean_field.calculator_free_energy_SMF import free_energy_SMF
-from cdft_solver.calculators.free_energy_mean_field.calculator_free_energy_void import free_energy_void
-from cdft_solver.calculators.free_energy_hybrid.calculator_free_energy_hybrid import free_energy_hybrid
-from cdft_solver.calculators.free_energy_ideal.calculator_free_energy_ideal import free_energy_ideal
+from cdft_solver.calculators.free_energy_ideal.ideal import ideal
+from cdft_solver.calculators.free_energy_mean_field.mean_field import mean_field
+from cdft_solver.calculators.free_energy_hard_core.hard_core import hard_core
+from cdft_solver.calculators.free_energy_hybrid.hybrid import hybrid
 
 
-# -------------------------
-# CONFIG LOADING
-# -------------------------
-def _load_config(ctx):
-    scratch = Path(ctx.scratch_dir)
-    cfg_path_scratch = scratch / "input_data_free_energy_parameters.json"
-    input_file = getattr(ctx, "input_file", None)
-    cfg_path_input = Path(input_file) if input_file else None
 
-    if cfg_path_scratch.exists():
-        path = cfg_path_scratch
-    elif cfg_path_input and cfg_path_input.exists():
-        path = cfg_path_input
-    else:
-        return {"free_energy_parameters": {"mode": "standard", "method": "smf"}}
+def build_symbol_registry(hc_data):
+    """
+    Central registry to guarantee symbol identity consistency.
+    """
 
-    with open(path, "r") as fh:
-        cfg = json.load(fh)
+    species = hc_data.get("species", [])
+    if not species:
+        raise ValueError("hc_data must contain 'species'")
 
-    fe = cfg.get("free_energy") or cfg.get("free_energy_parameters") or {}
+    n = len(species)
+
+    symbols = {}
+
+    # -------------------------
+    # Shared densities
+    # -------------------------
+    densities = [sp.symbols(f"rho_{s}") for s in species]
+    symbols["densities"] = densities
+
+    # -------------------------
+    # Mean-field interaction symbols
+    # -------------------------
+    vij = [
+        [sp.symbols(f"v_{species[i]}_{species[j]}") for j in range(n)]
+        for i in range(n)
+    ]
+    symbols["vij"] = vij
+
+    return symbols
+
+
+def extract_sigma_matrix(hc_data):
+    sigma_raw = hc_data.get("sigma", None)
+    species = hc_data.get("species", [])
+
+    if sigma_raw is None:
+        return None
+
+    n = len(species)
+    arr = np.asarray(sigma_raw, dtype=float)
+
+    if arr.ndim == 1 and arr.size == n:
+        return np.diag(arr)
+
+    if arr.ndim == 1 and arr.size == n * n:
+        return arr.reshape((n, n))
+
+    if arr.ndim == 2 and arr.shape == (n, n):
+        return arr
+
+    raise ValueError("Invalid sigma format")
+
+
+
+def sigma_is_zero(sigma_matrix, tol=0.0):
+    return sigma_matrix is None or np.all(np.abs(sigma_matrix) <= tol)
+    
+    
+    
+def merge_free_energies(components):
+    """
+    Merge multiple free-energy components into one symbolic object.
+    """
+
+    total_expr = sp.Integer(0)
+    all_vars = []
+
+    for comp in components:
+        total_expr += comp["expression"]
+        all_vars.extend(comp["variables"])
+
+    # Deduplicate by symbol identity
+    unique_vars = []
+    seen = set()
+    for v in all_vars:
+        if v not in seen:
+            unique_vars.append(v)
+            seen.add(v)
+
+    F_total = sp.Lambda(tuple(unique_vars), total_expr)
+
     return {
-        "free_energy_parameters": {
-            "mode": fe.get("mode", "standard").lower(),
-            "method": fe.get("method", "smf").lower(),
-            "integrated_strength_kernel": fe.get("integrated_strength_kernel", None),
-            "supplied_data": fe.get("supplied_data", None),
-        }
+        "variables": tuple(unique_vars),
+        "expression": total_expr,
+        "function": F_total,
+        "components": components,
     }
 
 
-# -------------------------
-# NORMALIZATION
-# -------------------------
-def _normalize_result(res, kind):
-    norm = {}
-
-    def _parse_list(val):
-        if val is None:
-            return []
-        if isinstance(val, str):
-            try:
-                parsed = ast.literal_eval(val)
-                if isinstance(parsed, (list, tuple)):
-                    return list(parsed)
-                return [parsed]
-            except Exception:
-                return [val]
-        if isinstance(val, (list, tuple)):
-            return list(val)
-        return [val]
-
-    if res is None:
-        norm["species"] = []
-        norm["sigma_eff"] = []
-        norm["flag"] = []
-        norm["densities"] = []
-        norm["vij"] = []
-        norm["volume_factors"] = []
-        norm["f_symbolic"] = None
-        return norm
-
-    norm["species"] = _parse_list(res.get("species", []))
-    norm["sigma_eff"] = _parse_list(res.get("sigma_eff", []))
-    norm["flag"] = _parse_list(res.get("flag", []))
-    norm["densities"] = _parse_list(res.get("densities", []))
-    norm["vij"] = _parse_list(res.get("vij", []))
-    norm["volume_factors"] = _parse_list(res.get("volume_factors", []))
-
-    if kind == "hc":
-        norm["f_symbolic"] = res.get("f_hc")
-    elif kind == "mf":
-        norm["f_symbolic"] = res.get("f_mf")
-    elif kind == "ideal":
-        norm["f_symbolic"] = res.get("f_ideal")
-    else:
-        norm["f_symbolic"] = None
-
-    return norm
 
 
-# -------------------------
-# SYMPIFY HELPER
-# -------------------------
-def _sympify_maybe(expr):
-    if expr is None:
-        return 0
-    if isinstance(expr, sp.Expr):
-        return expr
-    if isinstance(expr, str):
-        try:
-            return sp.sympify(expr)
-        except Exception:
-            return 0
-    try:
-        return sp.sympify(str(expr))
-    except Exception:
-        return 0
+def free_energy_dispatcher(
+    ctx=None,
+    hc_data=None,
+    system_config=None,
+    export_json=True,
+):
+    """
+    Unified free-energy dispatcher.
 
+    Always includes:
+      - Ideal free energy
 
-# -------------------------
-# FINALIZE RESULT
-# -------------------------
-def _finalize_result(species, sigma_eff, flag, densities, vij, volume_factors, mf_res, hc_res, ideal_res, f_total):
-    result = {
-        "species": species,
-        "sigma_eff": sigma_eff,
-        "flag": flag,
-        "densities": densities,
-        "vij": vij,
-        "volume_factors": volume_factors,
-        "mf_module_raw": mf_res,
-        "hc_module_raw": hc_res,
-        "ideal_module_raw": ideal_res,
-        "free_energy_symbolic": f_total,
-        "free_energy_total_numeric": None,
-    }
+    Conditional:
+      - Mean-field only (sigma = 0)
+      - Mean-field + hard-core (sigma != 0, mode = standard)
+      - Hybrid (sigma != 0, mode = hybrid)
+    """
 
-    if f_total is not None:
-        try:
-            result["free_energy_total_numeric"] = float(f_total.evalf())
-        except Exception:
-            result["free_energy_total_numeric"] = None
+    # -------------------------
+    # Validate input
+    # -------------------------
+    if hc_data is None or not isinstance(hc_data, dict):
+        raise ValueError("hc_data must be a dictionary")
 
-    return result
+    if system_config is None or "system" not in system_config:
+        raise ValueError("system_config must contain 'system'")
 
+    mode = system_config["system"].get("mode", "standard").lower()
 
-# -------------------------
-# MERGE FUNCTIONS
-# -------------------------
-def _merge_both(mf_res, hc_res, ideal_res):
-    hc = _normalize_result(hc_res, "hc")
-    mf = _normalize_result(mf_res, "mf")
-    ideal = _normalize_result(ideal_res, "ideal")
+    # -------------------------
+    # Build shared symbols
+    # -------------------------
+    symbols = build_symbol_registry(hc_data)
 
-    species = mf["species"] or hc["species"] or ideal["species"]
-    sigma_eff = hc["sigma_eff"] or mf["sigma_eff"] or ideal["sigma_eff"]
-    flag = hc["flag"] or mf["flag"] or ideal["flag"]
-    densities = mf["densities"] or hc["densities"] or ideal["densities"]
-    vij = mf["vij"] or hc["vij"] or ideal["vij"]
-    volume_factors = mf["volume_factors"] or hc["volume_factors"] or ideal["volume_factors"]
+    # -------------------------
+    # Sigma inspection
+    # -------------------------
+    sigma_matrix = extract_sigma_matrix(hc_data)
+    no_hard_core = sigma_is_zero(sigma_matrix)
 
-    sf_mf = _sympify_maybe(mf.get("f_symbolic"))
-    sf_hc = _sympify_maybe(hc.get("f_symbolic"))
-    sf_id = _sympify_maybe(ideal.get("f_symbolic"))
-    total_symbolic = sp.simplify(sf_mf + sf_hc + sf_id)
+    components = []
 
-    return _finalize_result(species, sigma_eff, flag, densities, vij, volume_factors, mf_res, hc_res, ideal_res, total_symbolic)
+    # ============================================================
+    # IDEAL FREE ENERGY (ALWAYS)
+    # ============================================================
+    ideal = free_energy_ideal(
+        ctx=ctx,
+        hc_data=hc_data,
+        export_json=export_json,
+        symbols=symbols,   # densities reused
+    )
+    components.append(ideal)
 
+    # ============================================================
+    # PURE IDEAL + MEAN FIELD
+    # ============================================================
+    if no_hard_core:
+        mf = mean_field(
+            system_config=system_config,
+            hc_data=hc_data,
+            ctx=ctx,
+            export_json=export_json,
+            symbols=symbols,
+        )
+        components.append(mf)
 
-def _merge_only_mf(mf_res, ideal_res):
-    mf = _normalize_result(mf_res, "mf")
-    ideal = _normalize_result(ideal_res, "ideal")
+        merged = merge_free_energies(components)
+        merged["selected_model"] = "ideal + mean_field"
+        return merged
 
-    species = mf["species"] or ideal["species"]
-    sigma_eff = mf["sigma_eff"] or ideal["sigma_eff"]
-    flag = mf["flag"] or ideal["flag"]
-    densities = mf["densities"] or ideal["densities"]
-    vij = mf["vij"] or ideal["vij"]
-    volume_factors = mf["volume_factors"] or ideal["volume_factors"]
-
-    sf_mf = _sympify_maybe(mf.get("f_symbolic"))
-    sf_id = _sympify_maybe(ideal.get("f_symbolic"))
-    total_symbolic = sp.simplify(sf_mf + sf_id)
-
-    return _finalize_result(species, sigma_eff, flag, densities, vij, volume_factors, mf_res, None, ideal_res, total_symbolic)
-
-
-def _merge_only_hc(hc_res, ideal_res):
-    hc = _normalize_result(hc_res, "hc")
-    ideal = _normalize_result(ideal_res, "ideal")
-
-    species = hc["species"] or ideal["species"]
-    sigma_eff = hc["sigma_eff"] or ideal["sigma_eff"]
-    flag = hc["flag"] or ideal["flag"]
-    densities = hc["densities"] or ideal["densities"]
-    vij = hc["vij"] or ideal["vij"]
-    volume_factors = hc["volume_factors"] or ideal["volume_factors"]
-
-    sf_hc = _sympify_maybe(hc.get("f_symbolic"))
-    sf_id = _sympify_maybe(ideal.get("f_symbolic"))
-    total_symbolic = sp.simplify(sf_hc + sf_id)
-
-    return _finalize_result(species, sigma_eff, flag, densities, vij, volume_factors, None, hc_res, ideal_res, total_symbolic)
-
-
-def _merge_results(mf_res, hc_res, ideal_res):
-    if mf_res is None and hc_res is None:
-        ideal = _normalize_result(ideal_res, "ideal")
-        f_id = _sympify_maybe(ideal.get("f_symbolic"))
-        return _finalize_result(
-            ideal["species"], ideal["sigma_eff"], ideal["flag"], ideal["densities"],
-            ideal["vij"], ideal["volume_factors"], None, None, ideal_res, f_id
+    # ============================================================
+    # STANDARD → IDEAL + MF + HC
+    # ============================================================
+    if mode == "standard":
+        mf = mean_field(
+            system_config=system_config,
+            hc_data=hc_data,
+            ctx=ctx,
+            export_json=export_json,
+            symbols=symbols,
         )
 
-    if mf_res is not None and hc_res is not None:
-        return _merge_both(mf_res, hc_res, ideal_res)
-    if mf_res is not None and hc_res is None:
-        return _merge_only_mf(mf_res, ideal_res)
-    if hc_res is not None and mf_res is None:
-        return _merge_only_hc(hc_res, ideal_res)
+        hc = hard_core(
+            ctx=ctx,
+            hc_data=hc_data,
+            export_json=export_json,
+            symbols=symbols,
+        )
 
+        components.extend([mf, hc])
 
-# -------------------------
-# RECURSIVE JSONIFY
-# -------------------------
-def _jsonify_sympy(obj):
-    if isinstance(obj, (sp.Basic, sp.Expr)):
-        return str(obj)
-    elif isinstance(obj, dict):
-        return {k: _jsonify_sympy(v) for k, v in obj.items()}
-    elif isinstance(obj, (list, tuple)):
-        return [_jsonify_sympy(v) for v in obj]
-    else:
-        return obj
+        merged = merge_free_energies(components)
+        merged["selected_model"] = "ideal + mean_field + hard_core"
+        return merged
 
-
-# -------------------------
-# TOTAL FREE ENERGY
-# -------------------------
-def total_free_energy(ctx):
-    cfg = _load_config(ctx)
-    fe_cfg = cfg.get("free_energy_parameters", {})
-    mode = fe_cfg.get("mode", "standard").lower()
-    method = fe_cfg.get("method", "smf").lower()
-
-    allowed_methods = ("emf", "smf", "void")
-
-    ideal_res = free_energy_ideal(ctx)
-
+    # ============================================================
+    # HYBRID → IDEAL + HYBRID
+    # ============================================================
     if mode == "hybrid":
-        try:
-            result = free_energy_hybrid(ctx)
-        except Exception as e:
-            raise RuntimeError(f"Hybrid free energy calculation failed: {e}")
+        hyb = hybrid(
+            ctx=ctx,
+            hc_data=hc_data,
+            export_json=export_json,
+            symbols=symbols,
+        )
 
-    elif mode == "standard":
-        if method not in allowed_methods:
-            raise ValueError(f"Unsupported method '{method}'. Allowed: {allowed_methods}")
+        components.append(hyb)
 
-        try:
-            hc_res = free_energy_hard_core(ctx)
-        except Exception as e:
-            hc_res = None
-            print(f"[WARN] Hard-core free energy contribution is zero: {e}")
+        merged = merge_free_energies(components)
+        merged["selected_model"] = "ideal + hybrid"
+        return merged
 
-        try:
-            if method == "emf":
-                mf_res = free_energy_EMF(ctx)
-            elif method == "smf":
-                mf_res = free_energy_SMF(ctx)
-            elif method == "void":
-                mf_res = free_energy_void(ctx)
-            else:
-                mf_res = None
-        except Exception as e:
-            mf_res = None
-            print(f"[WARN] Mean-field free energy contribution is zero: {e}")
-
-        result = _merge_results(mf_res, hc_res, ideal_res)
-
-    else:
-        raise ValueError(f"Unsupported free-energy mode '{mode}'. Use 'standard' or 'hybrid'.")
-
-    scratch = Path(ctx.scratch_dir)
-    scratch.mkdir(exist_ok=True)
-    out_path = scratch / "total_free_energy_result.json"
-
-    json_ready = _jsonify_sympy(result)
-    with open(out_path, "w") as fh:
-        json.dump(json_ready, fh, indent=4)
-
-    print(f"[INFO] Total free energy results written to {out_path}")
-    return result
-
+    # ============================================================
+    # Unsupported mode
+    # ============================================================
+    raise ValueError(f"Unsupported system mode '{mode}'")

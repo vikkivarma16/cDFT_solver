@@ -1,4 +1,4 @@
-def free_energy_hard_core_z(
+def hard_core_planer(
     ctx=None,
     hc_data=None,
     export_json=True,

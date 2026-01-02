@@ -1,4 +1,4 @@
-def free_energy_hard_core(
+def hard_core(
     ctx=None,
     hc_data=None,
     export_json=True,

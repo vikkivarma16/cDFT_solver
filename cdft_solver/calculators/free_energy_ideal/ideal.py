@@ -2,7 +2,7 @@ import json
 import sympy as sp
 from pathlib import Path
 
-def free_energy_ideal(ctx=None, hc_data=None, export_json=True, filename="Solution_ideal.json"):
+def ideal(ctx=None, hc_data=None, export_json=True, filename="Solution_ideal.json"):
     """
     Computes the symbolic ideal (entropic) part of the free energy for a multi-species system.
 
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         "potentials": {}  # ignored here
     }
 
-    out = free_energy_ideal(Ctx(), hc_data=hc_data_example)
+    out = ideal(Ctx(), hc_data=hc_data_example)
     print("Species:", out["species"])
     print("Variables:", out["variables"])
     print("Symbolic Ideal Free Energy:", out["expression"])

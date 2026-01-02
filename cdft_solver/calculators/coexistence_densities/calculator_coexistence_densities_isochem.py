@@ -1,308 +1,122 @@
 # coexistence_isochem_fixed.py
+
 import json
 import ast
 import numpy as np
 import sympy as sp
-from pathlib import Path
 from scipy.optimize import root
 import random
+from copy import deepcopy
 
-# Global used by residual/evaluation helpers to access current vij per phase
+# ============================================================
+# GLOBAL
+# ============================================================
 CURRENT_VIJ_PER_PHASE = None
 
 
-def coexistence_densities_isochem(ctx, max_outer_iters=10, tol_outer=1e-3,
-                                  tol_solver=1e-8, verbose=True):
+# ============================================================
+# RECURSIVE SEARCH UTILITIES
+# ============================================================
+def deep_get(data, key, default=None):
     """
-    Iso-chemical coexistence solver:
-      - builds symbolic μ and pressure from total_free_energy(ctx) output
-      - lambdifies μ and pressure as functions of densities and v_ij
-      - runs the structured coexistence solver (intrinsic constraints handling)
-      - iteratively updates integrated-strength kernel (v_k) according to
-        integrated_strength_kernel and supplied_data flags in
-        scratch/input_data_free_energy_parameters.json
+    Recursively search for key in nested dicts/lists.
+    Returns first match.
+    """
+    if isinstance(data, dict):
+        if key in data:
+            return data[key]
+        for v in data.values():
+            out = deep_get(v, key, default)
+            if out is not default:
+                return out
+    elif isinstance(data, list):
+        for item in data:
+            out = deep_get(item, key, default)
+            if out is not default:
+                return out
+    return default
 
-    Expects total_free_energy(ctx) to return a dict (fe_res) containing keys:
-      - 'species', 'densities' (or 'densities_symbols'), 'vij', 'free_energy_symbolic', ...
+
+def deep_get_all(data, key):
+    """Return all matches for key in nested structure."""
+    found = []
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if k == key:
+                found.append(v)
+            found.extend(deep_get_all(v, key))
+    elif isinstance(data, list):
+        for item in data:
+            found.extend(deep_get_all(item, key))
+    return found
+
+
+# ============================================================
+# MAIN SOLVER
+# ============================================================
+def coexistence_densities_isochem(
+    ctx,
+    config_dict,
+    max_outer_iters=10,
+    tol_outer=1e-3,
+    tol_solver=1e-8,
+    verbose=True
+):
+    """
+    Iso-chemical coexistence solver using ONLY a supplied dictionary.
     """
 
-    # --------------------------
-    # dynamic imports from your solver (kept as-is)
-    # --------------------------
-    from cdft_solver.calculators.integrated_strength_uniform.calculator_integrated_strength_uniform import vk_uniform
-    from cdft_solver.calculators.integrated_strength_void.calculator_integrated_strength_void_supplied_data import vk_void_supplied_data
-    from cdft_solver.calculators.integrated_strength_rdf.calculator_integrated_strength_rdf import vk_rdf
-    from cdft_solver.calculators.integrated_strength_rdf.calculator_integrated_strength_rdf_supplied_data import vk_rdf_supplied_data
-    from cdft_solver.calculators.total_free_energy.calculator_total_free_energy import total_free_energy
-
-    # --------------------------
-    # 1) read ensemble from input file (must be isochem)
-    # --------------------------
-    scratch = Path(ctx.scratch_dir)
-    input_file = Path(ctx.input_file)
-
-    ensemble = None
-    json_file_solution_initiator = Path(scratch) / "input_data_solution_initiator.json"
-
-    try:
-        with open(json_file_solution_initiator, "r") as file:
-            data = json.load(file)
-            ensemble = data.get("ensemble", None)
-    except FileNotFoundError:
-        raise FileNotFoundError(f"❌ Could not find solution initiator file: {json_file_solution_initiator}")
-    except json.JSONDecodeError as e:
-        raise ValueError(f"❌ Failed to parse JSON from {json_file_solution_initiator}: {e}")
-
+    # --------------------------------------------------------
+    # 1) ENSEMBLE CHECK
+    # --------------------------------------------------------
+    ensemble = deep_get(config_dict, "ensemble")
     if ensemble != "isochem":
-        raise ValueError(f"❌ Expected ensemble = 'isochem', but got '{ensemble}'")
+        raise ValueError(f"Expected ensemble='isochem', got {ensemble}")
 
-        
-    
+    # --------------------------------------------------------
+    # 2) FREE ENERGY PARAMETERS
+    # --------------------------------------------------------
+    integrated_strength_kernel = deep_get(
+        config_dict, "integrated_strength_kernel", "uniform"
+    ).lower()
 
-    # --------------------------
-    # 2) load vk config (which kernel to use and whether supplied_data yes/no)
-    # --------------------------
-    vk_json_file = scratch / "input_data_free_energy_parameters.json"
-    if not vk_json_file.exists():
-        raise FileNotFoundError(f"Missing file: {vk_json_file}")
-    with open(vk_json_file, "r") as fh:
-        vk_params = json.load(fh).get("free_energy_parameters", {})
+    supplied_data_flag = deep_get(
+        config_dict, "supplied_data", "no"
+    ).lower() == "yes"
 
-    integrated_strength_kernel = vk_params.get("integrated_strength_kernel", "uniform").lower()
-    supplied_data_flag = vk_params.get("supplied_data", "no").lower()
+    # --------------------------------------------------------
+    # 3) SOLUTION INITIATOR
+    # --------------------------------------------------------
+    intrinsic_constraints = deep_get(
+        config_dict, "intrinsic_constraints", {}
+    )
 
-    # map kernel -> internal modes used by compute_vij_for_mode
-    if integrated_strength_kernel == "uniform":
-        vk_mode_initial = "uniform"
-        vk_mode_iter = "uniform"
-    elif integrated_strength_kernel == "void":
-        vk_mode_initial = "uniform"
-        vk_mode_iter = "void_supplied" if supplied_data_flag == "yes" else "void"
-    elif integrated_strength_kernel == "rdf":
-        vk_mode_initial = "uniform"
-        vk_mode_iter = "rdf_supplied" if supplied_data_flag == "yes" else "rdf"
-    else:
-        raise ValueError(f"Unknown integrated_strength_kernel: {integrated_strength_kernel}")
+    extrinsic_constraints = deep_get(
+        config_dict, "extrinsic_constraints", {}
+    )
+
+    number_of_phases = extrinsic_constraints.get("number_of_phases", 2)
+    total_density_bound = extrinsic_constraints.get("total_density_bound", 2.0)
+    heterogeneous_pair = extrinsic_constraints.get("heterogeneous_pair", [])
+
+    if isinstance(heterogeneous_pair, str):
+        heterogeneous_pair = [heterogeneous_pair]
 
     if verbose:
-        print(f"[isochem] VK modes: initial='{vk_mode_initial}', iter='{vk_mode_iter}'")
+        print("[config]")
+        print(" ensemble =", ensemble)
+        print(" kernel =", integrated_strength_kernel)
+        print(" supplied_data =", supplied_data_flag)
+        print(" n_phases =", number_of_phases)
 
-    # --------------------------
-    # 3) load solution initiator (intrinsic/extrinsic constraints)
-    # --------------------------
-    sol_init_file = scratch / "input_data_solution_initiator.json"
-    intrinsic_constraints = {}
-    extrinsic_constraints = {}
-    number_of_phases = 2
-    total_density_bound = 2.0
-    if sol_init_file.exists():
-        with open(sol_init_file, "r") as fh:
-            data = json.load(fh).get("solution_initiator", {})
-            intrinsic_constraints = data.get("intrinsic_constraints", {})
-            extrinsic_constraints = data.get("extrinsic_constraints", {})
-            number_of_phases = extrinsic_constraints.get("number_of_phases", number_of_phases)
-            total_density_bound = extrinsic_constraints.get("total_density_bound", total_density_bound)
-    else:
-        if verbose:
-            print("[isochem] solution_initiator not found, using defaults")
-            
-            
-            
-    print(intrinsic_constraints)
-    print(extrinsic_constraints)
-    print(number_of_phases)
-    print(total_density_bound)
+    # --------------------------------------------------------
+    # 4) TOTAL FREE ENERGY (SYMBOLIC)
+    # --------------------------------------------------------
     
     
-
-    # --------------------------
-    # 4) Obtain free energy symbolic result and parse fields (handle stringified lists)
-    # --------------------------
-    fe_res = total_free_energy(ctx)
-    if fe_res is None:
-        raise RuntimeError("total_free_energy(ctx) returned None")
-
-    def _maybe_eval(x):
-        if isinstance(x, str):
-            try:
-                return ast.literal_eval(x)
-            except Exception:
-                return x
-        return x
-
-    species = _maybe_eval(fe_res.get("species"))
-    if species is None:
-        raise RuntimeError("free energy result missing 'species'")
-
-    densities_names = _maybe_eval(fe_res.get("densities"))
-    if densities_names is None:
-        densities_names = _maybe_eval(fe_res.get("densities_symbols"))
-        if densities_names is None:
-            raise RuntimeError("free energy result missing 'densities' or 'densities_symbols'")
-
-    vij_raw = _maybe_eval(fe_res.get("vij"))
-    volume_factors = _maybe_eval(fe_res.get("volume_factors", []))
-    f_symbolic_raw = fe_res.get("free_energy_symbolic")
-    if f_symbolic_raw is None:
-        raise RuntimeError("free energy result missing 'free_energy_symbolic'")
-
-    if isinstance(f_symbolic_raw, str):
-        f_sym = sp.sympify(f_symbolic_raw)
-    elif isinstance(f_symbolic_raw, sp.Expr):
-        f_sym = f_symbolic_raw
-    else:
-        f_sym = sp.sympify(str(f_symbolic_raw))
-
-    # --------------------------
-    # 5) build sympy symbols for densities and vij
-    # --------------------------
-    density_syms = [sp.Symbol(name) if not isinstance(name, sp.Expr) else name for name in densities_names]
-    
- 
-
-    N = len(density_syms)
-
-    if vij_raw is None:
-        raise RuntimeError("vij specification missing")
-    vij_nested = vij_raw
-    if isinstance(vij_nested[0], str):
-        raise RuntimeError("vij must be nested list of shape (N,N)")
-    vij_flat_names = [s for row in vij_nested for s in row]
-    vij_syms = [sp.Symbol(name) for name in vij_flat_names]
-
-    sym_map = {}
-    for s in density_syms:
-        sym_map[str(s)] = s
-    for s in vij_syms:
-        sym_map[str(s)] = s
-
-    replacements = {}
-    for token in f_sym.free_symbols:
-        name = str(token)
-        if name in sym_map:
-            replacements[token] = sym_map[name]
-
-    if replacements:
-        f_sym = f_sym.xreplace(replacements)
-        f_sym = sp.sympify(f_sym)
-        
-    all_args = density_syms + vij_syms
-    f_funcs  = sp.lambdify(all_args, f_sym, "numpy") 
-
-
-    # --------------------------
-    # 6) Build chemical potentials and pressure (symbolic)
-    # --------------------------
-    mue_syms = [sp.diff(f_sym, density_syms[i]) for i in range(N)]
-    pressure_sym = -f_sym + sum(density_syms[i] * mue_syms[i] for i in range(N))
-    
-
-    # --------------------------
-    # 7) Lambdify mue and pressure: argument order densities... then vij_flat...
-    # --------------------------
-    all_args = density_syms + vij_syms
-    mue_funcs = [sp.lambdify(all_args, mu_expr, "numpy") for mu_expr in mue_syms]
-    
-    pressure_func = sp.lambdify(all_args, pressure_sym, "numpy")
-
-    def eval_mue_pressure(rho_array, vij_matrix):
-        rho_arr = np.asarray(rho_array, dtype=float).reshape(-1)
-        vij_arr = np.asarray(vij_matrix, dtype=float)
-        if vij_arr.shape != (N, N):
-            raise ValueError(f"vij_matrix must be shape ({N},{N}), got {vij_arr.shape}")
-        vij_flat = vij_arr.reshape(-1)
-        args = tuple(np.concatenate([rho_arr, vij_flat]).tolist())
-        mue_vals = np.array([f(*args) for f in mue_funcs], dtype=float)
-        p_val = float(pressure_func(*args))
-        return mue_vals, p_val
-
-    # --------------------------
-    # 8) Helper: reduced <-> full densities
-    # --------------------------
-    def reduced_to_densities(reduced_vars):
-        rhot = reduced_vars[0]
-        fractions = reduced_vars[1:]
-
-        rho = []
-        prod = 1.0
-        for x in fractions:
-            prod *= (1.0 - x)
-
-        factor = 1.0
-        for i in range(len(fractions) + 1):
-            val = rhot * prod * factor
-            rho.append(val)
-            if i < len(fractions):
-                prod *= 1.0 / (1.0 - fractions[i])
-                factor = fractions[i]
-        return rho
-    # --------------------------
-    # 9) compute_vij_for_mode using earlier vk choices (use vk_* imports)
-    # --------------------------
-    def compute_vij_for_mode(densities_phase, mode):
-        """
-        densities_phase: array-like (numpy array or list) of length N
-        mode: one of "uniform", "void", "rdf", "rdf_supplied", "void_supplied"
-        """
-        # normalize densities to a plain Python list (safe for JSON/APIs)
-        try:
-            densities_clean = np.array(densities_phase).astype(float).tolist()
-        except Exception as e:
-            raise ValueError(f"Invalid densities_phase provided: {densities_phase!r}") from e
-
-        if mode == "uniform":
-            return np.array(vk_uniform(ctx)["vk"])
-        elif mode == "void":
-            return np.array(vk_void_supplied_data(ctx)["vk"])
-        elif mode == "rdf":
-            # pass densities as keyword arg so it maps to the correct parameter
-            try:
-                print("Calling vk_rdf with densities =", densities_clean)
-                return np.array(vk_rdf(ctx, densities=densities_clean)["vk"])
-            except TypeError as e:
-                # defensive: some older signatures might differ — try positional with beta first
-                try:
-                    print("TypeError calling vk_rdf(...). Trying positional with beta then densities.")
-                    return np.array(vk_rdf(ctx, 1.0, densities_clean)["vk"])
-                except Exception as e2:
-                    print("vk_rdf failed:", e2)
-                    raise
-            except Exception as e:
-                print("vk_rdf failed:", e)
-                raise
-        elif mode == "rdf_supplied":
-            return np.array(vk_rdf_supplied_data(ctx)["vk"])
-        elif mode == "void_supplied":
-            return np.array(vk_void_supplied_data(ctx)["vk"])
-        else:
-            raise ValueError(f"Unknown vk mode '{mode}'")
-
-
-    # =====================================================================
-    # --- SOLUTION SECTION (consistent and reorder-safe) ---
-    # =====================================================================
-
-    json_file_solution_initiator = Path(scratch) / "input_data_solution_initiator.json"
-
-    # initialize solution-initiator defaults (keep previously read values)
-    # note: intrinsic_constraints, extrinsic_constraints, number_of_phases, total_density_bound already set
-    try:
-        with open(json_file_solution_initiator, "r") as file:
-            data_solution = json.load(file).get("solution_initiator", {})
-            intrinsic_constraints = data_solution.get("intrinsic_constraints", intrinsic_constraints)
-            extrinsic_constraints = data_solution.get("extrinsic_constraints", extrinsic_constraints)
-            number_of_phases = extrinsic_constraints.get("number_of_phases", number_of_phases)
-            heterogeneous_pair = extrinsic_constraints.get("heterogeneous_pair", ['ab'])
-            total_density_bound = extrinsic_constraints.get("total_density_bound", total_density_bound)
-            if isinstance(heterogeneous_pair, str):
-                heterogeneous_pair = [heterogeneous_pair]
-    except FileNotFoundError:
-        if verbose:
-            print(f"⚠️ JSON file not found: {json_file_solution_initiator}")
-    except Exception as e:
-        if verbose:
-            print(f"⚠️ Problem reading solution initiator: {e}")
-
+    if isinstance(heterogeneous_pair, str):
+        heterogeneous_pair = [heterogeneous_pair]
+   
     # Validate intrinsic constraints count
     species_constraint_count = 0
     for key, val in intrinsic_constraints.items():
@@ -331,325 +145,517 @@ def coexistence_densities_isochem(ctx, max_outer_iters=10, tol_outer=1e-3,
     # ---------------------------------------------------------------------
     # Species order builder based on heterogeneous pairs
     # ---------------------------------------------------------------------
-    def get_species_order(species_names, heterogeneous_pair):
-        """
-        Builds a consistent ordering of species based on heterogeneous pairs.
-        heterogeneous_pair can be a string ('ab,ac') or a list (['ab', 'ac']).
-        """
-        # Normalize to list of strings
-        if isinstance(heterogeneous_pair, str):
-            hetero_pairs = [pair.strip() for pair in heterogeneous_pair.split(',') if pair.strip()]
-        elif isinstance(heterogeneous_pair, list):
-            hetero_pairs = [str(pair).strip() for pair in heterogeneous_pair if str(pair).strip()]
-        else:
-            raise ValueError(f"Unexpected type for heterogeneous_pair: {type(heterogeneous_pair)}")
+    # ============================================================
+    # Normalize heterogeneous_pair and validate constraints
+    # ============================================================
 
-        # Start with original order
+    # --- Normalize heterogeneous_pair ---
+    heterogeneous_pair = extrinsic_constraints.get("heterogeneous_pair", [])
+
+    if heterogeneous_pair is None:
+        heterogeneous_pair = []
+    elif isinstance(heterogeneous_pair, (str, int)):
+        heterogeneous_pair = [str(heterogeneous_pair)]
+    elif isinstance(heterogeneous_pair, (list, tuple)):
+        heterogeneous_pair = [str(p) for p in heterogeneous_pair]
+    else:
+        raise TypeError(
+            f"heterogeneous_pair must be str or list-like, got {type(heterogeneous_pair)}"
+        )
+
+
+    # ============================================================
+    # Validate intrinsic constraints count
+    # ============================================================
+
+    def count_intrinsic_constraints(constraints):
+        """
+        Counts independent intrinsic constraints in a robust way.
+        Supports:
+          - scalar constraints
+          - per-species dict constraints
+        """
+        count = 0
+        for _, val in constraints.items():
+            if isinstance(val, dict):
+                count += len(val)
+            else:
+                count += 1
+        return count
+
+
+    species_names = list(species)
+    N_species = len(species_names)
+
+    species_constraint_count = count_intrinsic_constraints(intrinsic_constraints)
+
+    if species_constraint_count > (N_species - 1):
+        raise ValueError(
+            f"Too many intrinsic constraints ({species_constraint_count}) "
+            f"for {N_species} species (max allowed = {N_species - 1})."
+        )
+
+
+    # ============================================================
+    # Diagnostics
+    # ============================================================
+
+    if verbose:
+        print("  Loaded coexistence configuration:")
+        print(f"    number_of_phases     = {number_of_phases}")
+        print(f"    heterogeneous_pair  = {heterogeneous_pair}")
+        print(f"    total_density_bound = {total_density_bound}")
+        print(f"    intrinsic_constraints = {intrinsic_constraints}")
+        print(f"    extrinsic_constraints = {extrinsic_constraints}")
+        print()
+
+
+    # ============================================================
+    # Species ordering logic (heterogeneous-pair aware)
+    # ============================================================
+
+    def get_species_order(species_names, heterogeneous_pairs):
+        """
+        Builds a stable species ordering based on heterogeneous-pair constraints.
+
+        heterogeneous_pairs:
+            list of strings like ["ab", "ac"] meaning species a and b
+            should be adjacent in ordering.
+        """
         ordered = list(species_names)
 
-        for pair in hetero_pairs:
-            if len(pair) == 2:
-                i1, i2 = pair[0], pair[1]
-                if i1 in ordered and i2 in ordered:
-                    ordered.remove(i2)
-                    idx = ordered.index(i1)
-                    ordered.insert(idx + 1, i2)
+        for pair in heterogeneous_pairs:
+            pair = pair.strip()
+            if len(pair) != 2:
+                continue
 
-        reshuffle_back = [species_names.index(sp) for sp in ordered]
-        restore_original = [ordered.index(sp) for sp in species_names]
+            s1, s2 = pair[0], pair[1]
+            if s1 in ordered and s2 in ordered:
+                ordered.remove(s2)
+                idx = ordered.index(s1)
+                ordered.insert(idx + 1, s2)
+
+        reshuffle_back = [species_names.index(s) for s in ordered]
+        restore_original = [ordered.index(s) for s in species_names]
 
         return ordered, reshuffle_back, restore_original
 
 
     def reorder_to_original_order(rho, restore_original):
-        """Reorder computed densities to match original species order."""
+        """Reorder densities back to original species order."""
         return [rho[i] for i in restore_original]
 
 
-    # Build species order maps
-    species_ordered, reshuffle_back, restore_original = get_species_order(species_names, heterogeneous_pair)
+    # ============================================================
+    # Build ordering maps
+    # ============================================================
+
+    species_ordered, reshuffle_back, restore_original = get_species_order(
+        species_names, heterogeneous_pair
+    )
 
     
     
+    
+    from cdft_solver.calculators.total_free_energy.calculator_total_free_energy import (
+        total_free_energy
+    )
 
-    # coexistence residual using CURRENT_VIJ_PER_PHASE
-    def coexistence_residual_general(vars, n_phases, sigmaij, mue_value_funcs,
-                                     pressure_value_func, intrinsic_constraints):
-        Nlocal = len(sigmaij)
-        M = Nlocal - 1
-        per_phase_len = M + 1
+    fe_res = total_free_energy(ctx)
+
+    def _maybe_eval(x):
+        if isinstance(x, str):
+            try:
+                return ast.literal_eval(x)
+            except Exception:
+                return x
+        return x
+
+    species = _maybe_eval(fe_res["species"])
+    densities_names = _maybe_eval(
+        fe_res.get("densities", fe_res.get("densities_symbols"))
+    )
+    vij_raw = _maybe_eval(fe_res["vij"])
+    f_sym = sp.sympify(fe_res["free_energy_symbolic"])
+
+    N = len(species)
+
+    density_syms = [sp.Symbol(n) for n in densities_names]
+    vij_syms = [sp.Symbol(n) for row in vij_raw for n in row]
+
+    # --------------------------------------------------------
+    # 5) CHEMICAL POTENTIALS & PRESSURE
+    # --------------------------------------------------------
+    mue_syms = [sp.diff(f_sym, rho) for rho in density_syms]
+    pressure_sym = -f_sym + sum(r * mu for r, mu in zip(density_syms, mue_syms))
+
+    all_args = density_syms + vij_syms
+
+    mue_funcs = [sp.lambdify(all_args, mu, "numpy") for mu in mue_syms]
+    pressure_func = sp.lambdify(all_args, pressure_sym, "numpy")
+
+    def eval_mue_pressure(rho, vij):
+        args = np.concatenate([rho, vij.reshape(-1)])
+        mu = np.array([f(*args) for f in mue_funcs])
+        p = pressure_func(*args)
+        return mu, p
+
+    # --------------------------------------------------------
+    # 6) REDUCED VARIABLES
+    # --------------------------------------------------------
+    def reduced_to_densities(block):
+        rhot = block[0]
+        fracs = block[1:]
+        rho = []
+        prod = 1.0
+        for x in fracs:
+            prod *= (1 - x)
+        factor = 1.0
+        for i in range(len(fracs) + 1):
+            rho.append(rhot * prod * factor)
+            if i < len(fracs):
+                prod /= (1 - fracs[i])
+                factor = fracs[i]
+        return rho
+
+    # --------------------------------------------------------
+    # 7) vᵢⱼ COMPUTATION (UNIFIED)
+    # --------------------------------------------------------
+    from cdft_solver.dispatchers.strength_kernel_dispatcher import build_strength_kernel
+    from cdft_solver.calculators.vij_integrated.vij_radial_kernel import vij_radial_kernel
+
+    def compute_vij(densities, kernal ):
+        kernel_out = build_strength_kernel(
+            ctx=ctx,
+            config=config_dict,
+            densities=densities,
+            kernel_type=integrated_strength_kernel,
+            supplied_data=supplied_data_flag,
+        )
+
+        r = kernel_out["r"]
+        kernel = kernel_out["kernel"]
+
+        kernel_dict = {}
+        for i, si in enumerate(species):
+            for j, sj in enumerate(species):
+                kernel_dict[(si, sj)] = {
+                    "r": r,
+                    "values": kernel[i, j],
+                }
+
+        vij_out = vij_radial_kernel(
+            ctx=ctx,
+            species=species,
+            kernel=kernel_dict,
+            export_json=False,
+        )
+
+        vij = np.zeros((N, N))
+        for i, si in enumerate(species):
+            for j, sj in enumerate(species):
+                vij[i, j] = vij_out["vij_numeric"][(si, sj)]
+
+        return vij
+
+    # --------------------------------------------------------
+    # 8) RESIDUAL
+    # --------------------------------------------------------
+    # ============================================================
+    # Coexistence residual (dictionary-driven, framework-safe)
+    # ============================================================
+
+    def coexistence_residual(
+        vars_vec,
+        n_phases,
+        species_names,
+        intrinsic_constraints,
+        eval_mue_pressure_fn,
+    ):
+        """
+        Residual for iso-chemical coexistence.
+        Uses CURRENT_VIJ_PER_PHASE injected by outer loop.
+        """
+
+        N = len(species_names)
+        reduced_len = N
+
+        # -----------------------------------
+        # Split reduced variables per phase
+        # -----------------------------------
         reduced_blocks = []
         idx = 0
         for _ in range(n_phases):
-            reduced_blocks.append(vars[idx: idx + per_phase_len].tolist())
-            idx += per_phase_len
-        new_rhos_per_phase = [reduced_to_densities(block) for block in reduced_blocks]
-        mu_per_phase = []
-        pressure_per_phase = []
+            reduced_blocks.append(vars_vec[idx:idx + reduced_len].tolist())
+            idx += reduced_len
+
+        rhos_per_phase = [reduced_to_densities(block) for block in reduced_blocks]
+
         global CURRENT_VIJ_PER_PHASE
         if CURRENT_VIJ_PER_PHASE is None:
-            raise RuntimeError("CURRENT_VIJ_PER_PHASE must be set before calling the solver")
-            
+            raise RuntimeError("CURRENT_VIJ_PER_PHASE is not initialized")
+
+        mu_vals = []
+        pressure_vals = []
+
         for p in range(n_phases):
-            rho_p = new_rhos_per_phase[p]
-            vij_p = CURRENT_VIJ_PER_PHASE[p]
-            mu_p, p_p = eval_mue_pressure(rho_p, vij_p)
-            mu_per_phase.append(mu_p)
-            pressure_per_phase.append(p_p)
+            mu_p, p_p = eval_mue_pressure_fn(
+                rhos_per_phase[p],
+                CURRENT_VIJ_PER_PHASE[p],
+            )
+            mu_vals.append(mu_p)
+            pressure_vals.append(p_p)
+
+        # -----------------------------------
+        # Build equations
+        # -----------------------------------
         eqs = []
+
         intrinsic_mu = intrinsic_constraints.get("chemical_potential", {})
-        for i, spn in enumerate(sigmaij):
-            if spn in intrinsic_mu:
-                target_mu = intrinsic_mu[spn]
+
+        for i, sp in enumerate(species_names):
+            if sp in intrinsic_mu:
+                target = intrinsic_mu[sp]
                 for p in range(n_phases):
-                    eqs.append(mu_per_phase[p][i] - target_mu)
+                    eqs.append(mu_vals[p][i] - target)
             else:
                 for p in range(n_phases - 1):
-                    eqs.append(mu_per_phase[p][i] - mu_per_phase[p + 1][i])
+                    eqs.append(mu_vals[p][i] - mu_vals[p + 1][i])
+
         if "pressure" in intrinsic_constraints:
-            target_pressure = intrinsic_constraints["pressure"]
+            target_p = intrinsic_constraints["pressure"]
             for p in range(n_phases):
-                eqs.append(pressure_per_phase[p] - target_pressure)
+                eqs.append(pressure_vals[p] - target_p)
         else:
             for p in range(n_phases - 1):
-                eqs.append(pressure_per_phase[p] - pressure_per_phase[p + 1])
-        return np.array(eqs, dtype=float)
+                eqs.append(pressure_vals[p] - pressure_vals[p + 1])
 
-    def random_initial_guess(n_phases, sigmaij):
-        Nloc = len(sigmaij)
-        M = Nloc - 1
-        per_phase = M + 1
+        return np.asarray(eqs, dtype=float)
+
+
+    # ============================================================
+    # Random initial guess generator
+    # ============================================================
+
+    def random_initial_guess(n_phases, total_density_bound, n_species):
         guess = []
-        for phase_idx in range(n_phases):
+        for _ in range(n_phases):
             guess.append(np.random.uniform(0.01, total_density_bound))
-            for i in range(M):
-                if (i ==1):
-                    guess.append(np.random.uniform(0.01, 0.5))
-                else:
-                    guess.append(np.random.uniform(0.6, 1.0))
-        return np.array(guess)
+            for _ in range(n_species - 1):
+                guess.append(np.random.uniform(0.1, 0.9))
+        return np.asarray(guess)
 
-    def solve_general_coexistence(n_phases, sigmaij, mue_value_funcs, pressure_value_func, intrinsic_constraints=None, n_attempts=500000, verbose=True, scratch=None):
-        N = len(sigmaij)
-        per_phase_len = N  # each phase has N densities
 
-        if intrinsic_constraints is None:
-            intrinsic_constraints = {}
+    # ============================================================
+    # General coexistence solver
+    # ============================================================
+
+    def solve_coexistence(
+        n_phases,
+        species_names,
+        intrinsic_constraints,
+        eval_mue_pressure_fn,
+        heterogeneous_pair,
+        total_density_bound,
+        max_attempts=200000,
+        verbose=True,
+    ):
+        N = len(species_names)
+
+        # Parse heterogeneous pairs
+        hetero_pairs = []
+        for pair in heterogeneous_pair:
+            if len(pair) == 2:
+                hetero_pairs.append((pair[0], pair[1]))
 
         if verbose:
-            print(f"Solving coexistence for {n_phases} phases (N={N}, total vars={n_phases*per_phase_len})")
+            print(
+                f"[coexistence] Solving for {n_phases} phases, "
+                f"{N} species ({n_phases * N} variables)"
+            )
 
-        # Parse heterogeneous pairs if defined globally
-        pair_list = []
-        for item in heterogeneous_pair:
-            parts = [p.strip() for p in item.split(',')]
-            for p in parts:
-                if len(p) == 2:
-                    pair_list.append((p[0], p[1]))
-                else:
-                    pair_list.append(tuple(p.split()))
-        hetero_pairs_parsed = pair_list
-        
-        
-       
+        for attempt in range(max_attempts):
+            guess = random_initial_guess(n_phases, total_density_bound, N)
 
-        for attempt in range(n_attempts):
-            guess = random_initial_guess(n_phases, sigmaij)  # should return list of length n_phases*N
             try:
                 sol = root(
-                    lambda v: coexistence_residual_general(
-                        v, n_phases, sigmaij, mue_value_funcs,
-                        pressure_value_func, intrinsic_constraints
+                    lambda v: coexistence_residual(
+                        v,
+                        n_phases,
+                        species_names,
+                        intrinsic_constraints,
+                        eval_mue_pressure_fn,
                     ),
                     guess,
-                    method='hybr'
+                    method="hybr",
                 )
-            except Exception as e:
-                if verbose:
-                    print(f"Attempt {attempt}: solver raised exception: {e}")
+            except Exception:
                 continue
 
             if not sol.success:
                 if verbose and attempt % 2000 == 0:
-                    print(f"Attempt {attempt}: solver failed ({sol.message})")
+                    print(f"[attempt {attempt}] solver not converged")
                 continue
 
+            # -----------------------------------
+            # Decode solution
+            # -----------------------------------
             vars_sol = sol.x
-            reduced_blocks = []
+            blocks = []
             idx = 0
             for _ in range(n_phases):
-                reduced_blocks.append(vars_sol[idx: idx + per_phase_len].tolist())
-                idx += per_phase_len
+                blocks.append(vars_sol[idx:idx + N].tolist())
+                idx += N
 
-            # Convert & reorder reduced -> full densities
-            new_rhos_per_phase = [reduced_to_densities(block) for block in reduced_blocks]
-            rhos_per_phase = [reorder_to_original_order(rho, restore_original) for rho in new_rhos_per_phase]
+            rhos_per_phase = [
+                reorder_to_original_order(
+                    reduced_to_densities(block),
+                    restore_original,
+                )
+                for block in blocks
+            ]
 
-            # --- HETEROGENEOUS-PAIR CHECK ---
+            # -----------------------------------
+            # Heterogeneous-pair dominance check
+            # -----------------------------------
             dominant_threshold = 0.9
+            species_max = {
+                sp: max(rhos_per_phase[p][i] for p in range(n_phases))
+                for i, sp in enumerate(species_names)
+            }
+
             hetero_ok = True
-            species_max = {sp_name: max(rhos_per_phase[p][i] for p in range(n_phases))
-                           for i, sp_name in enumerate(species_names)}
             for p in range(n_phases):
-                dominant_species = [sp_name for i, sp_name in enumerate(species_names)
-                                    if rhos_per_phase[p][i] / (species_max[sp_name] + 1e-16) >= dominant_threshold]
-                for (s1, s2) in hetero_pairs_parsed:
+                dominant_species = [
+                    sp for i, sp in enumerate(species_names)
+                    if rhos_per_phase[p][i] / (species_max[sp] + 1e-14) >= dominant_threshold
+                ]
+                for s1, s2 in hetero_pairs:
                     if s1 in dominant_species and s2 in dominant_species:
                         hetero_ok = False
-                        if verbose:
-                            print(f"Attempt {attempt}: rejected by heterogeneous constraint — "
-                                  f"both '{s1}' and '{s2}' dominant in phase {p+1}, indicating about a non-disjoint solution.")
                         break
                 if not hetero_ok:
                     break
+
             if not hetero_ok:
                 continue
 
-            # --- Bounds check ---
-            if any(not (0.0 <= dens <= extrinsic_constraints.get("total_density_bound", 2.0))
-                   for block in reduced_blocks for dens in block):
+            # -----------------------------------
+            # Bounds check
+            # -----------------------------------
+            if any(
+                not (0.0 <= rho <= total_density_bound)
+                for phase in rhos_per_phase
+                for rho in phase
+            ):
                 continue
 
-        
-        
-        
-        
-            # evaluate mu and pressure
-            mu_per_phase = []
-            pressure_per_phase = []
-            
-            
-        
-            
-            try:
-                global CURRENT_VIJ_PER_PHASE
-                if CURRENT_VIJ_PER_PHASE is None:
-                    raise RuntimeError("CURRENT_VIJ_PER_PHASE is not set")
-                for p in range(n_phases):
-                    vij_p = CURRENT_VIJ_PER_PHASE[p]
-                    mu_p, p_p = eval_mue_pressure(rhos_per_phase[p], vij_p)
-                    mu_per_phase.append([float(x) for x in np.array(mu_p).reshape(-1)])
-                    pressure_per_phase.append(float(p_p))
-            except Exception as e:
-                if verbose:
-                    print(f"Attempt {attempt}: failed computing mu/pressure: {e}")
-                continue
-            
-        
-            
-            result = {"species": {}, "pressure": {}}
-            for idx_sp, name in enumerate(species_names):
-                species_entry = {}
-                for p_idx in range(n_phases):
-                    species_entry[f"rho_phase_{p_idx+1}"] = float(rhos_per_phase[p_idx][idx_sp])
-                    species_entry[f"mue_phase_{p_idx+1}"] = float(mu_per_phase[p_idx][idx_sp])
-                result["species"][name] = species_entry
-            for p_idx in range(n_phases):
-                result["pressure"][f"pressure_phase_{p_idx+1}"] = float(pressure_per_phase[p_idx])
-            # export Solution.json
-            if scratch is None:
-                scratch = Path(".")
-            output_file = Path(scratch) / "Solution.json"
-            try:
-                with open(output_file, "w") as f:
-                    json.dump(result, f, indent=4)
-                if verbose:
-                    print("✅ Coexistence solution exported successfully:")
-                    print(f"   → {output_file}")
-            except Exception:
-                if verbose:
-                    print("⚠️ Warning: failed to write Solution.json")
+            # -----------------------------------
+            # Evaluate μ and P
+            # -----------------------------------
+            mu_vals = []
+            pressure_vals = []
+
+            global CURRENT_VIJ_PER_PHASE
+            for p in range(n_phases):
+                mu_p, p_p = eval_mue_pressure_fn(
+                    rhos_per_phase[p],
+                    CURRENT_VIJ_PER_PHASE[p],
+                )
+                mu_vals.append([float(x) for x in mu_p])
+                pressure_vals.append(float(p_p))
+
             return {
                 "rhos_per_phase": rhos_per_phase,
-                "mu_per_phase": mu_per_phase,
-                "pressure_per_phase": pressure_per_phase,
-                "exported_result": result
+                "mu_per_phase": mu_vals,
+                "pressure_per_phase": pressure_vals,
             }
-            print(attempt)
+
         if verbose:
-            print("❌ No valid coexistence solution found after multiple attempts.")
+            print("❌ No valid coexistence solution found")
         return None
 
-    # --------------------------
-    # 12) Outer vk-iteration loop
-    # --------------------------
-    n_phases = number_of_phases
-    sigmaij = species
-    initial_density_guess = [np.ones(N) * 0.1 for _ in range(n_phases)]
-    vij_per_phase = [compute_vij_for_mode(initial_density_guess[p], vk_mode_initial) for p in range(n_phases)]
-    last_vij_concat = np.concatenate([v.reshape(-1) for v in vij_per_phase])
 
-    final_solution = None
+    # ============================================================
+    # Outer integrated-strength (v_ij) iteration loop
+    # ============================================================
+
+    n_phases = number_of_phases
+    species_names = list(species)
+
+    initial_rhos = [np.ones(N) * 0.1 for _ in range(n_phases)]
+    vij_per_phase = [
+        compute_vij_for_mode(initial_rhos[p], kernal =  "uniform" )
+        for p in range(n_phases)
+    ]
+
     global CURRENT_VIJ_PER_PHASE
     CURRENT_VIJ_PER_PHASE = vij_per_phase
 
+    final_solution = None
+
     for outer_iter in range(1, max_outer_iters + 1):
         if verbose:
-            print(f"[outer] iteration {outer_iter} - solving coexistence with current vij")
+            print(f"[outer] iteration {outer_iter}")
+
         CURRENT_VIJ_PER_PHASE = vij_per_phase
-        sol = solve_general_coexistence(
-            n_phases, sigmaij, mue_funcs, pressure_func,
-            intrinsic_constraints,
-            n_attempts=500000, verbose=verbose
+
+        sol = solve_coexistence(
+            n_phases=n_phases,
+            species_names=species_names,
+            intrinsic_constraints=intrinsic_constraints,
+            eval_mue_pressure_fn=eval_mue_pressure,
+            heterogeneous_pair=heterogeneous_pair,
+            total_density_bound=total_density_bound,
+            verbose=verbose,
         )
+
         if sol is None:
-            raise RuntimeError("Coexistence solver failed to find a solution for current vij")
+            raise RuntimeError("Coexistence solver failed")
+
         rhos_per_phase = sol["rhos_per_phase"]
-        
-        print (rhos_per_phase)
-     
-        
-        # compute density-based convergence metric
+
+        # -----------------------------------
+        # Convergence check
+        # -----------------------------------
         if outer_iter > 1:
-            drho_concat = np.concatenate([
-                (np.array(rhos_per_phase[p]).reshape(-1) - np.array(last_rhos_per_phase[p]).reshape(-1))
+            drho = np.concatenate([
+                np.asarray(rhos_per_phase[p]) - np.asarray(last_rhos_per_phase[p])
                 for p in range(n_phases)
             ])
-            drho_norm = np.linalg.norm(drho_concat)
-            if verbose:
-                print(f"[outer] drho_norm = {drho_norm:.3e}")
-            if drho_norm < tol_outer:
+            if np.linalg.norm(drho) < tol_outer:
                 if verbose:
-                    print("[outer] Converged (drho_norm < tol_outer)")
+                    print("[outer] converged")
                 final_solution = sol
                 break
-        new_vij_per_phase = [
-            compute_vij_for_mode(np.array(rhos_per_phase[p]), vk_mode_iter)
+
+        vij_per_phase = [
+            compute_vij_for_mode(rhos_per_phase[p], kernal = "rdf")
             for p in range(n_phases)
         ]
-        if verbose:
-            print(rhos_per_phase)
-        vij_per_phase = new_vij_per_phase
-        last_rhos_per_phase = [np.array(r).copy() for r in rhos_per_phase]
-        final_solution = sol
-    else:
-        if verbose:
-            print("[outer] Reached maximum outer iterations without full convergence")
 
-    # --------------------------
-    # 13) Save final solution (with μ/P evaluated)
-    # --------------------------
+        last_rhos_per_phase = [np.asarray(r).copy() for r in rhos_per_phase]
+        final_solution = sol
+
+
+    # ============================================================
+    # Final output dictionary
+    # ============================================================
+
     if final_solution is None:
-        raise RuntimeError("No solution found")
+        raise RuntimeError("No converged coexistence solution")
 
     out = {
-        "species": sigmaij,
         "ensemble": "isochem",
+        "species": species_names,
         "n_phases": n_phases,
         "rhos_per_phase": final_solution["rhos_per_phase"],
         "mu_per_phase": final_solution["mu_per_phase"],
         "pressure_per_phase": final_solution["pressure_per_phase"],
         "vij_per_phase": [v.tolist() for v in vij_per_phase],
         "vk_mode_initial": vk_mode_initial,
-        "vk_mode_iter": vk_mode_iter
+        "vk_mode_iter": vk_mode_iter,
     }
-
-    out_file = scratch / "Solution_coexistence_isochem.json"
-    with open(out_file, "w") as fh:
-        json.dump(out, fh, indent=2, default=lambda x: np.asarray(x).tolist())
-
-    if verbose:
-        print(f"[isochem] solution written to: {out_file}")
 
     return out
 
