@@ -1,138 +1,37 @@
-import numpy as np
+
+from .pair_potential_isotropic_registry import get_isotropic_pair_potential_factory # noqa
+
 
 def pair_potential_isotropic(specific_pair_potential):
     """
-    Vectorized isotropic pair potential based on a dictionary input.
-    Works for arrays of r.
+    Vectorized isotropic pair potential dispatcher.
     """
-    pt = specific_pair_potential["type"].lower()
-    sigma = specific_pair_potential.get("sigma", 1.0)
-    epsilon = specific_pair_potential.get("epsilon", 1.0)
-    cutoff = specific_pair_potential.get("cutoff", 5.0)
-    EPS = 1e-4
-   
+    factory = get_isotropic_pair_potential_factory(specific_pair_potential)
+    return factory(specific_pair_potential)
 
-    if pt in ["zero", "zero_potential"]:
-        def V(r):
-            r = np.asarray(r)
-            return np.zeros_like(r)
-        return V
 
-    elif pt == "custom_1" :
-        def V(r):
-            r = np.asarray(r)
-            v = np.zeros_like(r)
-            v[r < r_cutoff] = -epsilon
-            mask = (r >= r_cutoff) & (r < cutoff)
-            v[mask] = 4 * epsilon * ((sigma / r[mask]) ** 12 - 2 * (sigma / r[mask]) ** 6)
-            v[r >= cutoff] = 0.0
-            return v
-        return V
 
-    elif pt == "custom_3":
-        def V(r):
-            r = np.asarray(r)
-            v = np.zeros_like(r)
-            v[r <= EPS] = 2e9
-            mask = (r > EPS) & (r < cutoff)
-            v[mask] = epsilon * ((2.0 / 15.0) * (sigma / r[mask]) ** 9 - (sigma / r[mask]) ** 3)
-            v[r >= cutoff] = 0.0
-            
-            #print ("hey I am being accessed")
-            return v
-        return V
+'''
+updating the registry 
 
-    elif pt in ["hard_core", "hard_sphere", "hc", "ghc"]:
-        def V(r):
-            r = np.asarray(r)
-            v = np.zeros_like(r)
-            v[r <= sigma] = 2e16
-            v[r > sigma] = 0.0
-            return v
-        return V
+from cdft_solver.generators.potential.pair_potential_isotropic_registry import (
+    register_isotropic_pair_potential
+)
+import numpy as np
 
-    elif pt == "mie":
-        n = specific_pair_potential.get("n", 12)
-        m = specific_pair_potential.get("m", 6)
-        c_mie = (n / (n - m)) * (n / m) ** (m / (n - m))
-        r_cutoff = 2 ** (1 / n-m) * sigma
-        def V(r):
-            r = np.asarray(r)
-            v = epsilon * c_mie * ((sigma / r) ** n - (sigma / r) ** m)
-            v[r > cutoff] = 0.0
-            return v
-        return V
+def yukawa_factory(p):
+    epsilon = p.get("epsilon", 1.0)
+    kappa = p.get("kappa", 1.0)
 
-    elif pt in ["gaussian", "gs"]:
-        def V(r):
-            r = np.asarray(r)
-            return epsilon * np.exp(-(r / sigma) ** 2)
-        return V
+    def V(r):
+        r = np.asarray(r)
+        return epsilon * np.exp(-kappa * r) / r
 
-    elif pt in ["lennard-jones", "lj"] :
-        def V(r):
-            r = np.asarray(r)
-            return 4 * epsilon * ((sigma / r) ** 12 - (sigma / r) ** 6)
-        return V
+    return V
 
-    elif pt == "wca":
-        r_cutoff = 2 ** (1 / 6) * sigma
-        def V(r):
-            r = np.asarray(r)
-            v = np.zeros_like(r)
-            v[r < r_cutoff] = -epsilon
-            mask = (r >= r_cutoff) & (r < cutoff)
-            v[mask] = 4 * epsilon * ((sigma / r[mask]) ** 12 - 2 * (sigma / r[mask]) ** 6)
-            return v
-        return V
-
-    elif pt == "ma":
-        m = specific_pair_potential.get("m", 12.0)
-        n = specific_pair_potential.get("n", 6.0)
-        lambda_p = specific_pair_potential.get("lambda", 1.0)
-        r_cutoff = 2 ** (1 / m-n) * sigma
-        def V(r):
-            r = np.asarray(r)
-            r_min = (lambda_p * m / n) ** (1 / (m - n))
-            cutoff_val = cutoff
-            v = np.zeros_like(r)
-            v[r < r_min] = -epsilon / lambda_p
-            mask = (r >= r_min)
-            v[mask] = (m / (m - n)) * ((m / n) ** (n / (m - n))) * epsilon * (
-                lambda_p * (sigma / r[mask]) ** m - (sigma / r[mask]) ** n
-            )
-        
-            return v
-        return V
-
-    else:
-        raise ValueError(f"Unknown potential type: {pt}")
+register_isotropic_pair_potential("yukawa", yukawa_factory)
 
 
 
 
-# ===============================================================
-# Example usage
-# ===============================================================
-if __name__ == "__main__":
-    potentials = [
-        {"type": "zero", "sigma": 1.0, "epsilon": 1.0, "cutoff": 5.0},
-        {"type": "custom_1", "sigma": 1.0, "epsilon": 1.0, "cutoff": 5.0},
-        {"type": "custom_3", "sigma": 1.0, "epsilon": 1.0, "cutoff": 5.0},
-        {"type": "hard_core", "sigma": 1.0, "epsilon": 1.0},
-        {"type": "mie", "sigma": 1.0, "epsilon": 1.0, "n": 12, "m": 6, "cutoff": 5.0},
-        {"type": "gaussian", "sigma": 1.0, "epsilon": 1.0},
-        {"type": "ma", "sigma": 1.0, "epsilon": 0.1787, "m": 12, "n": 6, "lambda": 0.477246, "cutoff": 3.5}
-    ]
-
-    r = np.linspace(0.001, 6.0, 100)
-
-    for p in potentials:
-        V_vec = pair_potential_isotropic(p)
-        v_r_vec = V_vec(r)
-        v_scalar = pair_potential_isotropic_integrant(1.0, p)
-        print(f"Potential type: {p['type']}")
-        print("Vectorized first 10:", v_r_vec[:10])
-        print("Scalar at r=1.0:", v_scalar)
-        print()
-
+'''

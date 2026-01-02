@@ -4,6 +4,9 @@ from pathlib import Path
 from cdft_solver.generators.potential.pair_potential_isotropic import (
     pair_potential_isotropic as ppi
 )
+from cdft_solver.generators.potential_splitter.mf_potential_registry import (
+    convert_potential_via_registry,
+)
 
 
 def meanfield_potentials(
@@ -15,36 +18,6 @@ def meanfield_potentials(
 ):
     """
     Mean-field potential generator using a dictionary input.
-
-    Parameters
-    ----------
-    data_dict : dict
-        Dictionary containing species and interactions.
-    ctx : object, optional
-        Used only for scratch_dir when exporting JSON.
-    mode : str
-        'meanfield' or 'raw'
-    grid_points : int
-        Number of r-grid points.
-    file_name_prefix : str
-        Output JSON filename.
-    export_file : bool
-        If True, export JSON to scratch_dir.
-
-    Returns
-    -------
-    dict
-        {
-            "species": [...],
-            "interactions": converted_interactions,
-            "potentials": {
-                "aa": {
-                    "r": [...],
-                    "U_mf": [...]
-                },
-                ...
-            }
-        }
     """
 
     # ---------------------------------------------------------
@@ -66,42 +39,23 @@ def meanfield_potentials(
     interactions = find_key_recursive(data_dict, "interactions")
 
     if species is None or interactions is None:
-        raise KeyError("Could not locate 'species' or 'interactions' in input dictionary.")
+        raise KeyError(
+            "Could not locate 'species' or 'interactions' in input dictionary."
+        )
 
     # ---------------------------------------------------------
-    # RAW MODE → return unchanged interactions
+    # Mean-field conversion via REGISTRY
     # ---------------------------------------------------------
-   
-    # ---------------------------------------------------------
-    # Mean-field conversion rules
-    # ---------------------------------------------------------
-    def convert_potential(potential):
-        ptype = potential.get("type", "").lower()
-
-        if ptype in ("hc", "ghc"):
-            return {"type": "zero_potential"}
-
-        elif ptype == "lj":
-            new_pot = potential.copy()
-            new_pot["type"] = "salj"
-            return new_pot
-
-        elif ptype == "mie":
-            new_pot = potential.copy()
-            new_pot["type"] = "ma"
-            return new_pot
-
-        return potential.copy()
-
     levels = ["primary", "secondary", "tertiary"]
     converted = {}
 
     for level in levels:
         if level not in interactions:
             continue
+
         converted[level] = {}
         for pair, pot in interactions[level].items():
-            converted[level][pair] = convert_potential(pot)
+            converted[level][pair] = convert_potential_via_registry(pot)
 
     # ---------------------------------------------------------
     # Collect all unique pairs

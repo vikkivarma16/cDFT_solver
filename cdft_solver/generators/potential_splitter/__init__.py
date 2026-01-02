@@ -10,3 +10,4 @@ from  .potential_splitter_hc import hard_core_potentials
 from  .potential_splitter_mf import meanfield_potentials
 from  .potential_total import  total_potentials
 from  .potential_raw import raw_potentials
+from  .mf_potential_registry import convert_potential_via_registry
