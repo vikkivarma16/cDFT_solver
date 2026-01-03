@@ -102,6 +102,8 @@ def hard_core_potentials(
 
             if np.any(u[:5] > 1e6):
                 s = barker_henderson_diameter(r, u)
+                if (i==j):
+                    flag [i, j] = flag [j, i] = 1
                 sigma[i, j] = sigma[j, i] = s
                 explicit[i, j] = explicit[j, i] = True
 
