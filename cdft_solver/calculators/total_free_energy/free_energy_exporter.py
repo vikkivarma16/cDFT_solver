@@ -4,6 +4,7 @@
 
 import json
 from pathlib import Path
+import sympy as sp
 
 
 def _serialize_symbol(sym):
