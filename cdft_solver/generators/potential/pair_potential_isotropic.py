@@ -1,7 +1,7 @@
 
 from .pair_potential_isotropic_registry import get_isotropic_pair_potential_factory # noqa
 
-from .pair_potential_isotropic_default import pair_potential_isotropic_defaults  # noqa
+from .pair_potential_isotropic_default import pair_potential_isotropic_default  # noqa
 
 def pair_potential_isotropic(specific_pair_potential):
     """
