@@ -129,7 +129,7 @@ def total_potentials(
         # Mean-field
         # ---------------------------
         if pair in mf_pots:
-            r_mf, u_mf = reconstruct_potential(mf_pots[pair], "U_mf")
+            r_mf, u_mf = reconstruct_potential(mf_pots[pair], "U")
         else:
             r_mf, u_mf = None, None
 
