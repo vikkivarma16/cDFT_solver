@@ -172,6 +172,6 @@ def hard_core_potentials(
         out_json = Path(ctx.scratch_dir) / file_name_prefix
         with open(out_json, "w") as f:
             json.dump(hc_data, f, indent=2)
-        print(f"✅ Exported HC JSON: {out_json}")
+        print(f"✅ Exported HC to JSON: {out_json}")
 
     return hc_data

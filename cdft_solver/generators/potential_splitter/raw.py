@@ -109,7 +109,7 @@ def raw_potentials(
         out = scratch / file_name_prefix
         with open(out, "w") as f:
             json.dump(result, f, indent=2)
-        print(f"✅ Exported raw potential JSON: {out}")
+        print(f"✅ Exported raw potential to JSON: {out}")
 
     return result
 

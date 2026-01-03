@@ -115,7 +115,7 @@ def meanfield_potentials(
         out = Path(ctx.scratch_dir) / file_name_prefix
         with open(out, "w") as f:
             json.dump(result, f, indent=2)
-        print(f"✅ Mean-field JSON exported: {out}")
+        print(f"✅Exported Mean-field to JSON: {out}")
 
     return result
 
