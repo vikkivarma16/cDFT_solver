@@ -6,6 +6,16 @@ from copy import deepcopy
 # ============================================================
 
 ISOTROPIC_PAIR_POTENTIAL_REGISTRY = {}
+# pair_potential_isotropic.py
+
+# IMPORTANT: import for side effects
+from . import pair_potential_isotropic_defaults  # noqa
+
+
+
+def pair_potential_isotropic(specific_pair_potential):
+    factory = get_isotropic_pair_potential_factory(specific_pair_potential)
+    return factory(specific_pair_potential)
 
 
 def register_isotropic_pair_potential(

@@ -1,14 +1,17 @@
+# pair_potential_isotropic.py
 
-from .pair_potential_isotropic_registry import get_isotropic_pair_potential_factory # noqa
+# IMPORTANT: import for side effects
+from . import pair_potential_isotropic_defaults  # noqa
 
-from .pair_potential_isotropic_default import pair_potential_isotropic_default  # noqa
+from .pair_potential_isotropic_registry import (
+    get_isotropic_pair_potential_factory
+)
 
 def pair_potential_isotropic(specific_pair_potential):
-    """
-    Vectorized isotropic pair potential dispatcher.
-    """
-    
-    pair_potential_isotropic_default()
+    factory = get_isotropic_pair_potential_factory(specific_pair_potential)
+    return factory(specific_pair_potential)
+
+   
     factory = get_isotropic_pair_potential_factory(specific_pair_potential)
     return factory(specific_pair_potential)
 
