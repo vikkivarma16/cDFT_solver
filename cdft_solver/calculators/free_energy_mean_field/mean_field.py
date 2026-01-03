@@ -63,6 +63,7 @@ def mean_field(
         return None
     
     method = find_key_recursive(system_config,"method")
+    print(method)
 
     # -------------------------
     # Dispatch table
