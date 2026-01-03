@@ -216,7 +216,7 @@ def _merge_only_hc(hc_res):
 # ======================================================================
 # MAIN ENTRY
 # ======================================================================
-def total_free_energy_z(ctx):
+def total_free_energy_planer(ctx):
     cfg = _load_config(ctx)
     fe = cfg["free_energy_parameters"]
 
