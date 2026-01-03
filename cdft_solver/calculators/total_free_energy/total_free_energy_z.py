@@ -8,22 +8,11 @@ import ast
 from pathlib import Path
 import sympy as sp
 
-# MODULE IMPORTS ---------------------------------------------------------
-from cdft_solver.calculators.free_energy_hard_core.calculator_free_energy_hard_core_z import (
-    free_energy_hard_core_z as free_energy_hard_core,
-)
-from cdft_solver.calculators.free_energy_mean_field.calculator_free_energy_EMF_z import (
-    free_energy_EMF_z as free_energy_EMF,
-)
-from cdft_solver.calculators.free_energy_mean_field.calculator_free_energy_SMF_z import (
-    free_energy_SMF_z as free_energy_SMF,
-)
-from cdft_solver.calculators.free_energy_mean_field.calculator_free_energy_void_z import (
-    free_energy_void_z as free_energy_void,
-)
-from cdft_solver.calculators.free_energy_hybrid.calculator_free_energy_hybrid_z import (
-    free_energy_hybrid_z as free_energy_hybrid,
-)
+
+from cdft_solver.calculators.free_energy_ideal.ideal import ideal
+from cdft_solver.calculators.free_energy_mean_field.mean_field_planer import mean_field_planer
+from cdft_solver.calculators.free_energy_hard_core.hard_core_planer import hard_core_planer
+from cdft_solver.calculators.free_energy_hybrid.hybrid_planer import free_energy_hybrid_planer
 
 
 # ======================================================================

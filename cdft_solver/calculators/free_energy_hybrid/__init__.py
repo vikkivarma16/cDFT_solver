@@ -6,5 +6,5 @@ for running isochores DFT minimization.
 """
 
 
-from .hybrid import free_energy_hybrid
-from .hybrid_z import free_energy_hybrid_z
+from .hybrid import hybrid
+from .hybrid_z import hybrid_z

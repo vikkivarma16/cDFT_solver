@@ -1,4 +1,4 @@
-def free_energy_hybrid(ctx):
+def hybrid(ctx):
     """
     Computes the hard-core contribution to the free energy for a multi-species system.
 

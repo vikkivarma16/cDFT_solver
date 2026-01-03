@@ -4,7 +4,7 @@ import sympy as sp
 from cdft_solver.calculators.free_energy_ideal.ideal import ideal
 from cdft_solver.calculators.free_energy_mean_field.mean_field import mean_field
 from cdft_solver.calculators.free_energy_hard_core.hard_core import hard_core
-from cdft_solver.calculators.free_energy_hybrid.hybrid import free_energy_hybrid
+from cdft_solver.calculators.free_energy_hybrid.hybrid import hybrid
 
 
 
