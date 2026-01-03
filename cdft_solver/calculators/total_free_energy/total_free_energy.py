@@ -1,7 +1,7 @@
 import numpy as np
 import sympy as sp
 
-from cdft_solver.calculators.free_energy_ideal.ideal import ideal
+from cdft_solver.calculators.free_energy_ideal.ideal import ideal as idl
 from cdft_solver.calculators.free_energy_mean_field.mean_field import mean_field
 from cdft_solver.calculators.free_energy_hard_core.hard_core import hard_core
 from cdft_solver.calculators.free_energy_hybrid.hybrid import hybrid
@@ -147,7 +147,7 @@ def total_free_energy(
     # ============================================================
     # IDEAL FREE ENERGY (ALWAYS)
     # ============================================================
-    ideal = ideal(
+    ideal = idl(
         ctx=ctx,
         hc_data=hc_data,
         export_json=export_json,
