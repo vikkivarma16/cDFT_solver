@@ -1,4 +1,4 @@
-def hybrid_z(ctx):
+def hybrid_planer(ctx):
     """
     Computes the hard-core contribution to the free energy for a multi-species system.
 
