@@ -147,7 +147,7 @@ def total_free_energy(
     # ============================================================
     # IDEAL FREE ENERGY (ALWAYS)
     # ============================================================
-    ideal = free_energy_ideal(
+    ideal = ideal(
         ctx=ctx,
         hc_data=hc_data,
         export_json=export_json,
