@@ -18,7 +18,7 @@ def free_energy_SMF_z(ctx=None, hc_data=None, export_json=True, filename="Soluti
     # -------------------------
     # Validate input
     # -------------------------
-     if hc_data is None or not isinstance(hc_data, dict):
+    if hc_data is None or not isinstance(hc_data, dict):
         raise ValueError("hc_data must be provided as a dictionary")
 
     species = list(hc_data.get("species", []))
