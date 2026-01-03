@@ -99,11 +99,12 @@ def merge_free_energies(components):
 
 
 
-def free_energy_dispatcher(
+def total_free_energy(
     ctx=None,
     hc_data=None,
     system_config=None,
     export_json=True,
+    filenames = None
 ):
     """
     Unified free-energy dispatcher.
@@ -127,6 +128,8 @@ def free_energy_dispatcher(
         raise ValueError("system_config must contain 'system'")
 
     mode = system_config["system"].get("mode", "standard").lower()
+    
+     
 
     # -------------------------
     # Build shared symbols
@@ -148,7 +151,7 @@ def free_energy_dispatcher(
         ctx=ctx,
         hc_data=hc_data,
         export_json=export_json,
-        symbols=symbols,   # densities reused
+        filename  = filenames["ideal"],   # densities reused
     )
     components.append(ideal)
 
@@ -157,11 +160,11 @@ def free_energy_dispatcher(
     # ============================================================
     if no_hard_core:
         mf = mean_field(
-            system_config=system_config,
-            hc_data=hc_data,
             ctx=ctx,
+            hc_data=hc_data,
+            system_config=system_config,
             export_json=export_json,
-            symbols=symbols,
+            filename  = filenames["mean_field"]
         )
         components.append(mf)
 
@@ -174,18 +177,18 @@ def free_energy_dispatcher(
     # ============================================================
     if mode == "standard":
         mf = mean_field(
-            system_config=system_config,
-            hc_data=hc_data,
             ctx=ctx,
+            hc_data=hc_data,
+            system_config=system_config,
             export_json=export_json,
-            symbols=symbols,
+            filename = filenames["mean_field"]
         )
 
         hc = hard_core(
             ctx=ctx,
             hc_data=hc_data,
             export_json=export_json,
-            symbols=symbols,
+            filename = filenames["hard_core"] 
         )
 
         components.extend([mf, hc])
@@ -202,7 +205,7 @@ def free_energy_dispatcher(
             ctx=ctx,
             hc_data=hc_data,
             export_json=export_json,
-            symbols=symbols,
+            filename = filenames["hybrid"],
         )
 
         components.append(hyb)
