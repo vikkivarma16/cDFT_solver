@@ -2,6 +2,7 @@ import json
 import numpy as np
 from pathlib import Path
 from scipy.integrate import simpson
+from collections.abc import Mapping
 from cdft_solver.generators.potential.pair_potential_isotropic import pair_potential_isotropic as ppi
 
 
@@ -23,18 +24,7 @@ def hard_core_potentials(
     # -------------------------
     # Recursive search helpers
     # -------------------------
-    def find_key_recursive(d, key):
-        """Recursively find a key in a nested dictionary."""
-        if not isinstance(d, dict):
-            return None
-        if key in d:
-            return d[key]
-        for v in d.values():
-            if isinstance(v, dict):
-                found = find_key_recursive(v, key)
-                if found is not None:
-                    return found
-        return None
+   
 
     def barker_henderson_diameter(r, u):
         integrand = 1.0 - np.exp(-beta * np.clip(u, -100, 100))
@@ -46,6 +36,29 @@ def hard_core_potentials(
     # -------------------------
     # Locate species & interactions
     # -------------------------
+  
+
+    def find_key_recursive(obj, key):
+        """
+        Recursively find a key in nested mappings (dict, OrderedDict, etc).
+        """
+        if isinstance(obj, Mapping):
+            if key in obj:
+                return obj[key]
+            for v in obj.values():
+                found = find_key_recursive(v, key)
+                if found is not None:
+                    return found
+        elif isinstance(obj, (list, tuple)):
+            for item in obj:
+                found = find_key_recursive(item, key)
+                if found is not None:
+                    return found
+        return None
+  
+  
+  
+  
     species = find_key_recursive(data_dict, "species")
     interactions = find_key_recursive(data_dict, "interactions")
     if species is None or interactions is None:
