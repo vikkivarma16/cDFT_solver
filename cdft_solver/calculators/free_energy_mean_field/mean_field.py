@@ -1,7 +1,10 @@
 from pathlib import Path
+from collections.abc import Mapping
+
 from .void import free_energy_void
 from .EMF import free_energy_EMF
 from .SMF import free_energy_SMF
+
 
 def mean_field(
     ctx=None,
@@ -12,41 +15,17 @@ def mean_field(
 ):
     """
     Unified wrapper for symbolic free energy models (EMF, SMF, VOID).
-
-    Parameters
-    ----------
-    ctx : object, optional
-        Context object with `scratch_dir`
-    hc_data : dict
-        Species / hard-core data (passed directly to model functions)
-    system_config : dict
-        Control dictionary, e.g.
-        {
-            "system": {
-                "mode": "standard",
-                "method": "emf",
-                "integrated_strength_kernel": "rdf",
-                "supplied_data": "no"
-            }
-        }
-    export_json : bool
-        Whether to export symbolic data to JSON
-    filename : str, optional
-        Override default output filename
-
-    Returns
-    -------
-    dict
-        Output of the selected free energy function
     """
 
-    if system_config is None or "system" not in system_config:
-        raise ValueError("system_config must contain a 'system' section")
+    if system_config is None:
+        raise ValueError("system_config must be provided")
 
-    
+    # ============================================================
+    # Recursive key lookup (robust)
+    # ============================================================
     def find_key_recursive(obj, key):
         """
-        Recursively find a key in nested mappings (dict, OrderedDict, etc).
+        Recursively find FIRST occurrence of key in nested structures.
         """
         if isinstance(obj, Mapping):
             if key in obj:
@@ -55,19 +34,32 @@ def mean_field(
                 found = find_key_recursive(v, key)
                 if found is not None:
                     return found
+
         elif isinstance(obj, (list, tuple)):
             for item in obj:
                 found = find_key_recursive(item, key)
                 if found is not None:
                     return found
-        return None
-    
-    method = find_key_recursive(system_config,"method")
-    print(method)
 
-    # -------------------------
+        return None
+
+    # ------------------------------------------------------------
+    # Extract system + method
+    # ------------------------------------------------------------
+    system = find_key_recursive(system_config, "system")
+    method = find_key_recursive(system_config, "method")
+
+    if system is None:
+        raise ValueError("Could not locate 'system' section in system_config")
+
+    if method is None:
+        raise ValueError("Could not locate 'method' in system_config")
+
+    method = str(method).lower()
+
+    # ------------------------------------------------------------
     # Dispatch table
-    # -------------------------
+    # ------------------------------------------------------------
     dispatch = {
         "emf": {
             "func": free_energy_EMF,
@@ -93,9 +85,9 @@ def mean_field(
     func = entry["func"]
     out_filename = filename or entry["default_filename"]
 
-    # -------------------------
+    # ------------------------------------------------------------
     # Call selected model
-    # -------------------------
+    # ------------------------------------------------------------
     result = func(
         ctx=ctx,
         hc_data=hc_data,
@@ -103,11 +95,10 @@ def mean_field(
         filename=out_filename,
     )
 
-    # -------------------------
-    # Attach system metadata
-    # -------------------------
+    # ------------------------------------------------------------
+    # Attach metadata
+    # ------------------------------------------------------------
     result["system"] = system
     result["method"] = method
 
     return result
-
