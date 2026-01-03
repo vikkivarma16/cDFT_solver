@@ -7,6 +7,8 @@ def pair_potential_isotropic(specific_pair_potential):
     """
     Vectorized isotropic pair potential dispatcher.
     """
+    
+    pair_potential_isotropic_default()
     factory = get_isotropic_pair_potential_factory(specific_pair_potential)
     return factory(specific_pair_potential)
 
