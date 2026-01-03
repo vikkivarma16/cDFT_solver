@@ -141,7 +141,7 @@ def hard_core_potentials(
             u_values = np.where(r_values < s, 1e12, 0.0)
             potentials_dict[f"{sp_i}{sp_j}"] = {
                 "r": r_values.tolist(),
-                "U_hc": u_values.tolist()
+                "U": u_values.tolist()
             }
 
     # -------------------------

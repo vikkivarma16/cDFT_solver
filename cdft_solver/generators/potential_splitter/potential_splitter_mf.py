@@ -96,7 +96,7 @@ def meanfield_potentials(
 
         potentials[pair] = {
             "r": r.tolist(),
-            "U_mf": u_total.tolist()
+            "U": u_total.tolist()
         }
 
     # ---------------------------------------------------------

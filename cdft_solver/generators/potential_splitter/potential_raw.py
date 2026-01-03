@@ -97,7 +97,7 @@ def raw_potentials(
         # Store as JSON-safe lists
         result["potentials"][pair] = {
             "r": r.tolist(),
-            "U_raw": u_total.tolist()
+            "U": u_total.tolist()
         }
 
     # ---------------------------------------------------------

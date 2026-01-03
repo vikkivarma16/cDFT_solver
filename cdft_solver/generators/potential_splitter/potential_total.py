@@ -67,13 +67,13 @@ def total_potentials(
 
         # --- Hard-core ---
         if pair in hc_pots:
-            r_hc, u_hc = reconstruct_potential(hc_pots[pair], "U_hc")
+            r_hc, u_hc = reconstruct_potential(hc_pots[pair], "U")
         else:
             r_hc, u_hc = None, None
 
         # --- Mean-field ---
         if pair in mf_pots:
-            r_mf, u_mf = reconstruct_potential(mf_pots[pair], "U_mf")
+            r_mf, u_mf = reconstruct_potential(mf_pots[pair], "U")
         else:
             r_mf, u_mf = None, None
 
@@ -95,12 +95,12 @@ def total_potentials(
         if return_numpy:
             total_potentials[pair] = {
                 "r": r,
-                "U_total": u_total
+                "U": u_total
             }
         else:
             total_potentials[pair] = {
                 "r": r.tolist(),
-                "U_total": u_total.tolist()
+                "U": u_total.tolist()
             }
 
     return {
