@@ -67,8 +67,6 @@ def extract_sigma_matrix(hc_data):
 
 def sigma_is_zero(sigma_matrix, tol=0.0):
     return sigma_matrix is None or np.all(np.abs(sigma_matrix) <= tol)
-    
-    
 
 def merge_free_energies(components):
     """
