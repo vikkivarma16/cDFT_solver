@@ -23,6 +23,7 @@ def _serialize_expression(expr):
 
 
 def free_energy_exporter(
+    ctx,
     total_fe,
     filename,
     system_config=None,
@@ -60,10 +61,12 @@ def free_energy_exporter(
     for comp in total_fe["components"]:
         data["components"].append({
             "variables": [v.name for v in comp["variables"]],
-            "expression": _serialize_expression(comp["expression"]),
-        })
+            "expression": _serialize_expression(comp["expression"]), })
+            
+    
+    scratch = Path(ctx.scratch_dir)
 
-    filename = Path(filename)
+    filename = Path(scratch/filename)
     with filename.open("w") as f:
         json.dump(data, f, indent=indent)
 
