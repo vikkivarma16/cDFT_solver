@@ -77,8 +77,8 @@ def interpolate_to_grid(r_src, u_src, r_target):
 
 def total_potentials(
     ctx=None,
-    hc_source,
-    mf_source,
+    hc_source=None,
+    mf_source=None,
     file_name_prefix="supplied_data_potential_total.json",
     export_files=True,
     
