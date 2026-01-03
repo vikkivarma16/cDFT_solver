@@ -3,7 +3,7 @@ from cdft_solver.generators.potential.pair_potential_isotropic_registry import (
     register_isotropic_pair_potential
 )
 
-    EPS = 1e-4
+EPS = 1e-4
 
 def pair_potential_isotropic_default():
     # ------------------------------------------------------------
