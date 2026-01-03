@@ -8,35 +8,38 @@ from cdft_solver.calculators.free_energy_hybrid.hybrid import hybrid
 
 
 
-def build_symbol_registry(hc_data):
+def unify_symbols(components):
     """
-    Central registry to guarantee symbol identity consistency.
+    Unify SymPy symbols across multiple free-energy components
+    based on symbol *name* (not object identity).
     """
 
-    species = hc_data.get("species", [])
-    if not species:
-        raise ValueError("hc_data must contain 'species'")
+    canonical = {}   # name -> Symbol
+    unified_components = []
 
-    n = len(species)
+    for comp in components:
+        expr = comp["expression"]
+        vars_ = comp["variables"]
 
-    symbols = {}
+        subs = {}
 
-    # -------------------------
-    # Shared densities
-    # -------------------------
-    densities = [sp.symbols(f"rho_{s}") for s in species]
-    symbols["densities"] = densities
+        for v in vars_:
+            if v.name not in canonical:
+                canonical[v.name] = v
+            subs[v] = canonical[v.name]
 
-    # -------------------------
-    # Mean-field interaction symbols
-    # -------------------------
-    vij = [
-        [sp.symbols(f"v_{species[i]}_{species[j]}") for j in range(n)]
-        for i in range(n)
-    ]
-    symbols["vij"] = vij
+        expr = expr.subs(subs)
 
-    return symbols
+        unified_components.append({
+            **comp,
+            "expression": expr,
+            "variables": tuple(canonical[v.name] for v in vars_),
+        })
+
+    return unified_components, list(canonical.values())
+
+
+
 
 
 def extract_sigma_matrix(hc_data):
@@ -66,35 +69,37 @@ def sigma_is_zero(sigma_matrix, tol=0.0):
     return sigma_matrix is None or np.all(np.abs(sigma_matrix) <= tol)
     
     
-    
+
 def merge_free_energies(components):
     """
-    Merge multiple free-energy components into one symbolic object.
+    Merge multiple free-energy components into one symbolic object,
+    unifying symbols by name across modules.
     """
 
+    # ------------------------------------------------------------
+    # Canonicalize symbols
+    # ------------------------------------------------------------
+    unified_components, unified_vars = unify_symbols(components)
+
+    # ------------------------------------------------------------
+    # Sum expressions
+    # ------------------------------------------------------------
     total_expr = sp.Integer(0)
-    all_vars = []
-
-    for comp in components:
+    for comp in unified_components:
         total_expr += comp["expression"]
-        all_vars.extend(comp["variables"])
 
-    # Deduplicate by symbol identity
-    unique_vars = []
-    seen = set()
-    for v in all_vars:
-        if v not in seen:
-            unique_vars.append(v)
-            seen.add(v)
-
-    F_total = sp.Lambda(tuple(unique_vars), total_expr)
+    # ------------------------------------------------------------
+    # Construct Lambda
+    # ------------------------------------------------------------
+    F_total = sp.Lambda(tuple(unified_vars), total_expr)
 
     return {
-        "variables": tuple(unique_vars),
+        "variables": tuple(unified_vars),
         "expression": total_expr,
         "function": F_total,
-        "components": components,
+        "components": unified_components,
     }
+
 
 
 
@@ -128,13 +133,6 @@ def total_free_energy(
         raise ValueError("system_config must contain 'system'")
 
     mode = system_config["system"].get("mode", "standard").lower()
-    
-     
-
-    # -------------------------
-    # Build shared symbols
-    # -------------------------
-    symbols = build_symbol_registry(hc_data)
 
     # -------------------------
     # Sigma inspection
