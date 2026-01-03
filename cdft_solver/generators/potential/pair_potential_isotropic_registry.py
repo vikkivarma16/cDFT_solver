@@ -9,7 +9,7 @@ ISOTROPIC_PAIR_POTENTIAL_REGISTRY = {}
 # pair_potential_isotropic.py
 
 # IMPORTANT: import for side effects
-from . import pair_potential_isotropic_defaults  # noqa
+from . import pair_potential_isotropic_default  # noqa
 
 
 
