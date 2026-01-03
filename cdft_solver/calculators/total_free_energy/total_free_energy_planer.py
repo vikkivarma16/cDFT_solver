@@ -12,7 +12,7 @@ import sympy as sp
 from cdft_solver.calculators.free_energy_ideal.ideal import ideal
 from cdft_solver.calculators.free_energy_mean_field.mean_field_planer import mean_field_planer
 from cdft_solver.calculators.free_energy_hard_core.hard_core_planer import hard_core_planer
-from cdft_solver.calculators.free_energy_hybrid.hybrid_planer import free_energy_hybrid_planer
+from cdft_solver.calculators.free_energy_hybrid.hybrid_planer import hybrid_planer
 
 
 # ======================================================================
