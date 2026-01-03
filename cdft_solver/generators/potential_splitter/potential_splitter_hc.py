@@ -8,7 +8,7 @@ from cdft_solver.generators.potential.pair_potential_isotropic import pair_poten
 
 def hard_core_potentials(
     ctx=None,
-    data_dict=None,
+    input_data=None,
     grid_points=5000,
     file_name_prefix="supplied_data_potential_hc.json",
     export_files=True
@@ -56,11 +56,11 @@ def hard_core_potentials(
                     return found
         return None
   
+
   
   
-  
-    species = find_key_recursive(data_dict, "species")
-    interactions = find_key_recursive(data_dict, "interactions")
+    species = find_key_recursive(input_data, "species")
+    interactions = find_key_recursive(input_data, "interactions")
     if species is None or interactions is None:
         raise KeyError("Could not find 'species' or 'interactions' in the provided dictionary.")
 

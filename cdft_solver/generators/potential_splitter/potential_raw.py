@@ -8,7 +8,7 @@ from cdft_solver.generators.potential.pair_potential_isotropic import (
 
 def raw_potentials(
     ctx=None,
-    data_dict=None,
+    input_data=None,
     grid_points=5000,
     file_name_prefix="supplied_data_potential_raw.json",
     export_file=True
@@ -19,7 +19,7 @@ def raw_potentials(
 
     Parameters
     ----------
-    data_dict : dict
+    input_data : dict
         Dictionary containing particle interactions.
     ctx : object, optional
         Used only for scratch_dir when exporting.
@@ -59,8 +59,8 @@ def raw_potentials(
                     return found
         return None
 
-    species = find_key_recursive(data_dict, "species")
-    interactions = find_key_recursive(data_dict, "interactions")
+    species = find_key_recursive(input_data, "species")
+    interactions = find_key_recursive(input_data, "interactions")
 
     if not interactions:
         raise KeyError("Could not locate 'interactions' in input dictionary.")

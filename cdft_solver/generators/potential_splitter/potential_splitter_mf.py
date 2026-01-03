@@ -11,7 +11,7 @@ from cdft_solver.generators.potential_splitter.mf_potential_registry import (
 
 def meanfield_potentials(
     ctx=None,
-    data_dict=None,
+    input_data=None,
     grid_points=5000,
     file_name_prefix="supplied_data_potential_mf.json",
     export_file=True
@@ -35,8 +35,8 @@ def meanfield_potentials(
                     return found
         return None
 
-    species = find_key_recursive(data_dict, "species")
-    interactions = find_key_recursive(data_dict, "interactions")
+    species = find_key_recursive(input_data, "species")
+    interactions = find_key_recursive(input_data, "interactions")
 
     if species is None or interactions is None:
         raise KeyError(

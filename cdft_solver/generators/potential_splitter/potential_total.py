@@ -28,8 +28,7 @@ def reconstruct_potential(pot_dict, u_key):
 
 def total_potentials(
     hc_source,
-    mf_source,
-    return_numpy=False
+    mf_source
 ):
     """
     Assemble hard-core + mean-field potentials.
