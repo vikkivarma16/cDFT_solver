@@ -7,4 +7,4 @@ for running isochores DFT minimization.
 
 
 from .hybrid import hybrid
-from .hybrid_z import hybrid_planer
+from .hybrid_planer import hybrid_planer
