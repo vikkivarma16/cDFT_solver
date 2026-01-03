@@ -43,8 +43,26 @@ def mean_field(
     if system_config is None or "system" not in system_config:
         raise ValueError("system_config must contain a 'system' section")
 
-    system = system_config["system"]
-    method = system.get("method", "").lower()
+    
+    def find_key_recursive(obj, key):
+        """
+        Recursively find a key in nested mappings (dict, OrderedDict, etc).
+        """
+        if isinstance(obj, Mapping):
+            if key in obj:
+                return obj[key]
+            for v in obj.values():
+                found = find_key_recursive(v, key)
+                if found is not None:
+                    return found
+        elif isinstance(obj, (list, tuple)):
+            for item in obj:
+                found = find_key_recursive(item, key)
+                if found is not None:
+                    return found
+        return None
+    
+    method = find_key_recursive(system_config,"method")
 
     # -------------------------
     # Dispatch table
