@@ -36,7 +36,6 @@ def hard_core_potentials(
     # -------------------------
     # Locate species & interactions
     # -------------------------
-  
 
     def find_key_recursive(obj, key):
         """
@@ -56,7 +55,6 @@ def hard_core_potentials(
                     return found
         return None
   
-
   
   
     species = find_key_recursive(input_data, "species")

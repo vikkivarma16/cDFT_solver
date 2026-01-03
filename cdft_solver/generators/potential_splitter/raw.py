@@ -12,7 +12,8 @@ def raw_potentials(
     grid_points=5000,
     file_name_prefix="supplied_data_potential_raw.json",
     export_files=True
-):    """
+):    
+    """
     Process raw interaction potentials from a dictionary
     and return JSON-serializable data only.
 
