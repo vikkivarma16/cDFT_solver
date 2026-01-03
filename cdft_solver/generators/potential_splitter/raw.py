@@ -11,9 +11,8 @@ def raw_potentials(
     input_data=None,
     grid_points=5000,
     file_name_prefix="supplied_data_potential_raw.json",
-    export_file=True
-):
-    """
+    export_files=True
+):    """
     Process raw interaction potentials from a dictionary
     and return JSON-serializable data only.
 
@@ -27,7 +26,7 @@ def raw_potentials(
         Number of r-grid points.
     file_name_prefix : str
         Output JSON filename.
-    export_file : bool
+    export_files : bool
         If True, export JSON to scratch_dir.
 
     Returns
@@ -103,7 +102,7 @@ def raw_potentials(
     # ---------------------------------------------------------
     # Export JSON if requested
     # ---------------------------------------------------------
-    if export_file and ctx is not None:
+    if export_files and ctx is not None:
         scratch = Path(ctx.scratch_dir)
         scratch.mkdir(parents=True, exist_ok=True)
         out = scratch / file_name_prefix

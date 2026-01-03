@@ -4,7 +4,7 @@ from pathlib import Path
 from cdft_solver.generators.potential.pair_potential_isotropic import (
     pair_potential_isotropic as ppi
 )
-from cdft_solver.generators.potential_splitter.mf_potential_registry import (
+from cdft_solver.generators.potential_splitter.mf_registry import (
     convert_potential_via_registry,
 )
 
@@ -14,7 +14,7 @@ def meanfield_potentials(
     input_data=None,
     grid_points=5000,
     file_name_prefix="supplied_data_potential_mf.json",
-    export_file=True
+    export_files=True
 ):
     """
     Mean-field potential generator using a dictionary input.
@@ -111,7 +111,7 @@ def meanfield_potentials(
     # ---------------------------------------------------------
     # Export JSON if requested
     # ---------------------------------------------------------
-    if export_file and ctx is not None:
+    if export_files and ctx is not None:
         out = Path(ctx.scratch_dir) / file_name_prefix
         with open(out, "w") as f:
             json.dump(result, f, indent=2)
