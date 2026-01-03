@@ -1,7 +1,7 @@
 # pair_potential_isotropic.py
 
 # IMPORTANT: import for side effects
-from . import pair_potential_isotropic_defaults  # noqa
+from . import pair_potential_isotropic_default  # noqa
 
 from .pair_potential_isotropic_registry import (
     get_isotropic_pair_potential_factory
