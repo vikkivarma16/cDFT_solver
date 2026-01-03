@@ -70,7 +70,7 @@ def free_energy_exporter(
     with filename.open("w") as f:
         json.dump(data, f, indent=indent)
         
-    print(f"✅Total free energy exported to: {filename}")
+    print(f"✅ Total free energy exported to: {filename}")
 
     return filename
 
