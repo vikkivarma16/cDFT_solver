@@ -603,7 +603,7 @@ def coexistence_densities_isocore(
         for attempt in range(max_attempts):
         
         
-            print (attempt)
+            #print (attempt)
             guess = random_initial_guess(
                 n_phases, total_density_bound, N
             )
