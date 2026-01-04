@@ -81,6 +81,9 @@ def build_thermodynamics_from_fe_res(fe_res):
     
     variables = deep_get(fe_res, "variables", [])
     expr_str = deep_get(fe_res, "expression")
+    
+    
+    print (variables)
 
     if expr_str is None:
         raise ValueError("Free energy expression not found in fe_res")
@@ -236,27 +239,9 @@ def coexistence_densities_isochem(
         heterogeneous_pair = [heterogeneous_pair]
    
     # Validate intrinsic constraints count
-    species_constraint_count = 0
-    for key, val in intrinsic_constraints.items():
-        if isinstance(val, dict):
-            species_constraint_count += len(val)
-        else:
-            species_constraint_count += 1
+   
 
     N = N_species = len(species)
-    if species_constraint_count > (N_species - 1):
-        raise ValueError(
-            f"Too many thermodynamic constraints ({species_constraint_count}) for {N_species} species."
-        )
-
-    if verbose:
-        print(f"  Loaded solution initiator parameters:")
-        print(f"  number_of_phases = {number_of_phases}")
-        print(f"  heterogeneous_pair = {extrinsic_constraints.get('heterogeneous_pair', None)}")
-        print(f"  total_density_bound = {total_density_bound}")
-        print(f"  intrinsic_constraints = {intrinsic_constraints}")
-        print(f"  extrinsic_constraints = {extrinsic_constraints}\n")
-
     species_names = list(species)
 
     
@@ -325,7 +310,6 @@ def coexistence_densities_isochem(
         print(f"    total_density_bound = {total_density_bound}")
         print(f"    intrinsic_constraints = {intrinsic_constraints}")
         print(f"    extrinsic_constraints = {extrinsic_constraints}")
-        print()
 
 
     # ============================================================
