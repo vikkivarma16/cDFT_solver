@@ -408,8 +408,7 @@ def coexistence_densities_isocore(
         n_phases,
         species_names,
         pvec,
-        eval_mue_pressure,
-        reduced_to_densities,
+        eval_mue_pressure_fn,
     ):
         """
         Residual for ISOCHORE coexistence with fixed total species densities pvec.
@@ -464,7 +463,7 @@ def coexistence_densities_isocore(
         pressure_vals = []
 
         for p in range(n_phases):
-            mu_p, p_p = eval_mue_pressure(
+            mu_p, p_p = eval_mue_pressure_fn(
                 rhos_per_phase[p],
                 CURRENT_VIJ_PER_PHASE[p]
             )
@@ -574,7 +573,7 @@ def coexistence_densities_isocore(
         n_phases,
         species_names,
         pvec,
-        eval_mue_pressure,
+        eval_mue_pressure_fn,
         heterogeneous_pair,
         total_density_bound,
         max_attempts=200000,
@@ -615,8 +614,7 @@ def coexistence_densities_isocore(
                         n_phases,
                         species_names,
                         pvec,
-                        eval_mue_pressure,
-                        reduced_to_densities,
+                        eval_mue_pressure_fn,
                     ),
                     guess,
                     method="hybr",
@@ -696,7 +694,7 @@ def coexistence_densities_isocore(
 
             global CURRENT_VIJ_PER_PHASE
             for p in range(n_phases):
-                mu_p, p_p = eval_mue_pressure(
+                mu_p, p_p = eval_mue_pressure_fn(
                     rhos_per_phase[p],
                     CURRENT_VIJ_PER_PHASE[p],
                 )
@@ -748,7 +746,7 @@ def coexistence_densities_isocore(
             n_phases=n_phases,
             species_names=species_names,
             pvec=pvec,
-            eval_mue_pressure=eval_mue_pressure_fn,
+            eval_mue_pressure_fn=eval_mue_pressure_fn,
             heterogeneous_pair=heterogeneous_pair,
             total_density_bound=total_density_bound,
             verbose=verbose,
