@@ -508,7 +508,7 @@ def coexistence_densities_isocore(
             for i in range(M):
                 guess.append(np.random.uniform(0, 1.0))
                 
-        print("look if it is correct", len(guess), n_phases, n_species)
+        #print("look if it is correct", len(guess), n_phases, n_species)
 
         remaining = 1.0
         for _ in range(n_phases - 1):
@@ -516,7 +516,7 @@ def coexistence_densities_isocore(
             guess.append(val)
             remaining = max(remaining - val, eps_rho)
             
-        print("look if it is correct", len(guess), n_phases)
+        #print("look if it is correct", len(guess), n_phases)
 
         return np.asarray(guess)
 
