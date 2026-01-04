@@ -56,7 +56,31 @@ def  build_strength_kernel(
 
     system_cfg = config.get("system", {})
     kernel_type = system_cfg.get("integrated_strength_kernel", "uniform")
+    
+    
+    def find_key_recursive(obj, key):
+        """
+        Recursively find a key in nested mappings (dict, OrderedDict, etc).
+        """
+        if isinstance(obj, Mapping):
+            if key in obj:
+                return obj[key]
+            for v in obj.values():
+                found = find_key_recursive(v, key)
+                if found is not None:
+                    return found
+        elif isinstance(obj, (list, tuple)):
+            for item in obj:
+                found = find_key_recursive(item, key)
+                if found is not None:
+                    return found
+        return None
+  
+  
+  
+    species = find_key_recursive(system_cfg, "species")
 
+    N = len (species)
     # --------------------------------------------------
     # Grid
     # --------------------------------------------------
