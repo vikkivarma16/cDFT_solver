@@ -90,7 +90,7 @@ def build_thermodynamics_from_fe_res(fe_res):
 
     symbols = {}
     for v in variables:
-        name = v["name"]
+        name = v
         symbols[name] = sp.Symbol(name)
 
     # --------------------------------------------------------
