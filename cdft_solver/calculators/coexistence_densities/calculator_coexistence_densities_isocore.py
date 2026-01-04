@@ -403,23 +403,25 @@ def coexistence_densities_isocore(
 
 
    
-    def coexistence_residual_isocore(
+    def coexistence_residual_isochore(
         vars_vec,
         n_phases,
         species_names,
-        intrinsic_constraints,
-        eval_mue_pressure_fn,
+        pvec,
+        eval_mue_pressure,
         reduced_to_densities,
     ):
         """
-        Residual for ISOCHORE coexistence.
+        Residual for ISOCHORE coexistence with fixed total species densities pvec.
 
-        Variables per phase:
-            [rho_total, x1, x2, ..., x_(N-1)]
-        Plus:
-            (n_phases - 1) phase fractions
+        Unknowns:
+          - For each phase: [rho_total, x1, x2, ..., x_(N-1)]
+          - Phase fractions: (n_phases - 1)
 
-        Uses CURRENT_VIJ_PER_PHASE injected by the outer loop.
+        Constraints:
+          - μ_i equal across phases
+          - Pressure equal across phases
+          - Σ_p φ_p ρ_i^(p) = pvec[i]   (isochore constraint)
         """
 
         global CURRENT_VIJ_PER_PHASE
@@ -427,83 +429,72 @@ def coexistence_densities_isocore(
             raise RuntimeError("CURRENT_VIJ_PER_PHASE is not initialized")
 
         N = len(species_names)
-        reduced_len = N  # rhot + (N-1) fractions
+        reduced_len = N  # rhot + (N-1) composition variables
 
-        # -----------------------------------
+        # -------------------------------------------------
         # Split reduced variables per phase
-        # -----------------------------------
+        # -------------------------------------------------
         reduced_blocks = []
         idx = 0
         for _ in range(n_phases):
             reduced_blocks.append(vars_vec[idx:idx + reduced_len].tolist())
             idx += reduced_len
 
+        # -------------------------------------------------
         # Phase fractions
+        # -------------------------------------------------
         frac_vars = vars_vec[idx:]
         if len(frac_vars) != (n_phases - 1):
-            raise ValueError("Incorrect number of phase fraction variables")
+            raise ValueError("Incorrect number of phase-fraction variables")
 
-        phase_fracs = list(frac_vars)
-        phase_fracs.append(1.0 - sum(phase_fracs))
+        fractions = list(frac_vars)
+        fractions.append(1.0 - sum(fractions))
 
-        # -----------------------------------
-        # Recover densities per phase
-        # -----------------------------------
+        # -------------------------------------------------
+        # Recover species densities per phase
+        # -------------------------------------------------
         rhos_per_phase = [
             reduced_to_densities(block) for block in reduced_blocks
         ]
 
-        # -----------------------------------
-        # Evaluate μ and P per phase
-        # -----------------------------------
+        # -------------------------------------------------
+        # Evaluate μ and P
+        # -------------------------------------------------
         mu_vals = []
         pressure_vals = []
 
         for p in range(n_phases):
-            mu_p, p_p = eval_mue_pressure_fn(
+            mu_p, p_p = eval_mue_pressure(
                 rhos_per_phase[p],
                 CURRENT_VIJ_PER_PHASE[p]
             )
             mu_vals.append(mu_p)
             pressure_vals.append(p_p)
 
-        # -----------------------------------
-        # Build equations
-        # -----------------------------------
+        # -------------------------------------------------
+        # Build residual equations
+        # -------------------------------------------------
         eqs = []
 
-        intrinsic_mu = intrinsic_constraints.get("chemical_potential", {})
-        intrinsic_p  = intrinsic_constraints.get("pressure", None)
-        species_frac = intrinsic_constraints.get("species_fraction", {})
-
-        # --- Chemical potential constraints ---
-        for i, sp in enumerate(species_names):
-            if sp in intrinsic_mu:
-                target = intrinsic_mu[sp]
-                for p in range(n_phases):
-                    eqs.append(mu_vals[p][i] - target)
-            else:
-                for p in range(n_phases - 1):
-                    eqs.append(mu_vals[p][i] - mu_vals[p + 1][i])
-
-        # --- Pressure constraint ---
-        if intrinsic_p is not None:
-            for p in range(n_phases):
-                eqs.append(pressure_vals[p] - intrinsic_p)
-        else:
+        # (1) Chemical potential equalities
+        for i in range(N):
             for p in range(n_phases - 1):
-                eqs.append(pressure_vals[p] - pressure_vals[p + 1])
+                eqs.append(mu_vals[p][i] - mu_vals[p + 1][i])
 
-        # --- Isochore mass conservation ---
-        if species_frac:
-            for i, sp in enumerate(species_names):
-                lhs = sum(
-                    phase_fracs[p] * rhos_per_phase[p][i]
-                    for p in range(n_phases)
-                )
-                eqs.append(lhs - species_frac[sp])
+        # (2) Pressure equalities
+        for p in range(n_phases - 1):
+            eqs.append(pressure_vals[p] - pressure_vals[p + 1])
+
+        # (3) Isochore mass conservation (FIXED TOTAL DENSITIES)
+        for i in range(N):
+            lhs = sum(
+                fractions[p] * rhos_per_phase[p][i]
+                for p in range(n_phases)
+            )
+            eqs.append(lhs - pvec[i])
 
         return np.asarray(eqs, dtype=float)
+
 
 
     # ============================================================
