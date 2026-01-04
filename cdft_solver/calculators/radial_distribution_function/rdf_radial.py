@@ -348,8 +348,8 @@ def rdf_radial(
     if rdf_block is None:
         raise KeyError("No 'rdf' key found in rdf_config")
 
-    params = rdf_config["rdf_parameters"]
-    species = params["species"]
+    #params = rdf_config["rdf_parameters"]
+    species = find_key_recursive(rdf_config, "species")
     N = len(species)
 
     beta = rdf_block.get("beta", 1.0)
