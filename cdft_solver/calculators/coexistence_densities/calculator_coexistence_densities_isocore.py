@@ -687,6 +687,9 @@ def coexistence_densities_isocore(
             print(f"[outer] iteration {outer_iter}")
 
         CURRENT_VIJ_PER_PHASE = vij_per_phase
+        
+        
+        print("iteration number",outer_iter, "vij", CURRENT_VIJ_PER_PHASE)
 
         sol = solve_coexistence_isocore(
             n_phases=n_phases,
