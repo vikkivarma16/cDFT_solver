@@ -97,9 +97,9 @@ def vij_radial_kernel(
 
     potential_dict = mf_data["potentials"]
     
-    
+    r = np.linspace(0, 5, n_grid)
     n = len(species)
-    u_matrix = np.zeros((n, n, len(r)))
+    u_matrix = np.zeros((n, n, n_grid))
 
     for i, si in enumerate(species):
         for j in range(i, n):   # <-- only j >= i
@@ -127,6 +127,7 @@ def vij_radial_kernel(
                 fill_value=0.0,
                 assume_sorted=True,
             )
+            r = pdata["r"] 
 
             u_val = beta * interp_u(r)
 
