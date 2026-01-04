@@ -628,6 +628,8 @@ def coexistence_densities_isocore(
                 if verbose and attempt % 2000 == 0:
                     print(f"[attempt {attempt}] solver not converged")
                 continue
+            else:
+                print(sol.x)
 
             # --------------------------------------------------
             # Decode solution
