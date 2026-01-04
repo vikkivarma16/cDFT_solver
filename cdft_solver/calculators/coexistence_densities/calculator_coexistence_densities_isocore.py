@@ -721,6 +721,8 @@ def coexistence_densities_isocore(
                     print("[outer] converged")
                 final_solution = sol
                 break
+            else:
+                print ("delta rho \n\n", np.linalg.norm(drho))
 
         # Update vij
         vij_per_phase = [
