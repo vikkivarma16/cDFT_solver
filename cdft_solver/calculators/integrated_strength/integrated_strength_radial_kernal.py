@@ -103,8 +103,7 @@ def vij_radial_kernel(
     n = len(species)
     u_matrix = np.zeros((n, n, n_grid))
     
-    print("temperature",beta)
-    scratch = Path(ctx.scratch_dir)
+   
     
     for i, si in enumerate(species):
         for j in range(i, n):   # <-- only j >= i
@@ -132,15 +131,6 @@ def vij_radial_kernel(
             # symmetric assignment
             u_matrix[i, j, :] = u_val
             u_matrix[j, i, :] = u_val
-            fname = scratch  / f"U_{si}_{sj}.npz"
-            np.savez(
-                fname,
-                r=r,
-                U=u_val,
-                pair=f"{si}-{sj}"
-            )
-
-            print(f"✅ exported {fname}")
             
             
            
@@ -213,8 +203,7 @@ def vij_radial_kernel(
             # Assign symmetric
             vij_numeric[key] = vij_val
             vij_numeric[rkey] = vij_val
-            
-    '''       
+                
     
     for i, si in enumerate(species):
         for j, sj in enumerate(species[i:], start=i):  # j >= i
@@ -265,11 +254,10 @@ def vij_radial_kernel(
                 fname,
                 r=r_common,
                 U=Uv,
-                pair=f"{si}-{sj}"
+                pair=f"hh_{si}-{sj}"
             )
 
             print(f"✅ exported {fname}")
-    '''
     # -------------------------
     # Optional JSON export
     # -------------------------
