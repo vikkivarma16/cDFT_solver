@@ -603,10 +603,7 @@ def coexistence_densities_isocore(
         
         
             #print (attempt)
-            guess = random_initial_guess(
-                n_phases, total_density_bound, N
-            )
-
+            guess = random_initial_guess(n_phases, n_species, total_density_bound)
             
             sol = root(
                 lambda v: coexistence_residual_isocore(
