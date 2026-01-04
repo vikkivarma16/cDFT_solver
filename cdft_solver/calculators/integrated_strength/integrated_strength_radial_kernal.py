@@ -203,7 +203,8 @@ def vij_radial_kernel(
             # Assign symmetric
             vij_numeric[key] = vij_val
             vij_numeric[rkey] = vij_val
-                
+        
+    scratch = Path(ctx.scratch_dir)
     
     for i, si in enumerate(species):
         for j, sj in enumerate(species[i:], start=i):  # j >= i
