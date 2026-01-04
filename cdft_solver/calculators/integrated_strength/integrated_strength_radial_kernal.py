@@ -93,8 +93,8 @@ def vij_radial_kernel(
         ctx=ctx,
         input_data=config,
         grid_points = n_grid,
-        file_name_prefix="supplied_data_potential_mf.json",
-        export_files=False
+        file_name_prefix="mf.json",
+        export_files=True
     )
 
     potential_dict = mf_data["potentials"]
