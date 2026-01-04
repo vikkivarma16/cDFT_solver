@@ -89,6 +89,11 @@ def  build_strength_kernel(
     # ==================================================
     # UNIFORM KERNEL
     # ==================================================
+    grid =  {}
+    grid ["r_max"] = 5
+    grid["n_points"] = 500
+    grid["r_min"] = 5/500  
+    Nr = grid["n_points"]
     if kernel_type == "uniform":
         print("✅ Using UNIFORM integrated strength kernel")
 
@@ -107,10 +112,6 @@ def  build_strength_kernel(
     if kernel_type == "rdf":
         print("🔄 Computing RDF-based integrated strength kernel")
         
-        grid =  {}
-        grid ["r_max"] = 5
-        grid["n_points"] = 500
-        grid["r_min"] = 5/500  
         
         
         hc_data = hard_core_potentials(
