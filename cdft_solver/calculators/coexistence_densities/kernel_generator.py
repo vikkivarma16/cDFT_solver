@@ -57,8 +57,8 @@ def  build_strength_kernel(
     
    
 
-    system_cfg = config.get("system", {})
-    kernel_type = system_cfg.get("integrated_strength_kernel", "uniform")
+    system_cfg = config
+    
     
     
     def find_key_recursive(obj, key):
