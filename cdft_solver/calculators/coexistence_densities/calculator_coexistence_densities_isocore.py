@@ -507,6 +507,8 @@ def coexistence_densities_isocore(
             guess.append(np.random.uniform(eps_rho, total_density_bound))
             for i in range(M):
                 guess.append(np.random.uniform(0, 1.0))
+                
+        print("look if it is correct", len(guess), n_phases, n_species)
 
         remaining = 1.0
         for _ in range(n_phases - 1):
