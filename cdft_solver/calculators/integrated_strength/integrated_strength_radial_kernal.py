@@ -12,6 +12,7 @@ def vij_radial_kernel(
     ctx,
     config,
     kernel,
+    supplied_data= None,
     export_json=False,
     filename="vij_integrated.json",
 ):

@@ -408,7 +408,7 @@ def coexistence_densities_isochem(
             config=config_dict,
             kernel=kernel_dict,
             supplied_data=None,
-            export_json=False,
+            export_json=True,
         )
 
         vij = np.zeros((N_species, N_species))
