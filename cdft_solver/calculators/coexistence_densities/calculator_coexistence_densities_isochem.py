@@ -251,12 +251,6 @@ def coexistence_densities_isochem(
     species_names = list(species)
 
     
-    # ---------------------------------------------------------------------
-    # Species order builder based on heterogeneous pairs
-    # ---------------------------------------------------------------------
-    # ============================================================
-    # Normalize heterogeneous_pair and validate constraints
-    # ============================================================
 
     # --- Normalize heterogeneous_pair ---
     heterogeneous_pair = extrinsic_constraints.get("heterogeneous_pair", [])
@@ -318,51 +312,7 @@ def coexistence_densities_isochem(
         print(f"    extrinsic_constraints = {extrinsic_constraints}")
 
 
-    # ============================================================
-    # Species ordering logic (heterogeneous-pair aware)
-    # ============================================================
-
-    def get_species_order(species_names, heterogeneous_pairs):
-        """
-        Builds a stable species ordering based on heterogeneous-pair constraints.
-
-        heterogeneous_pairs:
-            list of strings like ["ab", "ac"] meaning species a and b
-            should be adjacent in ordering.
-        """
-        ordered = list(species_names)
-
-        for pair in heterogeneous_pairs:
-            pair = pair.strip()
-            if len(pair) != 2:
-                continue
-
-            s1, s2 = pair[0], pair[1]
-            if s1 in ordered and s2 in ordered:
-                ordered.remove(s2)
-                idx = ordered.index(s1)
-                ordered.insert(idx + 1, s2)
-
-        reshuffle_back = [species_names.index(s) for s in ordered]
-        restore_original = [ordered.index(s) for s in species_names]
-
-        return ordered, reshuffle_back, restore_original
-
-
-    def reorder_to_original_order(rho, restore_original):
-        """Reorder densities back to original species order."""
-        return [rho[i] for i in restore_original]
-
-
-    # ============================================================
-    # Build ordering maps
-    # ============================================================
-
-    species_ordered, reshuffle_back, restore_original = get_species_order(
-        species_names, heterogeneous_pair
-    )
-
-    
+   
     
     # --------------------------------------------------------
     # 6) REDUCED VARIABLES
@@ -515,7 +465,6 @@ def coexistence_densities_isochem(
     vij_per_phase = compute_vij(initial_rhos, kernel =  "uniform" )
     
     
-    print (vij_per_phase)
 
 
     # ============================================================
@@ -580,10 +529,7 @@ def coexistence_densities_isochem(
                 idx += N
 
             rhos_per_phase = [
-                reorder_to_original_order(
-                    reduced_to_densities(block),
-                    restore_original,
-                )
+                    reduced_to_densities(block)
                 for block in blocks
             ]
 

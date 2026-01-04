@@ -600,38 +600,60 @@ def coexistence_densities_isocore(
             # --------------------------------------------------
             # Heterogeneous-pair dominance check
             # --------------------------------------------------
-            dominant_threshold = 0.9
-            species_max = {
-                sp: max(rhos_per_phase[p][i] for p in range(n_phases))
-                for i, sp in enumerate(species_names)
-            }
-
+            
+                
+                
+              # --- HETEROGENEOUS-PAIR CHECK (threshold-based dominant species) ---
+            dominant_threshold = 0.9  # species considered dominant if ≥ 90% of its max density
             hetero_ok = True
+
+            # --- precompute per-species max density across all phases ---
+            species_max = {}
+            for i, sp_name in enumerate(species_names):
+                max_dens = max(rhos_per_phase[p][i] for p in range(n_phases))
+                species_max[sp_name] = max_dens
+
+            # --- loop over each phase to find dominant species ---
             for p in range(n_phases):
-                dominant_species = [
-                    sp for i, sp in enumerate(species_names)
-                    if rhos_per_phase[p][i] / (species_max[sp] + 1e-14)
-                    >= dominant_threshold
-                ]
-                for s1, s2 in hetero_pairs:
+                dominant_species = []
+
+                for i, sp_name in enumerate(species_names):
+                    dens = rhos_per_phase[p][i]
+                    max_dens = species_max[sp_name] + 1e-16  # avoid division by zero
+                    if dens / max_dens >= dominant_threshold:
+                        dominant_species.append(sp_name)
+
+                # --- check if any heterogeneous pair is dominant together ---
+                for (s1, s2) in hetero_pairs:
                     if s1 in dominant_species and s2 in dominant_species:
                         hetero_ok = False
+                        if verbose:
+                            print(
+                                f"Attempt {attempt}: rejected by heterogeneous constraint — "
+                                f"both '{s1}' and '{s2}' are dominant (≥{dominant_threshold*100:.0f}% of max) "
+                                f"in phase {p+1}."
+                            )
                         break
+
                 if not hetero_ok:
                     break
 
             if not hetero_ok:
                 continue
 
-            # --------------------------------------------------
-            # Bounds check
-            # --------------------------------------------------
-            if any(
-                rho < 0.0 or rho > total_density_bound
-                for phase in rhos_per_phase
-                for rho in phase
-            ):
-                continue
+            # --- BOUNDS CHECK (per-phase densities must be within [0, total_density_bound]) ---
+            for p_idx, phase in enumerate(rhos_per_phase):
+                for rho_idx, rho in enumerate(phase):
+                    if not (0.0 <= rho <= total_density_bound):
+                        if verbose:
+                            print(
+                                f"Attempt {attempt}: rejected — density {rho:.4f} "
+                                f"out of bounds for species {species_names[rho_idx]} "
+                                f"in phase {p_idx+1}."
+                            )
+                        continue
+ 
+            
 
             # --------------------------------------------------
             # Evaluate μ and P
