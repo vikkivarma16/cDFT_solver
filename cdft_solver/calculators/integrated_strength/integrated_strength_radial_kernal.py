@@ -152,10 +152,65 @@ def vij_radial_kernel(
     # -------------------------
     # Loop over species pairs (use symmetry)
     # -------------------------
-   
-    scratch = Path(ctx.scratch_dir)
-    
+    for i, si in enumerate(species):
+        for j, sj in enumerate(species[i:], start=i):  # j >= i
+            # Try both orders
+            key = (si, sj)
+            rkey = (sj, si)
 
+            if key in kernel and key in U_dict:
+                ker_data = kernel[key]
+                U_data   = U_dict[key]
+            elif rkey in kernel and rkey in U_dict:
+                ker_data = kernel[rkey]
+                U_data   = U_dict[rkey]
+            else:
+                raise KeyError(f"Missing kernel or U for pair {si}-{sj}")
+
+            rk = np.asarray(ker_data["r"], dtype=float)
+            K  = np.asarray(ker_data["values"], dtype=float)
+
+            ru = np.asarray(U_data["r"], dtype=float)
+            Uv = np.asarray(U_data["U"], dtype=float)
+
+            # -------------------------
+            # Common grid
+            # -------------------------
+            r_lo = max(rk.min(), ru.min())
+            r_hi = min(rk.max(), ru.max())
+            if r_hi <= r_lo:
+                raise ValueError(f"No overlapping r-domain for pair {si}-{sj}")
+
+            r_common = np.linspace(r_lo, r_hi, n_grid)
+
+            # -------------------------
+            # Interpolation
+            # -------------------------
+            Kc = interp1d(rk, K, kind="linear", bounds_error=False, fill_value=0.0)(r_common)
+            Uc = interp1d(ru, Uv, kind="linear", bounds_error=False, fill_value=0.0)(r_common)
+
+
+            
+            print(Uc)
+            print(Kc)
+            print (r_common)
+            # -------------------------
+            # Radial integral
+            # -------------------------
+            vij_val = float(np.trapz(4.0 * np.pi * r_common**2 * Kc * Uc, r_common))
+            
+            print( vij_val )
+
+
+            print("∫U(r)dr =", np.trapz(Uc, r_common))
+            print("∫4πr²U(r)dr =", np.trapz(4*np.pi*r_common**2 * Uc, r_common))
+
+            # Assign symmetric
+            vij_numeric[key] = vij_val
+            vij_numeric[rkey] = vij_val
+            
+            
+    scratch = Path(ctx.scratch_dir)
     for i, si in enumerate(species):
         for j, sj in enumerate(species[i:], start=i):  # j >= i
 
