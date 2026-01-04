@@ -5,15 +5,13 @@ import numpy as np
 from cdft_solver.generators.rdf_isotropic import rdf_isotropic
 
 
-def build_strength_kernel(
-    ctx,
-    config,
-    grid_dict,
-    potential_dict,
-    densities,
-    sigma_matrix=None,
-    supplied_data=None,
-):
+def  build_strength_kernel(
+            ctx=ctx,
+            config,
+            supplied_data= None,
+            densities= [0.1, 0.1, 0.1],
+            kernel_type = "uniform",
+        )
     """
     Dispatcher for integrated strength kernel.
 
@@ -52,22 +50,17 @@ def build_strength_kernel(
             "rdf_raw": dict (only if rdf)
         }
     """
+    
+    
+   
 
     system_cfg = config.get("system", {})
     kernel_type = system_cfg.get("integrated_strength_kernel", "uniform")
-    supplied_flag = system_cfg.get("supplied_data", "no").lower() == "yes"
 
     # --------------------------------------------------
     # Grid
     # --------------------------------------------------
-    r = np.linspace(
-        grid_dict["r_min"],
-        grid_dict["r_max"],
-        grid_dict["n_points"],
-    )
-
-    Nr = len(r)
-    N = len(densities)
+   
 
     # ==================================================
     # UNIFORM KERNEL
@@ -86,24 +79,56 @@ def build_strength_kernel(
     # ==================================================
     # RDF KERNEL
     # ==================================================
+    system = config
     if kernel_type == "rdf":
         print("🔄 Computing RDF-based integrated strength kernel")
-
-        rdf_out = rdf_isotropic(
+        
+        grid =  {}
+        grid ["r_max"] = 5
+        grid["n_points"] = 500
+        grid["r_min"] = 5/500  
+        
+        
+        hc_data = hard_core_potentials(
             ctx=ctx,
-            rdf_config=config,
-            grid_dict=grid_dict,
-            potential_dict=potential_dict,
-            densities=densities,
-            sigma=sigma_matrix,
-            supplied_data=supplied_data if supplied_flag else None,
-            export=config.get("export_rdf", False),
-            plot=config.get("plot_rdf", False),
+            input_data=system,
+            grid_points=5000,
+            file_name_prefix="supplied_data_potential_hc.json",
+            export_files=False
+        )
+
+        mf_data = meanfield_potentials(
+            ctx=ctx,
+            input_data=system,
+            grid_points=5000,
+            file_name_prefix="supplied_data_potential_mf.json",
+            export_files=False
+        )
+
+        total_data = total_potentials(
+            ctx=ctx,
+            hc_source= hc_data,
+            mf_source= mf_data,
+            file_name_prefix="supplied_data_potential_total.json",
+            export_files=False,
+           
+        )
+
+        rdf_radial(
+            ctx = ctx,
+            rdf_config = config,
+            grid_dict = grid,
+            potential_dict = total_data["total_potentials"],
+            densities = densities,
+            sigma = hc_data["sigma"],
+            supplied_data = None,
+            export = False,
+            plot = True,
+            filename_prefix="rdf",
         )
 
         species = config["rdf_parameters"]["species"]
-        Nr = len(r)
-
+        Nr =  grid["n_points"]
         kernel = np.zeros((N, N, Nr))
 
         for i, si in enumerate(species):
@@ -114,7 +139,6 @@ def build_strength_kernel(
             "type": "rdf",
             "kernel": kernel,
             "r": r,
-            "rdf_raw": rdf_out,
         }
 
     # ==================================================

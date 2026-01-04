@@ -7,7 +7,7 @@ import sympy as sp
 from scipy.optimize import root
 import random
 from copy import deepcopy
-from cdft_solver.calculator.coexistence_densities.kernel_generator import build_strength_kernel
+from cdft_solver.calculators.coexistence_densities.kernel_generator import build_strength_kernel
 from cdft_solver.calculators.integrated_strength.integrated_strength_radial_kernal import vij_radial_kernel
 
 # ============================================================
@@ -177,6 +177,7 @@ def coexistence_densities_isochem(
     ctx,
     config_dict,
     fe_res,
+    supplied_data = None,
     max_outer_iters=10,
     tol_outer=1e-3,
     tol_solver=1e-8,
@@ -189,6 +190,7 @@ def coexistence_densities_isochem(
     # --------------------------------------------------------
     # 1) ENSEMBLE CHECK
     # --------------------------------------------------------
+    species = deep_get(config_dict, "species")
     ensemble = deep_get(config_dict, "ensemble")
     if ensemble != "isochem":
         raise ValueError(f"Expected ensemble='isochem', got {ensemble}")
@@ -200,10 +202,7 @@ def coexistence_densities_isochem(
         config_dict, "integrated_strength_kernel", "uniform"
     ).lower()
 
-    supplied_data_flag = deep_get(
-        config_dict, "supplied_data", "no"
-    ).lower() == "yes"
-
+    
     # --------------------------------------------------------
     # 3) SOLUTION INITIATOR
     # --------------------------------------------------------
@@ -226,7 +225,6 @@ def coexistence_densities_isochem(
         print("[config]")
         print(" ensemble =", ensemble)
         print(" kernel =", integrated_strength_kernel)
-        print(" supplied_data =", supplied_data_flag)
         print(" n_phases =", number_of_phases)
 
     # --------------------------------------------------------
@@ -245,7 +243,7 @@ def coexistence_densities_isochem(
         else:
             species_constraint_count += 1
 
-    N_species = len(species)
+    N = N_species = len(species)
     if species_constraint_count > (N_species - 1):
         raise ValueError(
             f"Too many thermodynamic constraints ({species_constraint_count}) for {N_species} species."
@@ -376,7 +374,6 @@ def coexistence_densities_isochem(
 
     
     
-
     # --------------------------------------------------------
     # 6) REDUCED VARIABLES
     # --------------------------------------------------------
@@ -400,39 +397,37 @@ def coexistence_densities_isochem(
     # --------------------------------------------------------
     
 
-    def compute_vij(densities, kernal ):
+    def compute_vij(densities, kernel):
         kernel_out = build_strength_kernel(
             ctx=ctx,
             config=config_dict,
+            supplied_data=supplied_data,
             densities=densities,
-            kernel_type=integrated_strength_kernel,
-            supplied_data=supplied_data_flag,
+            kernel_type=kernel,
         )
-
         r = kernel_out["r"]
         kernel = kernel_out["kernel"]
 
         kernel_dict = {}
-        for i, si in enumerate(species):
-            for j, sj in enumerate(species):
-                kernel_dict[(si, sj)] = {
-                    "r": r,
-                    "values": kernel[i, j],
-                }
+        for i, si in enumerate(species_names):
+            for j, sj in enumerate(species_names):
+                kernel_dict[(si, sj)] = {"r": r, "values": kernel[i, j]}
 
         vij_out = vij_radial_kernel(
             ctx=ctx,
-            species=species,
+            config=config_dict,
             kernel=kernel_dict,
+            supplied_data=None,
             export_json=False,
         )
 
-        vij = np.zeros((N, N))
-        for i, si in enumerate(species):
-            for j, sj in enumerate(species):
+        vij = np.zeros((N_species, N_species))
+        for i, si in enumerate(species_names):
+            for j, sj in enumerate(species_names):
                 vij[i, j] = vij_out["vij_numeric"][(si, sj)]
 
         return vij
+
 
     # --------------------------------------------------------
     # 8) RESIDUAL
@@ -440,6 +435,11 @@ def coexistence_densities_isochem(
     # ============================================================
     # Coexistence residual (dictionary-driven, framework-safe)
     # ============================================================
+    
+    thermo = build_thermodynamics_from_fe_res(fe_res)
+
+    eval_mue_pressure_fn = thermo["eval_mu_pressure"]
+
 
     def coexistence_residual(
         vars_vec,
@@ -475,12 +475,10 @@ def coexistence_densities_isochem(
         pressure_vals = []
 
         for p in range(n_phases):
-            mu_p, p_p = eval_mue_pressure_fn(
-                rhos_per_phase[p],
-                CURRENT_VIJ_PER_PHASE[p],
-            )
+            mu_p, p_p = eval_mue_pressure_fn(rhos_per_phase[p], CURRENT_VIJ_PER_PHASE[p])
             mu_vals.append(mu_p)
             pressure_vals.append(p_p)
+
 
         # -----------------------------------
         # Build equations
@@ -661,7 +659,7 @@ def coexistence_densities_isochem(
 
     initial_rhos = [np.ones(N) * 0.1 for _ in range(n_phases)]
     vij_per_phase = [
-        compute_vij_for_mode(initial_rhos[p], kernal =  "uniform" )
+        compute_vij(initial_rhos[p], kernel =  "uniform" )
         for p in range(n_phases)
     ]
 
@@ -706,7 +704,7 @@ def coexistence_densities_isochem(
                 break
 
         vij_per_phase = [
-            compute_vij_for_mode(rhos_per_phase[p], kernal = "rdf")
+            compute_vij(rhos_per_phase[p], kernel = integrated_strength_kernel)
             for p in range(n_phases)
         ]
 
@@ -729,8 +727,6 @@ def coexistence_densities_isochem(
         "mu_per_phase": final_solution["mu_per_phase"],
         "pressure_per_phase": final_solution["pressure_per_phase"],
         "vij_per_phase": [v.tolist() for v in vij_per_phase],
-        "vk_mode_initial": vk_mode_initial,
-        "vk_mode_iter": vk_mode_iter,
     }
 
     return out

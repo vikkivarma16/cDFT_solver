@@ -3,19 +3,15 @@ import sympy as sp
 import json
 from pathlib import Path
 from scipy.interpolate import interp1d
-
+from collections.abc import Mapping
 
 def vij_radial_kernel(
-    ctx=None,
-    species,
+    ctx,
+    config,
     kernel,
-    U,
-    n_grid=2000,
-    r_min=None,
-    r_max=None,
+    supplied_data = None,
     export_json=False,
     filename="vij_integrated.json",
-   
 ):
     """
     Compute v_ij = ∫ 4π r^2 K_ij(r) U_ij(r) dr
@@ -23,22 +19,20 @@ def vij_radial_kernel(
 
     Parameters
     ----------
+    ctx : object
+        Must have ctx.scratch_dir if export_json=True
+    config : dict
+        Input configuration for mean-field potentials
     kernel : dict
         {(s1, s2): {"r": array, "values": array}}
-    U : dict
-        {(s1, s2): {"r": array, "values": array}}
-    species : list
-        Ordered list of species
     r_min, r_max : float, optional
-        Integration bounds (auto-detected if None)
+        Integration bounds
     n_grid : int
         Number of points in common grid
     export_json : bool
-        Export numeric results
+        Export numeric results to JSON
     filename : str
         JSON output file
-    ctx : object, optional
-        Must have ctx.scratch_dir if export_json=True
 
     Returns
     -------
@@ -50,78 +44,103 @@ def vij_radial_kernel(
         }
     """
 
+    # -------------------------
+    # Recursive key search
+    # -------------------------
+    def find_key_recursive(obj, key):
+        if isinstance(obj, Mapping):
+            if key in obj:
+                return obj[key]
+            for v in obj.values():
+                found = find_key_recursive(v, key)
+                if found is not None:
+                    return found
+        elif isinstance(obj, (list, tuple)):
+            for item in obj:
+                found = find_key_recursive(item, key)
+                if found is not None:
+                    return found
+        return None
+
+    species = find_key_recursive(config, "species")
+    if species is None:
+        raise ValueError("Species list not found in config")
+
     n_species = len(species)
+    n_grid=5000,
 
     # -------------------------
     # Symbolic v_ij matrix
     # -------------------------
     vij_symbols = [
-        [sp.symbols(f"v_{species[i]}_{species[j]}")
-         for j in range(n_species)]
+        [sp.symbols(f"v_{species[i]}_{species[j]}") for j in range(n_species)]
         for i in range(n_species)
     ]
 
     vij_numeric = {}
 
     # -------------------------
-    # Loop over species pairs
+    # Mean-field potentials (user must provide function or module)
+    # -------------------------
+    from cdft_solver.calculators.potentials.meanfield import meanfield_potentials
+    mf_data = meanfield_potentials(
+        ctx=ctx,
+        input_data=config,
+        grid_points=n_grid,
+        file_name_prefix="supplied_data_potential_mf.json",
+        export_files=False
+    )
+
+    U_dict = mf_data["potentials"]
+
+    # -------------------------
+    # Loop over species pairs (use symmetry)
     # -------------------------
     for i, si in enumerate(species):
-        for j, sj in enumerate(species):
+        for j, sj in enumerate(species[i:], start=i):  # j >= i
+            # Try both orders
             key = (si, sj)
+            rkey = (sj, si)
 
-            if key not in kernel or key not in U:
-                raise KeyError(f"Missing kernel or U for pair {key}")
+            if key in kernel and key in U_dict:
+                ker_data = kernel[key]
+                U_data   = U_dict[key]
+            elif rkey in kernel and rkey in U_dict:
+                ker_data = kernel[rkey]
+                U_data   = U_dict[rkey]
+            else:
+                raise KeyError(f"Missing kernel or U for pair {si}-{sj}")
 
-            rk = np.asarray(kernel[key]["r"], dtype=float)
-            K  = np.asarray(kernel[key]["values"], dtype=float)
+            rk = np.asarray(ker_data["r"], dtype=float)
+            K  = np.asarray(ker_data["values"], dtype=float)
 
-            ru = np.asarray(U[key]["r"], dtype=float)
-            Uv = np.asarray(U[key]["values"], dtype=float)
+            ru = np.asarray(U_data["r"], dtype=float)
+            Uv = np.asarray(U_data["U"], dtype=float)
 
             # -------------------------
-            # Determine common grid
+            # Common grid
             # -------------------------
             r_lo = max(rk.min(), ru.min())
             r_hi = min(rk.max(), ru.max())
-
-            if r_min is not None:
-                r_lo = max(r_lo, r_min)
-            if r_max is not None:
-                r_hi = min(r_hi, r_max)
-
             if r_hi <= r_lo:
-                raise ValueError(f"No overlapping r-domain for pair {key}")
+                raise ValueError(f"No overlapping r-domain for pair {si}-{sj}")
 
             r_common = np.linspace(r_lo, r_hi, n_grid)
 
             # -------------------------
-            # Interpolate
+            # Interpolation
             # -------------------------
-            K_interp = interp1d(
-                rk, K,
-                kind="linear",
-                bounds_error=False,
-                fill_value=0.0
-            )
-
-            U_interp = interp1d(
-                ru, Uv,
-                kind="linear",
-                bounds_error=False,
-                fill_value=0.0
-            )
-
-            Kc = K_interp(r_common)
-            Uc = U_interp(r_common)
+            Kc = interp1d(rk, K, kind="linear", bounds_error=False, fill_value=0.0)(r_common)
+            Uc = interp1d(ru, Uv, kind="linear", bounds_error=False, fill_value=0.0)(r_common)
 
             # -------------------------
             # Radial integral
             # -------------------------
-            integrand = 4.0 * np.pi * r_common**2 * Kc * Uc
-            vij_val = np.trapz(integrand, r_common)
+            vij_val = float(np.trapz(4.0 * np.pi * r_common**2 * Kc * Uc, r_common))
 
-            vij_numeric[key] = float(vij_val)
+            # Assign symmetric
+            vij_numeric[key] = vij_val
+            vij_numeric[rkey] = vij_val
 
     # -------------------------
     # Optional JSON export
@@ -143,7 +162,6 @@ def vij_radial_kernel(
                 f,
                 indent=4,
             )
-
         print(f"✅ Integrated v_ij exported to {out_file}")
 
     return {
