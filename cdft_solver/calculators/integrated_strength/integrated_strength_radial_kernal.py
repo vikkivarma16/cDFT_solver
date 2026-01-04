@@ -103,7 +103,7 @@ def vij_radial_kernel(
     n = len(species)
     u_matrix = np.zeros((n, n, n_grid))
     
-   
+    scratch = Path(ctx.scratch_dir)
     
     for i, si in enumerate(species):
         for j in range(i, n):   # <-- only j >= i
@@ -131,6 +131,25 @@ def vij_radial_kernel(
             # symmetric assignment
             u_matrix[i, j, :] = u_val
             u_matrix[j, i, :] = u_val
+            
+            fname = scratch  / f"matrixU_{si}_{sj}.npz"
+            np.savez(
+                fname,
+                r=r,
+                U=u_matrix[i, j, :],
+                pair=f"hh_{si}-{sj}"
+            )
+            
+            fname = scratch  / f"oldU_{si}_{sj}.npz"
+            np.savez(
+                fname,
+                r=r,
+                U=u_val,
+                pair=f"hh_{si}-{sj}"
+            )
+
+
+            print(f"✅ exported {fname}")
             
             
            
@@ -204,61 +223,7 @@ def vij_radial_kernel(
             vij_numeric[key] = vij_val
             vij_numeric[rkey] = vij_val
         
-    scratch = Path(ctx.scratch_dir)
-    
-    for i, si in enumerate(species):
-        for j, sj in enumerate(species[i:], start=i):  # j >= i
-
-            key = (si, sj)
-            rkey = (sj, si)
-
-            if key in kernel and key in U_dict:
-                ker_data = kernel[key]
-                U_data   = U_dict[key]
-            elif rkey in kernel and rkey in U_dict:
-                ker_data = kernel[rkey]
-                U_data   = U_dict[rkey]
-            else:
-                raise KeyError(f"Missing kernel or U for pair {si}-{sj}")
-
-            rk = np.asarray(ker_data["r"], dtype=float)
-            K  = np.asarray(ker_data["values"], dtype=float)
-
-            ru = np.asarray(U_data["r"], dtype=float)
-            Uv = np.asarray(U_data["U"], dtype=float)
-
-            # -------------------------
-            # Common grid
-            # -------------------------
-            r_lo = max(rk.min(), ru.min())
-            r_hi = min(rk.max(), ru.max())
-            if r_hi <= r_lo:
-                raise ValueError(f"No overlapping r-domain for pair {si}-{sj}")
-
-            r_common = np.linspace(r_lo, r_hi, n_grid)
-
-            # -------------------------
-            # Interpolation
-            # -------------------------
-            Uc = interp1d(
-                ru, Uv,
-                kind="linear",
-                bounds_error=False,
-                fill_value=0.0
-            )(r_common)
-
-            # -------------------------
-            # Export
-            # -------------------------
-            fname = scratch  / f"matrixU_{si}_{sj}.npz"
-            np.savez(
-                fname,
-                r=r_common,
-                U=u_matrix[i, j, :],
-                pair=f"hh_{si}-{sj}"
-            )
-
-            print(f"✅ exported {fname}")
+   
     # -------------------------
     # Optional JSON export
     # -------------------------
