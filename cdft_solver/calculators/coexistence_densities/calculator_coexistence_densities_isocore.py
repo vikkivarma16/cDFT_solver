@@ -739,6 +739,7 @@ def coexistence_densities_isocore(
         "ensemble": "isochore",
         "species": species_names,
         "n_phases": n_phases,
+        "fractions": final_solution["fractions"]
         "rhos_per_phase": final_solution["rhos_per_phase"],
         "mu_per_phase": final_solution["mu_per_phase"],
         "pressure_per_phase": final_solution["pressure_per_phase"],
