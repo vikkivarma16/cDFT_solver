@@ -93,6 +93,8 @@ def  build_strength_kernel(
     grid ["r_max"] = 5
     grid["n_points"] = 500
     grid["r_min"] = 5/500  
+    r = np.linspace(grid["r_min"], grid["r_max"], grid["n_points"], endpoint=True )
+
     Nr = grid["n_points"]
     if kernel_type == "uniform":
         print("✅ Using UNIFORM integrated strength kernel")
