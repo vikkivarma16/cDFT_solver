@@ -247,9 +247,9 @@ def coexistence_densities_isocore(
     # Validate intrinsic constraints count
    
 
-    n_species = N = N_species = len(species)
+    N = N_species = len(species)
     species_names = list(species)
-
+    n_species = len(species)
     
     # ---------------------------------------------------------------------
     # Species order builder based on heterogeneous pairs
