@@ -140,7 +140,7 @@ def vij_radial_kernel(
     U_dict = {}
     for i, si in enumerate(species_names):
         for j, sj in enumerate(species_names):
-            U_dict[(si, sj)] = {"r": r, "U": u_matrix[i, j]}
+            U_dict[(si, sj)] = {"r": r, "U": u_matrix[i, j, :]}
     
     
 
@@ -254,7 +254,7 @@ def vij_radial_kernel(
             np.savez(
                 fname,
                 r=r_common,
-                U=Uv,
+                U=u_matrix[i, j],
                 pair=f"hh_{si}-{sj}"
             )
 
