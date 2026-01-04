@@ -510,6 +510,15 @@ def coexistence_densities_isochem(
         return np.asarray(guess)
 
 
+
+    initial_rhos = [0.1, 0.1, 0.1]
+    vij_per_phase = compute_vij(initial_rhos, kernel =  "uniform" )
+    
+    
+    print (vij_per_phase)
+    
+    exit(0)
+
     # ============================================================
     # General coexistence solver
     # ============================================================
