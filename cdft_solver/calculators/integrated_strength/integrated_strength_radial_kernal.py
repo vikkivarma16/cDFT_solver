@@ -259,7 +259,7 @@ def vij_radial_kernel(
             np.savez(
                 fname,
                 r=r_common,
-                U=Uc,
+                U=Uv,
                 pair=f"{si}-{sj}"
             )
 
