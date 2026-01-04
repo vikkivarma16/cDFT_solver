@@ -95,7 +95,53 @@ def vij_radial_kernel(
         export_files=False
     )
 
-    U_dict = mf_data["potentials"]
+    potential_dict = mf_data["potentials"]
+    
+    
+    n = len(species)
+    u_matrix = np.zeros((n, n, len(r)))
+
+    for i, si in enumerate(species):
+        for j in range(i, n):   # <-- only j >= i
+            sj = species[j]
+
+            key_ij = si + sj
+            key_ji = sj + si
+
+            pdata = (
+                potential_dict.get(key_ij)
+                or potential_dict.get(key_ji)
+            )
+
+            if pdata is None:
+                raise KeyError(
+                    f"Missing potential for pair '{si}-{sj}' "
+                    f"(expected '{key_ij}' or '{key_ji}')"
+                )
+
+            # interpolate once
+            interp_u = interp1d(
+                pdata["r"],
+                pdata["U"],
+                bounds_error=False,
+                fill_value=0.0,
+                assume_sorted=True,
+            )
+
+            u_val = beta * interp_u(r)
+
+            # symmetric assignment
+            u_matrix[i, j, :] = u_val
+            u_matrix[j, i, :] = u_val
+    
+    
+    
+    U_dict = {}
+    for i, si in enumerate(species_names):
+        for j, sj in enumerate(species_names):
+            U_dict[(si, sj)] = {"r": r, "U": u_matrix[i, j]}
+    
+    
 
     # -------------------------
     # Loop over species pairs (use symmetry)
