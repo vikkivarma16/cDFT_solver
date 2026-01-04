@@ -136,6 +136,10 @@ def vij_radial_kernel(
             # symmetric assignment
             u_matrix[i, j, :] = u_val
             u_matrix[j, i, :] = u_val
+            
+            
+            if(si ==  "a", sj == "b"):
+                print(u_val)
     
     
     
