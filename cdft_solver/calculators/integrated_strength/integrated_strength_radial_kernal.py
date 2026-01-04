@@ -67,6 +67,7 @@ def vij_radial_kernel(
         return None
 
     species = find_key_recursive(config, "species")
+    species_names = species
     beta = find_key_recursive(config, "beta")
     if species is None:
         raise ValueError("Species list not found in config")
