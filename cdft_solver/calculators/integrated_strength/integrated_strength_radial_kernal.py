@@ -158,13 +158,13 @@ def vij_radial_kernel(
             vij_numeric[key]  = vij
             vij_numeric[rkey] = vij
 
+    
+    scratch = Path(ctx.scratch_dir)
+    scratch.mkdir(parents=True, exist_ok=True)
     # --------------------------------------------------
     # Export U(r) matrices
     # --------------------------------------------------
     '''
-    scratch = Path(ctx.scratch_dir)
-    scratch.mkdir(parents=True, exist_ok=True)
-
     for i, si in enumerate(species):
         for j, sj in enumerate(species[i:], start=i):
 
