@@ -516,8 +516,7 @@ def coexistence_densities_isochem(
     
     
     print (vij_per_phase)
-    
-    exit(0)
+
 
     # ============================================================
     # General coexistence solver
