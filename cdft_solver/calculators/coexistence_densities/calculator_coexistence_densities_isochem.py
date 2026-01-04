@@ -89,9 +89,15 @@ def build_thermodynamics_from_fe_res(fe_res):
         raise ValueError("Free energy expression not found in fe_res")
 
     symbols = {}
+
     for v in variables:
-        name = v
-        symbols[name] = sp.Symbol(name)
+        if isinstance(v, sp.Symbol):
+            # Already a Symbol
+            symbols[v.name] = v
+        else:
+            # Assume string-like
+            symbols[str(v)] = sp.Symbol(str(v))
+
 
     # --------------------------------------------------------
     # 2) Reconstruct free-energy expression
