@@ -250,7 +250,7 @@ def vij_radial_kernel(
             # -------------------------
             # Export
             # -------------------------
-            fname = scratch  / f"heheh U_{si}_{sj}.npz"
+            fname = scratch  / f"matrixU_{si}_{sj}.npz"
             np.savez(
                 fname,
                 r=r_common,
