@@ -188,15 +188,12 @@ def vij_radial_kernel(
             # -------------------------
             Kc = interp1d(rk, K, kind="linear", bounds_error=False, fill_value=0.0)(r_common)
             Uc = interp1d(ru, Uv, kind="linear", bounds_error=False, fill_value=0.0)(r_common)
-
-
-            if(si ==  "a" and sj == "b"):
-                print(Uc)
-                print(Kc)
             # -------------------------
             # Radial integral
             # -------------------------
             vij_val = float(np.trapz(4.0 * np.pi * r_common**2 * Kc * Uc, r_common))
+            
+            print( vij_val )
 
             # Assign symmetric
             vij_numeric[key] = vij_val
