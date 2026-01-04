@@ -272,7 +272,7 @@ def multi_component_oz_solver_alpha(
             if diff < prev_diff:
                 alpha = min(alpha * 1.05, alpha_rdf_max)
             else:
-                alpha = max(alpha * 0.5, 1e-4)
+                alpha = max(alpha * 0.5, 1e-5)
         
             print(f"{step:6d} | {diff:12.3e} | {alpha:6.4f}")
 
