@@ -513,6 +513,8 @@ def coexistence_densities_isocore(
             val = np.random.uniform(0.0, remaining)
             guess.append(val)
             remaining = max(remaining - val, eps_rho)
+            
+        print(len(guess))
 
         return np.asarray(guess)
 
