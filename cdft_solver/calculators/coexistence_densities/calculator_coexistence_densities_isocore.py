@@ -620,16 +620,13 @@ def coexistence_densities_isocore(
                     method="hybr",
                 )
             except Exception:
-                print(attempt)
+                #print(attempt)
                 continue
 
             if not sol.success:
                 if verbose and attempt % 2000 == 0:
                     print(f"[attempt {attempt}] solver not converged")
                 continue
-            else:
-                print("hihow are you", sol.x)
-
             # --------------------------------------------------
             # Decode solution
             # --------------------------------------------------
