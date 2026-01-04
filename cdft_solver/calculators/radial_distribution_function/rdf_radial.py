@@ -403,6 +403,8 @@ def rdf_radial(
     # Potentials
     # -----------------------------
     u_matrix = np.zeros((N, N, len(r)))
+    
+    print (potential_dict)
 
     for i, si in enumerate(species):
         for j, sj in enumerate(species):
