@@ -562,6 +562,9 @@ def coexistence_densities_isocore(
             )
 
         for attempt in range(max_attempts):
+        
+        
+            print (attempt)
             guess = random_initial_guess(
                 n_phases, total_density_bound, N
             )
@@ -687,7 +690,6 @@ def coexistence_densities_isocore(
     ]
     
     
-    print(vij_per_phase)
 
     global CURRENT_VIJ_PER_PHASE
     CURRENT_VIJ_PER_PHASE = vij_per_phase
