@@ -668,7 +668,7 @@ def coexistence_densities_isochem(
             n_phases=n_phases,
             species_names=species_names,
             intrinsic_constraints=intrinsic_constraints,
-            eval_mue_pressure_fn=eval_mue_pressure,
+            eval_mue_pressure_fn=eval_mue_pressure_fn,
             heterogeneous_pair=heterogeneous_pair,
             total_density_bound=total_density_bound,
             verbose=verbose,
