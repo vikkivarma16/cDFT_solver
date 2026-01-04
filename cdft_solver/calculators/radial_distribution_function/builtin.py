@@ -5,7 +5,7 @@ from .utils import safe_exp
 
 
 def py_closure(r, gamma, u, sigma_ab=None):
-    print("its me running")
+    #print("its me running")
     return (1.0 + gamma) * (safe_exp(- u) - 1.0)
 
 
