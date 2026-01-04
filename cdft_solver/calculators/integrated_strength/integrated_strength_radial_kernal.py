@@ -152,9 +152,13 @@ def vij_radial_kernel(
     # -------------------------
     # Loop over species pairs (use symmetry)
     # -------------------------
+   
+    scratch = Path(ctx.scratch_dir)
+    
+
     for i, si in enumerate(species):
         for j, sj in enumerate(species[i:], start=i):  # j >= i
-            # Try both orders
+
             key = (si, sj)
             rkey = (sj, si)
 
@@ -186,28 +190,25 @@ def vij_radial_kernel(
             # -------------------------
             # Interpolation
             # -------------------------
-            Kc = interp1d(rk, K, kind="linear", bounds_error=False, fill_value=0.0)(r_common)
-            Uc = interp1d(ru, Uv, kind="linear", bounds_error=False, fill_value=0.0)(r_common)
+            Uc = interp1d(
+                ru, Uv,
+                kind="linear",
+                bounds_error=False,
+                fill_value=0.0
+            )(r_common)
 
-
-            
-            print(Uc)
-            print(Kc)
-            print (r_common)
             # -------------------------
-            # Radial integral
+            # Export
             # -------------------------
-            vij_val = float(np.trapz(4.0 * np.pi * r_common**2 * Kc * Uc, r_common))
-            
-            print( vij_val )
+            fname = scratch  / f"U_{si}_{sj}.npz"
+            np.savez(
+                fname,
+                r=r_common,
+                U=Uc,
+                pair=f"{si}-{sj}"
+            )
 
-
-            print("∫U(r)dr =", np.trapz(Uc, r_common))
-            print("∫4πr²U(r)dr =", np.trapz(4*np.pi*r_common**2 * Uc, r_common))
-
-            # Assign symmetric
-            vij_numeric[key] = vij_val
-            vij_numeric[rkey] = vij_val
+            print(f"✅ exported {fname}")
 
     # -------------------------
     # Optional JSON export
