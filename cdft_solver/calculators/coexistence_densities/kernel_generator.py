@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from cdft_solver.generators.rdf_isotropic import rdf_isotropic
+from cdft_solver.calculators.radial_distribution_function.rdf_radial import rdf_radial
 
 
 def  build_strength_kernel(
@@ -114,7 +114,7 @@ def  build_strength_kernel(
            
         )
 
-        rdf_radial(
+        rdf_out = rdf_radial(
             ctx = ctx,
             rdf_config = config,
             grid_dict = grid,
