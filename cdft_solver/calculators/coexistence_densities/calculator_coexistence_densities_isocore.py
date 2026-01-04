@@ -403,7 +403,7 @@ def coexistence_densities_isocore(
 
 
    
-    def coexistence_residual_isochore(
+    def coexistence_residual_isocore(
         vars_vec,
         n_phases,
         species_names,
