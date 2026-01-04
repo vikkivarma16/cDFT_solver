@@ -182,13 +182,18 @@ def solve_oz_matrix(c_r_matrix, r, densities):
     gamma_k_matrix = np.zeros_like(c_k_matrix)
     rho_matrix = np.diag(densities)
     I = np.identity(N)
-    eps_reg = 1e-12
+    eps_reg = max(1e-6, 1e-3 * np.max(densities))
 
     for ik in range(len(k)):
         Ck = c_k_matrix[:, :, ik]
         num = Ck @ rho_matrix @ Ck
         A = I - Ck @ rho_matrix + eps_reg * I
-        gamma_k_matrix[:, :, ik] = np.linalg.solve(A, num)
+        w, V = np.linalg.eig(A)
+        w = np.clip(w, 1e-6, None)
+        A_reg = V @ np.diag(w) @ np.linalg.inv(V)
+        gamma_k_matrix[:, :, ik] = np.linalg.solve(A_reg, num)
+
+        
 
     gamma_r_matrix = inverse_hankel_transform_matrix_fast(gamma_k_matrix, k, r)
     return gamma_r_matrix
