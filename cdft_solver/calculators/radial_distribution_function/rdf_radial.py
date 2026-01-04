@@ -404,23 +404,44 @@ def rdf_radial(
     # -----------------------------
     u_matrix = np.zeros((N, N, len(r)))
     
-    print (potential_dict)
+    #print (potential_dict)
+    
+
+    n = len(species)
+    u_matrix = np.zeros((n, n, len(r)))
 
     for i, si in enumerate(species):
-        for j, sj in enumerate(species):
-            key = (si, sj)
-            rkey = (sj, si)
+        for j in range(i, n):   # <-- only j >= i
+            sj = species[j]
 
-            pdata = potential_dict.get(key, potential_dict.get(rkey))
-            if pdata is None:
-                raise KeyError(f"Missing potential for pair {si}-{sj}")
+            key_ij = si + sj
+            key_ji = sj + si
 
-            interp_u = interp1d(
-                pdata["r"], pdata["u"],
-                bounds_error=False,
-                fill_value=0.0
+            pdata = (
+                potential_dict.get(key_ij)
+                or potential_dict.get(key_ji)
             )
-            u_matrix[i, j, :] = beta * interp_u(r)
+
+            if pdata is None:
+                raise KeyError(
+                    f"Missing potential for pair '{si}-{sj}' "
+                    f"(expected '{key_ij}' or '{key_ji}')"
+                )
+
+            # interpolate once
+            interp_u = interp1d(
+                pdata["r"],
+                pdata["u"],
+                bounds_error=False,
+                fill_value=0.0,
+                assume_sorted=True,
+            )
+
+            u_val = beta * interp_u(r)
+
+            # symmetric assignment
+            u_matrix[i, j, :] = u_val
+            u_matrix[j, i, :] = u_val
 
     # -----------------------------
     # Sigma matrix
