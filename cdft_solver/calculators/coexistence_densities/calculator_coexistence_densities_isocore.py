@@ -352,13 +352,14 @@ def coexistence_densities_isocore(
     # --------------------------------------------------------
     
 
-    def compute_vij(densities, kernel):
+    def compute_vij(densities, kernel_type):
+        print(kernel_type)
         kernel_out = build_strength_kernel(
             ctx=ctx,
             config=config_dict,
             supplied_data=supplied_data,
             densities=densities,
-            kernel_type=kernel,
+            kernel_type=kernel_type,
         )
         r = kernel_out["r"]
         kernel = kernel_out["kernel"]
@@ -671,7 +672,7 @@ def coexistence_densities_isocore(
     initial_rhos = [np.ones(N) * 0.1 for _ in range(n_phases)]
 
     vij_per_phase = [
-        compute_vij(initial_rhos[p], kernel="uniform")
+        compute_vij(initial_rhos[p], kernel_type="uniform")
         for p in range(n_phases)
     ]
     
@@ -723,7 +724,7 @@ def coexistence_densities_isocore(
 
         # Update vij
         vij_per_phase = [
-            compute_vij(rhos_per_phase[p], kernel=integrated_strength_kernel)
+            compute_vij(rhos_per_phase[p], kernel_type=integrated_strength_kernel)
             for p in range(n_phases)
         ]
 
