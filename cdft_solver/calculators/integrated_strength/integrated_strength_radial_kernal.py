@@ -4,242 +4,146 @@ import json
 from pathlib import Path
 from scipy.interpolate import interp1d
 from collections.abc import Mapping
-from collections.abc import Mapping
-from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
-from cdft_solver.generators.potential_splitter.mf import meanfield_potentials 
-from cdft_solver.generators.potential_splitter.total import total_potentials
+
+from cdft_solver.generators.potential_splitter.mf import meanfield_potentials
+
 
 def vij_radial_kernel(
     ctx,
     config,
     kernel,
-    supplied_data = None,
     export_json=False,
     filename="vij_integrated.json",
 ):
     """
-    Compute v_ij = ∫ 4π r^2 K_ij(r) U_ij(r) dr
-    with grid mismatch handled by interpolation.
-
-    Parameters
-    ----------
-    ctx : object
-        Must have ctx.scratch_dir if export_json=True
-    config : dict
-        Input configuration for mean-field potentials
-    kernel : dict
-        {(s1, s2): {"r": array, "values": array}}
-    r_min, r_max : float, optional
-        Integration bounds
-    n_grid : int
-        Number of points in common grid
-    export_json : bool
-        Export numeric results to JSON
-    filename : str
-        JSON output file
+    Compute:
+        v_ij = ∫ 4π r² K_ij(r) U_ij(r) dr
 
     Returns
     -------
-    dict
-        {
-            "species": [...],
-            "vij_symbols": [[sympy.Symbol]],
-            "vij_numeric": {(s1, s2): float}
-        }
+    dict with keys:
+        species
+        vij_symbols
+        vij_numeric
     """
 
-    # -------------------------
-    # Recursive key search
-    # -------------------------
+    # --------------------------------------------------
+    # Utility: recursive config lookup
+    # --------------------------------------------------
     def find_key_recursive(obj, key):
         if isinstance(obj, Mapping):
             if key in obj:
                 return obj[key]
             for v in obj.values():
-                found = find_key_recursive(v, key)
-                if found is not None:
-                    return found
+                out = find_key_recursive(v, key)
+                if out is not None:
+                    return out
         elif isinstance(obj, (list, tuple)):
-            for item in obj:
-                found = find_key_recursive(item, key)
-                if found is not None:
-                    return found
+            for v in obj:
+                out = find_key_recursive(v, key)
+                if out is not None:
+                    return out
         return None
 
+    # --------------------------------------------------
+    # Read config
+    # --------------------------------------------------
     species = find_key_recursive(config, "species")
-    species_names = species
-    beta = find_key_recursive(config, "beta")
+    beta    = find_key_recursive(config, "beta")
+
     if species is None:
         raise ValueError("Species list not found in config")
 
-    n_species = len(species)
-    n_grid=5000
+    if beta is None:
+        raise ValueError("Beta not found in config")
 
-    # -------------------------
-    # Symbolic v_ij matrix
-    # -------------------------
+    n_species = len(species)
+
+    # --------------------------------------------------
+    # Symbolic matrix
+    # --------------------------------------------------
     vij_symbols = [
         [sp.symbols(f"v_{species[i]}_{species[j]}") for j in range(n_species)]
         for i in range(n_species)
     ]
 
     vij_numeric = {}
+    n_grid=5000,
 
-    # -------------------------
-    # Mean-field potentials (user must provide function or module)
-    # -------------------------
-    
+    # --------------------------------------------------
+    # Mean-field potentials
+    # --------------------------------------------------
     mf_data = meanfield_potentials(
         ctx=ctx,
         input_data=config,
-        grid_points = n_grid,
+        grid_points=n_grid,
         file_name_prefix="mf.json",
-        export_files=True
+        export_files=True,
     )
 
     potential_dict = mf_data["potentials"]
-    
-    r = np.linspace(0, 5, n_grid)
-    n = len(species)
-    u_matrix = np.zeros((n, n, n_grid))
-    
-   
-    
+
+    # --------------------------------------------------
+    # Build U_dict[(si, sj)] = {r, U}
+    # --------------------------------------------------
+    U_dict = {}
+
     for i, si in enumerate(species):
-        for j in range(i, n):   # <-- only j >= i
-            sj = species[j]
+        for j, sj in enumerate(species[i:], start=i):
 
             key_ij = si + sj
             key_ji = sj + si
 
-            pdata = (
-                potential_dict.get(key_ij)
-                or potential_dict.get(key_ji)
-            )
-
+            pdata = potential_dict.get(key_ij) or potential_dict.get(key_ji)
             if pdata is None:
-                raise KeyError(
-                    f"Missing potential for pair '{si}-{sj}' "
-                    f"(expected '{key_ij}' or '{key_ji}')"
-                )
+                raise KeyError(f"Missing MF potential for pair {si}-{sj}")
 
-            # interpolate once
-            r = pdata["r"] 
+            r = np.asarray(pdata["r"], dtype=float)
+            U = beta * np.asarray(pdata["U"], dtype=float)
 
-            u_val = beta * pdata["U"]
+            U_dict[(si, sj)] = {"r": r, "U": U}
+            U_dict[(sj, si)] = {"r": r, "U": U}
 
-            # symmetric assignment
-            u_matrix[i, j, :] = u_val
-            u_matrix[j, i, :] = u_val
-            
-            
-           
-    
-    
-    
-    U_dict = {}
-    for i, si in enumerate(species_names):
-        for j, sj in enumerate(species_names):
-            U_dict[(si, sj)] = {"r": r, "U": u_matrix[i, j, :]}
-    
-    
-
-    # -------------------------
-    # Loop over species pairs (use symmetry)
-    # -------------------------
+    # --------------------------------------------------
+    # Integration loop
+    # --------------------------------------------------
     for i, si in enumerate(species):
-        for j, sj in enumerate(species[i:], start=i):  # j >= i
-            # Try both orders
-            key = (si, sj)
-            rkey = (sj, si)
-
-            if key in kernel and key in U_dict:
-                ker_data = kernel[key]
-                U_data   = U_dict[key]
-            elif rkey in kernel and rkey in U_dict:
-                ker_data = kernel[rkey]
-                U_data   = U_dict[rkey]
-            else:
-                raise KeyError(f"Missing kernel or U for pair {si}-{sj}")
-
-            rk = np.asarray(ker_data["r"], dtype=float)
-            K  = np.asarray(ker_data["values"], dtype=float)
-
-            ru = np.asarray(U_data["r"], dtype=float)
-            Uv = np.asarray(U_data["U"], dtype=float)
-
-            # -------------------------
-            # Common grid
-            # -------------------------
-            r_lo = max(rk.min(), ru.min())
-            r_hi = min(rk.max(), ru.max())
-            if r_hi <= r_lo:
-                raise ValueError(f"No overlapping r-domain for pair {si}-{sj}")
-
-            r_common = np.linspace(r_lo, r_hi, n_grid)
-
-            # -------------------------
-            # Interpolation
-            # -------------------------
-            Kc = interp1d(rk, K, kind="linear", bounds_error=False, fill_value=0.0)(r_common)
-            Uc = interp1d(ru, Uv, kind="linear", bounds_error=False, fill_value=0.0)(r_common)
-
-
-            
-            print(Uc)
-            print(Kc)
-            print (r_common)
-            # -------------------------
-            # Radial integral
-            # -------------------------
-            vij_val = float(np.trapz(4.0 * np.pi * r_common**2 * Kc * Uc, r_common))
-            
-            print( vij_val )
-
-
-            print("∫U(r)dr =", np.trapz(Uc, r_common))
-            print("∫4πr²U(r)dr =", np.trapz(4*np.pi*r_common**2 * Uc, r_common))
-
-            # Assign symmetric
-            vij_numeric[key] = vij_val
-            vij_numeric[rkey] = vij_val
-        
-    scratch = Path(ctx.scratch_dir)
-    
-    for i, si in enumerate(species):
-        for j, sj in enumerate(species[i:], start=i):  # j >= i
+        for j, sj in enumerate(species[i:], start=i):
 
             key = (si, sj)
             rkey = (sj, si)
 
-            if key in kernel and key in U_dict:
-                ker_data = kernel[key]
-                U_data   = U_dict[key]
-            elif rkey in kernel and rkey in U_dict:
-                ker_data = kernel[rkey]
-                U_data   = U_dict[rkey]
+            if key in kernel:
+                ker = kernel[key]
+                Udat = U_dict[key]
+            elif rkey in kernel:
+                ker = kernel[rkey]
+                Udat = U_dict[rkey]
             else:
-                raise KeyError(f"Missing kernel or U for pair {si}-{sj}")
+                raise KeyError(f"Missing kernel for pair {si}-{sj}")
 
-            rk = np.asarray(ker_data["r"], dtype=float)
-            K  = np.asarray(ker_data["values"], dtype=float)
+            rk = np.asarray(ker["r"], dtype=float)
+            K  = np.asarray(ker["values"], dtype=float)
 
-            ru = np.asarray(U_data["r"], dtype=float)
-            Uv = np.asarray(U_data["U"], dtype=float)
+            ru = np.asarray(Udat["r"], dtype=float)
+            Uv = np.asarray(Udat["U"], dtype=float)
 
-            # -------------------------
-            # Common grid
-            # -------------------------
+            # Overlapping domain
             r_lo = max(rk.min(), ru.min())
             r_hi = min(rk.max(), ru.max())
+
             if r_hi <= r_lo:
-                raise ValueError(f"No overlapping r-domain for pair {si}-{sj}")
+                raise ValueError(f"No overlapping r-domain for {si}-{sj}")
 
             r_common = np.linspace(r_lo, r_hi, n_grid)
 
-            # -------------------------
-            # Interpolation
-            # -------------------------
+            Kc = interp1d(
+                rk, K,
+                kind="linear",
+                bounds_error=False,
+                fill_value=0.0
+            )(r_common)
+
             Uc = interp1d(
                 ru, Uv,
                 kind="linear",
@@ -247,39 +151,46 @@ def vij_radial_kernel(
                 fill_value=0.0
             )(r_common)
 
-            # -------------------------
-            # Export
-            # -------------------------
-            fname = scratch  / f"matrixU_{si}_{sj}.npz"
-            np.savez(
-                fname,
-                r=r,
-                U=u_matrix[i, j, :],
-                pair=f"hh_{si}-{sj}"
+            vij = float(
+                np.trapz(4.0 * np.pi * r_common**2 * Kc * Uc, r_common)
             )
 
-            print(f"✅ exported {fname}")
-    # -------------------------
+            vij_numeric[key]  = vij
+            vij_numeric[rkey] = vij
+
+    # --------------------------------------------------
+    # Export U(r) matrices
+    # --------------------------------------------------
+    scratch = Path(ctx.scratch_dir)
+    scratch.mkdir(parents=True, exist_ok=True)
+
+    for i, si in enumerate(species):
+        for j, sj in enumerate(species[i:], start=i):
+
+            Udat = U_dict[(si, sj)]
+
+            fname = scratch / f"U_{si}_{sj}.npz"
+            np.savez(
+                fname,
+                r=Udat["r"],
+                U=Udat["U"],
+                pair=f"{si}-{sj}",
+            )
+
+    # --------------------------------------------------
     # Optional JSON export
-    # -------------------------
+    # --------------------------------------------------
     if export_json:
-        if ctx is None or not hasattr(ctx, "scratch_dir"):
-            raise ValueError("ctx with scratch_dir required for JSON export")
-
-        scratch = Path(ctx.scratch_dir)
-        scratch.mkdir(parents=True, exist_ok=True)
-        out_file = scratch / filename
-
-        with open(out_file, "w") as f:
+        out = scratch / filename
+        with open(out, "w") as f:
             json.dump(
                 {
                     "species": species,
-                    "vij": {f"{k[0]}_{k[1]}": v for k, v in vij_numeric.items()}
+                    "vij": {f"{k[0]}_{k[1]}": v for k, v in vij_numeric.items()},
                 },
                 f,
                 indent=4,
             )
-        print(f"✅ Integrated v_ij exported to {out_file}")
 
     return {
         "species": species,
