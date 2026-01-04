@@ -263,14 +263,17 @@ def multi_component_oz_solver_alpha(
         diff = np.max(np.abs(delta_gamma))
 
         # --- Adaptive mixing
-        if diff < prev_diff:
-            alpha = min(alpha * 1.05, alpha_rdf_max)
-        else:
-            alpha = max(alpha * 0.5, 1e-2)
+       
 
         gamma_r = (1 - alpha) * gamma_r + alpha * gamma_new
 
         if step % 10 == 0 or diff < tol:
+        
+            if diff < prev_diff:
+                alpha = min(alpha * 1.05, alpha_rdf_max)
+            else:
+                alpha = max(alpha * 0.5, 1e-2)
+        
             print(f"{step:6d} | {diff:12.3e} | {alpha:6.4f}")
 
         if diff < tol:
