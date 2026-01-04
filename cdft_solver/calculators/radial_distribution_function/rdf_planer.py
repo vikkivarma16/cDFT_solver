@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.special import j0
 
 from .closure import closure_update_c_matrix
-from .rdf_isotropic import find_key_recursive
+from .rdf_radial import find_key_recursive
 
 # -------------------------------------------------
 # Hankel DST transforms (radial)
