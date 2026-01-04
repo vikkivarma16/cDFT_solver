@@ -8,7 +8,6 @@ from collections.abc import Mapping
 from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
 from cdft_solver.generators.potential_splitter.mf import meanfield_potentials 
 from cdft_solver.generators.potential_splitter.total import total_potentials
-from cdft_solver.calculators.radial_distribution_function.rdf_radial import rdf_radial
 
 def vij_radial_kernel(
     ctx,
@@ -87,7 +86,7 @@ def vij_radial_kernel(
     # -------------------------
     # Mean-field potentials (user must provide function or module)
     # -------------------------
-    from cdft_solver.calculators.potentials.meanfield import meanfield_potentials
+    
     mf_data = meanfield_potentials(
         ctx=ctx,
         input_data=config,
