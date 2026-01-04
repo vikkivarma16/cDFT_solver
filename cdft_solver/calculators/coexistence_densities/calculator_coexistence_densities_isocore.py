@@ -330,10 +330,6 @@ def coexistence_densities_isocore(
     # ============================================================
     # Species ordering logic (heterogeneous-pair aware)
     # ============================================================
-
-   
-
-    
     
     # --------------------------------------------------------
     # 6) REDUCED VARIABLES
@@ -510,7 +506,7 @@ def coexistence_densities_isocore(
         for _ in range(n_phases):
             guess.append(np.random.uniform(eps_rho, total_density_bound))
             for _ in range(M):
-                guess.append(np.random.uniform(eps_x, 1.0 - eps_x))
+                guess.append(np.random.uniform(0, 1.0))
 
         remaining = 1.0
         for _ in range(n_phases - 1):
@@ -607,21 +603,19 @@ def coexistence_densities_isocore(
                 n_phases, total_density_bound, N
             )
 
-            try:
-                sol = root(
-                    lambda v: coexistence_residual_isocore(
-                        v,
-                        n_phases,
-                        species_names,
-                        pvec,
-                        eval_mue_pressure_fn,
-                    ),
-                    guess,
-                    method="hybr",
-                )
-            except Exception:
-                #print(attempt)
-                continue
+            
+            sol = root(
+                lambda v: coexistence_residual_isocore(
+                    v,
+                    n_phases,
+                    species_names,
+                    pvec,
+                    eval_mue_pressure_fn,
+                ),
+                guess,
+                method="hybr",
+            )
+            
 
             if not sol.success:
                 if verbose and attempt % 2000 == 0:
