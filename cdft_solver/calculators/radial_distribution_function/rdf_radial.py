@@ -375,12 +375,29 @@ def rdf_radial(
     closure_cfg = rdf_block.get("closure", {})
     pair_closures = np.empty((N, N), dtype=object)
 
+    n = len(species)
+    pair_closures = np.empty((n, n), dtype=object)
+
     for i, si in enumerate(species):
-        for j, sj in enumerate(species):
-            key = f"{si}{sj}"
-            if key not in closure_cfg:
-                raise KeyError(f"Missing closure for pair '{key}'")
-            pair_closures[i, j] = closure_cfg[key]
+        for j in range(i, n):   # <-- j starts from i
+            sj = species[j]
+
+            key_ij = f"{si}{sj}"
+            key_ji = f"{sj}{si}"
+
+            if key_ij in closure_cfg:
+                closure = closure_cfg[key_ij]
+            elif key_ji in closure_cfg:
+                closure = closure_cfg[key_ji]
+            else:
+                raise KeyError(
+                    f"Missing closure for pair '{key_ij}' or '{key_ji}'"
+                )
+
+            # assign symmetrically
+            pair_closures[i, j] = closure
+            pair_closures[j, i] = closure
+
 
     # -----------------------------
     # Potentials
