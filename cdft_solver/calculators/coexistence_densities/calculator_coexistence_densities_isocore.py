@@ -353,7 +353,7 @@ def coexistence_densities_isocore(
     
 
     def compute_vij(densities, kernel_type):
-        print("\n\n\n !!!!!!!!!!        applied kernel        !!!!!!!!\n\n\n\n", kernel_type)
+        print("\n\n\napplied kernel:", kernel_type, "\n\n")
         kernel_out = build_strength_kernel(
             ctx=ctx,
             config=config_dict,

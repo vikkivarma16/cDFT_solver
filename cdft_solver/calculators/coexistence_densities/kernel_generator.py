@@ -115,7 +115,7 @@ def  build_strength_kernel(
     # ==================================================
     system = config
     if kernel_type == "rdf":
-        print("🔄 Computing RDF-based integrated strength kernel")
+        print("🔄 Computing RDF-based integrated strength kernel for density:", densities)
         
         
         
