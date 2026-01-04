@@ -11,7 +11,7 @@ def  build_strength_kernel(
             supplied_data= None,
             densities= [0.1, 0.1, 0.1],
             kernel_type = "uniform",
-        )
+        ):
     """
     Dispatcher for integrated strength kernel.
 
