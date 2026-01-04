@@ -446,7 +446,7 @@ def rdf_radial(
     # -----------------------------
     # Sigma matrix
     # -----------------------------
-    sigma_matrix = np.zeros((N, N)) if sigma is None else sigma
+    sigma_matrix = np.zeros((N, N)) if sigma is None else np.array (sigma)
     
     
     print(sigma_matrix)
