@@ -629,24 +629,27 @@ def rdf_radial(
         plots = Path(ctx.plots_dir)
         plots.mkdir(parents=True, exist_ok=True)
 
+        # Convert densities array to a filename-friendly string
+        rho_str = "_".join(f"{rho:.3f}" for rho in densities)
+
         plot_matrix_quantity(
             r, g_r, u_matrix, species,
             title_prefix="g(r)",
-            filename=f"{filename_prefix}_gr_matrix.png",
+            filename=f"{filename_prefix}_gr_matrix_rho_{rho_str}.png",
             plots_dir=plots
         )
 
         plot_matrix_quantity(
             r, c_r, u_matrix, species,
             title_prefix="c(r)",
-            filename=f"{filename_prefix}_cr_matrix.png",
+            filename=f"{filename_prefix}_cr_matrix_rho_{rho_str}.png",
             plots_dir=plots
         )
 
         plot_matrix_quantity(
             r, gamma_r, u_matrix, species,
             title_prefix="γ(r)",
-            filename=f"{filename_prefix}_gammar_matrix.png",
+            filename=f"{filename_prefix}_gammar_matrix_rho_{rho_str}.png",
             plots_dir=plots
         )
 
