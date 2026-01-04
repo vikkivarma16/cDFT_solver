@@ -201,6 +201,10 @@ def vij_radial_kernel(
             
             print( vij_val )
 
+
+            print("∫U(r)dr =", np.trapz(Uc, r_common))
+            print("∫4πr²U(r)dr =", np.trapz(4*np.pi*r_common**2 * Uc, r_common))
+
             # Assign symmetric
             vij_numeric[key] = vij_val
             vij_numeric[rkey] = vij_val
