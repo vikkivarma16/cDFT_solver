@@ -294,6 +294,44 @@ def multi_component_oz_solver_alpha(
     return c_r, gamma_r, g_r
 
 
+def apply_adaptive_ylim(ax, ydata, limit=10, clip=5):
+    ymax = np.nanmax(np.abs(ydata))
+    if ymax > limit:
+        ax.set_ylim(-clip, clip)
+def plot_matrix_quantity(
+    r, quantity, u_matrix, species, title_prefix, filename, plots_dir
+):
+    n = len(species)
+    fig, axes = plt.subplots(n, n, figsize=(3*n, 3*n), sharex=True)
+
+    if n == 1:
+        axes = np.array([[axes]])
+
+    for i, si in enumerate(species):
+        for j, sj in enumerate(species):
+            ax = axes[i, j]
+
+            y = quantity[i, j]
+            ax.plot(r, y, label="value")
+            ax.plot(r, u_matrix[i, j], "--", alpha=0.7, label="u(r)")
+
+            apply_adaptive_ylim(ax, y)
+
+            if i == n - 1:
+                ax.set_xlabel("r")
+            if j == 0:
+                ax.set_ylabel(f"{si}")
+
+            ax.set_title(f"{si}-{sj}", fontsize=9)
+            ax.grid(alpha=0.3)
+
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper right")
+    fig.suptitle(title_prefix, fontsize=14)
+    fig.tight_layout(rect=[0, 0, 0.95, 0.95])
+
+    fig.savefig(Path(plots_dir) / filename, dpi=300)
+    plt.close(fig)
 
 
 
@@ -404,7 +442,7 @@ def rdf_radial(
     # -----------------------------
     u_matrix = np.zeros((N, N, len(r)))
     
-    #print (potential_dict)
+    print (pair_closures)
     
 
     n = len(species)
@@ -591,47 +629,27 @@ def rdf_radial(
         plots = Path(ctx.plots_dir)
         plots.mkdir(parents=True, exist_ok=True)
 
-        for i, si in enumerate(species):
-            for j, sj in enumerate(species):
-                plt.figure(figsize=(5, 4))
-                plt.plot(r, g_r[i, j], label="g(r)")
-                plt.plot(r, u_matrix[i, j], "--", label="u(r)")
-                plt.title(f"{si}-{sj}")
-                plt.xlabel("r")
-                plt.ylim(-5, 5)
-                plt.legend()
-                plt.grid(alpha=0.3)
-                plt.tight_layout()
-                plt.savefig(plots / f"{filename_prefix}_gr_{si}_{sj}.png", dpi=300)
-                plt.close()
-                
-        for i, si in enumerate(species):
-            for j, sj in enumerate(species):
-                plt.figure(figsize=(5, 4))
-                plt.plot(r, c_r[i, j], label="g(r)")
-                plt.plot(r, u_matrix[i, j], "--", label="u(r)")
-                plt.title(f"{si}-{sj}")
-                plt.ylim(-5, 5)
-                plt.xlabel("r")
-                plt.legend()
-                plt.grid(alpha=0.3)
-                plt.tight_layout()
-                plt.savefig(plots / f"{filename_prefix}_cr_{si}_{sj}.png", dpi=300)
-                plt.close()
-                
-        for i, si in enumerate(species):
-            for j, sj in enumerate(species):
-                plt.figure(figsize=(5, 4))
-                plt.plot(r, gamma_r[i, j], label="g(r)")
-                plt.plot(r, u_matrix[i, j], "--", label="u(r)")
-                plt.title(f"{si}-{sj}")
-                plt.xlabel("r")
-                plt.legend()
-                plt.ylim(-5, 5)
-                plt.grid(alpha=0.3)
-                plt.tight_layout()
-                plt.savefig(plots / f"{filename_prefix}_gammar_{si}_{sj}.png", dpi=300)
-                plt.close()
+        plot_matrix_quantity(
+            r, g_r, u_matrix, species,
+            title_prefix="g(r)",
+            filename=f"{filename_prefix}_gr_matrix.png",
+            plots_dir=plots
+        )
+
+        plot_matrix_quantity(
+            r, c_r, u_matrix, species,
+            title_prefix="c(r)",
+            filename=f"{filename_prefix}_cr_matrix.png",
+            plots_dir=plots
+        )
+
+        plot_matrix_quantity(
+            r, gamma_r, u_matrix, species,
+            title_prefix="γ(r)",
+            filename=f"{filename_prefix}_gammar_matrix.png",
+            plots_dir=plots
+        )
+
 
     return rdf_out
 
