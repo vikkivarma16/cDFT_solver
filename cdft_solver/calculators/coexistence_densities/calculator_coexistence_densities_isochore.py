@@ -33,7 +33,7 @@ def coexistence_densities_isochore(ctx, max_outer_iters=10, tol_outer=1e-3,
     from cdft_solver.calculators.integrated_strength_void.calculator_integrated_strength_void_supplied_data import vk_void_supplied_data
     from cdft_solver.calculators.integrated_strength_rdf.calculator_integrated_strength_rdf import vk_rdf
     from cdft_solver.calculators.integrated_strength_rdf.calculator_integrated_strength_rdf_supplied_data import vk_rdf_supplied_data
-    from cdft_solver.calculators.total_free_energy.calculator_total_free_energy import total_free_energy
+    from cdft_solver.calculators.total_free_energy.total_free_energy import total_free_energy
 
     # --------------------------
     # 1) read ensemble from input file (must be isochore)

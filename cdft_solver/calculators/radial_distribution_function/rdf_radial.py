@@ -11,7 +11,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import re
 
-from .closer import closure_update_c_matrix
+from .closure import closure_update_c_matrix
 
 
 

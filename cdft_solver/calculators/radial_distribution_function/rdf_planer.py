@@ -4,7 +4,7 @@ from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 from scipy.special import j0
 
-from .closer import closure_update_c_matrix
+from .closure import closure_update_c_matrix
 from .rdf_isotropic import find_key_recursive
 
 # -------------------------------------------------

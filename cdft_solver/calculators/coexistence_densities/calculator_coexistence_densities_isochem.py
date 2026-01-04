@@ -7,6 +7,8 @@ import sympy as sp
 from scipy.optimize import root
 import random
 from copy import deepcopy
+from cdft_solver.calculator.coexistence_densities.kernel_generator import build_strength_kernel
+from cdft_solver.calculators.integrated_strength.integrated_strength_radial_kernal import vij_radial_kernel
 
 # ============================================================
 # GLOBAL
@@ -51,12 +53,130 @@ def deep_get_all(data, key):
     return found
 
 
+def build_thermodynamics_from_fe_res(fe_res):
+    """
+    Given a free-energy result dictionary (from JSON),
+    reconstruct SymPy objects and compute chemical potentials
+    and pressure.
+
+    Parameters
+    ----------
+    fe_res : dict
+        Free energy JSON dictionary
+
+    Returns
+    -------
+    dict with:
+        - density_symbols
+        - vij_symbols
+        - free_energy
+        - mu_expressions
+        - pressure_expression
+        - eval_mu_pressure(rho, vij)
+    """
+
+    # --------------------------------------------------------
+    # 1) Reconstruct symbols
+    # --------------------------------------------------------
+    
+    variables = deep_get(fe_res, "variables", [])
+    expr_str = deep_get(fe_res, "expression")
+
+    if expr_str is None:
+        raise ValueError("Free energy expression not found in fe_res")
+
+    symbols = {}
+    for v in variables:
+        name = v["name"]
+        symbols[name] = sp.Symbol(name)
+
+    # --------------------------------------------------------
+    # 2) Reconstruct free-energy expression
+    # --------------------------------------------------------
+    f_sym = sp.sympify(expr_str, locals=symbols)
+
+    # --------------------------------------------------------
+    # 3) Identify density and interaction variables
+    # --------------------------------------------------------
+    density_syms = sorted(
+        [s for s in symbols.values() if s.name.startswith("rho_")],
+        key=lambda s: s.name
+    )
+
+    vij_syms = sorted(
+        [s for s in symbols.values() if s.name.startswith("v_")],
+        key=lambda s: s.name
+    )
+
+    if not density_syms:
+        raise ValueError("No density variables (rho_*) found")
+
+    # --------------------------------------------------------
+    # 4) Chemical potentials
+    # --------------------------------------------------------
+    mu_syms = [sp.diff(f_sym, rho) for rho in density_syms]
+
+    # --------------------------------------------------------
+    # 5) Pressure
+    #     P = -f + sum_i rho_i * mu_i
+    # --------------------------------------------------------
+    pressure_sym = -f_sym + sum(r * mu for r, mu in zip(density_syms, mu_syms))
+
+    # --------------------------------------------------------
+    # 6) Numerical evaluators
+    # --------------------------------------------------------
+    all_args = density_syms + vij_syms
+
+    mu_funcs = [sp.lambdify(all_args, mu, "numpy") for mu in mu_syms]
+    pressure_func = sp.lambdify(all_args, pressure_sym, "numpy")
+
+    def eval_mu_pressure(rho, vij):
+        """
+        Parameters
+        ----------
+        rho : array_like, shape (Ns,)
+            Densities in the same order as density_syms
+        vij : array_like, shape (Ns, Ns) or flat
+            Pair interactions
+
+        Returns
+        -------
+        mu : ndarray
+            Chemical potentials
+        P : float
+            Pressure
+        """
+        rho = np.asarray(rho, dtype=float)
+
+        vij = np.asarray(vij, dtype=float)
+        if vij.ndim == 2:
+            vij = vij.reshape(-1)
+
+        args = np.concatenate([rho, vij])
+
+        mu = np.array([f(*args) for f in mu_funcs])
+        P = pressure_func(*args)
+
+        return mu, P
+
+    return {
+        "density_symbols": density_syms,
+        "vij_symbols": vij_syms,
+        "free_energy": f_sym,
+        "mu_expressions": mu_syms,
+        "pressure_expression": pressure_sym,
+        "eval_mu_pressure": eval_mu_pressure,
+    }
+
+
+
 # ============================================================
 # MAIN SOLVER
 # ============================================================
 def coexistence_densities_isochem(
     ctx,
     config_dict,
+    fe_res,
     max_outer_iters=10,
     tol_outer=1e-3,
     tol_solver=1e-8,
@@ -256,49 +376,6 @@ def coexistence_densities_isochem(
 
     
     
-    
-    from cdft_solver.calculators.total_free_energy.calculator_total_free_energy import (
-        total_free_energy
-    )
-
-    fe_res = total_free_energy(ctx)
-
-    def _maybe_eval(x):
-        if isinstance(x, str):
-            try:
-                return ast.literal_eval(x)
-            except Exception:
-                return x
-        return x
-
-    species = _maybe_eval(fe_res["species"])
-    densities_names = _maybe_eval(
-        fe_res.get("densities", fe_res.get("densities_symbols"))
-    )
-    vij_raw = _maybe_eval(fe_res["vij"])
-    f_sym = sp.sympify(fe_res["free_energy_symbolic"])
-
-    N = len(species)
-
-    density_syms = [sp.Symbol(n) for n in densities_names]
-    vij_syms = [sp.Symbol(n) for row in vij_raw for n in row]
-
-    # --------------------------------------------------------
-    # 5) CHEMICAL POTENTIALS & PRESSURE
-    # --------------------------------------------------------
-    mue_syms = [sp.diff(f_sym, rho) for rho in density_syms]
-    pressure_sym = -f_sym + sum(r * mu for r, mu in zip(density_syms, mue_syms))
-
-    all_args = density_syms + vij_syms
-
-    mue_funcs = [sp.lambdify(all_args, mu, "numpy") for mu in mue_syms]
-    pressure_func = sp.lambdify(all_args, pressure_sym, "numpy")
-
-    def eval_mue_pressure(rho, vij):
-        args = np.concatenate([rho, vij.reshape(-1)])
-        mu = np.array([f(*args) for f in mue_funcs])
-        p = pressure_func(*args)
-        return mu, p
 
     # --------------------------------------------------------
     # 6) REDUCED VARIABLES
@@ -321,8 +398,7 @@ def coexistence_densities_isochem(
     # --------------------------------------------------------
     # 7) vᵢⱼ COMPUTATION (UNIFIED)
     # --------------------------------------------------------
-    from cdft_solver.dispatchers.strength_kernel_dispatcher import build_strength_kernel
-    from cdft_solver.calculators.vij_integrated.vij_radial_kernel import vij_radial_kernel
+    
 
     def compute_vij(densities, kernal ):
         kernel_out = build_strength_kernel(
