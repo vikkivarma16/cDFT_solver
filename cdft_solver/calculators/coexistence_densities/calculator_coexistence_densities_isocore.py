@@ -514,7 +514,7 @@ def coexistence_densities_isocore(
             guess.append(val)
             remaining = max(remaining - val, eps_rho)
             
-        print("look if it is correct", len(guess))
+        print("look if it is correct", len(guess), n_phases)
 
         return np.asarray(guess)
 
