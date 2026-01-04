@@ -128,30 +128,28 @@ def process_supplied_rdf(supplied_data, species, r_grid):
 
 
 def hankel_forward_dst(f_r, r):
-    """Forward 3D Hankel transform using DST-I mapping."""
     N = len(r)
     dr = r[1] - r[0]
     Rmax = (N + 1) * dr
     k = np.pi * np.arange(1, N + 1) / Rmax
-
     x = r * f_r
     X = dst(x, type=1)
     Fk = (2.0 * np.pi * dr / k) * X
     return k, Fk
 
-
 def hankel_inverse_dst(k, Fk, r):
-    """Inverse 3D Hankel transform using IDST-I mapping."""
     N = len(r)
     dr = r[1] - r[0]
     Rmax = (N + 1) * dr
     dk = np.pi / Rmax
-
     Y = k * Fk
     y = idst(Y, type=1)
-    f_r = (dk / (4.0 * np.pi**2 * r)) * y
+    f_r = np.zeros_like(r)
+    nonzero = ~np.isclose(r, 0.0)
+    f_r[nonzero] = (dk / (4.0 * np.pi**2 * r[nonzero])) * y[nonzero]
+    if np.isclose(r[0], 0.0) and len(r) > 1:
+        f_r[0] = f_r[1]
     return f_r
-
 
 def hankel_transform_matrix_fast(f_r_matrix, r):
     N = f_r_matrix.shape[0]
@@ -162,7 +160,6 @@ def hankel_transform_matrix_fast(f_r_matrix, r):
             k, Fk = hankel_forward_dst(f_r_matrix[a, b, :], r)
             f_k_matrix[a, b, :] = Fk
     return f_k_matrix, k
-
 
 def inverse_hankel_transform_matrix_fast(f_k_matrix, k, r):
     N = f_k_matrix.shape[0]
