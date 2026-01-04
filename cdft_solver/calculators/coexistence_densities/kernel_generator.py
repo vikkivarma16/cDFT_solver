@@ -6,7 +6,7 @@ from cdft_solver.generators.rdf_isotropic import rdf_isotropic
 
 
 def  build_strength_kernel(
-            ctx=ctx,
+            ctx,
             config,
             supplied_data= None,
             densities= [0.1, 0.1, 0.1],
