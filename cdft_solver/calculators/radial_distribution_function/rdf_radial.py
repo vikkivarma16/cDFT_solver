@@ -315,7 +315,7 @@ def plot_matrix_quantity(
             ax.plot(r, y, label="value")
             ax.plot(r, u_matrix[i, j], "--", alpha=0.7, label="u(r)")
 
-            apply_adaptive_ylim(ax, y)
+            apply_adaptive_ylim(ax, u_matrix[i, j])
 
             if i == n - 1:
                 ax.set_xlabel("r")
