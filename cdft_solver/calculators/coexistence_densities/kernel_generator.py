@@ -1,7 +1,7 @@
 # cdft_solver/dispatchers/strength_kernel_dispatcher.py
 
 import numpy as np
-
+from collections.abc import Mapping
 from cdft_solver.calculators.radial_distribution_function.rdf_radial import rdf_radial
 
 
