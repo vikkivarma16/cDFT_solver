@@ -108,6 +108,20 @@ def hard_core_potentials(
                 explicit[i, j] = explicit[j, i] = True
 
 
+    # --------------------------------------------------------
+    # Propagate hard-core flags from self pairs
+    # If aa or bb has hard-core → ab must also be hard-core
+    # --------------------------------------------------------
+    n = len(species)
+
+    for i in range(n):
+        for j in range(i + 1, n):  # check each pair once
+            if flag[i, j] == 0:
+                if flag[i, i] == 1 or flag[j, j] == 1:
+                    flag[i, j] = flag[j, i] = 1
+
+    
+
     # -------------------------
     # Off-diagonal additive rule
     # -------------------------
