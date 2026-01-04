@@ -71,7 +71,7 @@ def vij_radial_kernel(
         raise ValueError("Species list not found in config")
 
     n_species = len(species)
-    n_grid=5000,
+    n_grid=5000
 
     # -------------------------
     # Symbolic v_ij matrix
@@ -90,7 +90,7 @@ def vij_radial_kernel(
     mf_data = meanfield_potentials(
         ctx=ctx,
         input_data=config,
-        grid_points=n_grid,
+        grid_points = n_grid,
         file_name_prefix="supplied_data_potential_mf.json",
         export_files=False
     )
