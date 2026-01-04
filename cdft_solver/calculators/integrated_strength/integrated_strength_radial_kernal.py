@@ -161,6 +161,7 @@ def vij_radial_kernel(
     # --------------------------------------------------
     # Export U(r) matrices
     # --------------------------------------------------
+    '''
     scratch = Path(ctx.scratch_dir)
     scratch.mkdir(parents=True, exist_ok=True)
 
@@ -177,6 +178,7 @@ def vij_radial_kernel(
                 pair=f"{si}-{sj}",
             )
 
+    '''
     # --------------------------------------------------
     # Optional JSON export
     # --------------------------------------------------
