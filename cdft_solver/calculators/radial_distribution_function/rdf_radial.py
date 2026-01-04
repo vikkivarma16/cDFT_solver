@@ -431,7 +431,7 @@ def rdf_radial(
             # interpolate once
             interp_u = interp1d(
                 pdata["r"],
-                pdata["u"],
+                pdata["U"],
                 bounds_error=False,
                 fill_value=0.0,
                 assume_sorted=True,
