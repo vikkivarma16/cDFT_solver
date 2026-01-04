@@ -157,7 +157,7 @@ def  build_strength_kernel(
             filename_prefix="rdf",
         )
 
-        species = config["rdf_parameters"]["species"]
+        species = find_key_recursive(system_cfg, "species")
         Nr =  grid["n_points"]
         kernel = np.zeros((N, N, Nr))
 
