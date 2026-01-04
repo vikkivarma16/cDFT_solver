@@ -83,8 +83,6 @@ def build_thermodynamics_from_fe_res(fe_res):
     expr_str = deep_get(fe_res, "expression")
     
     
-    print (variables)
-
     if expr_str is None:
         raise ValueError("Free energy expression not found in fe_res")
 
@@ -521,50 +519,6 @@ def coexistence_densities_isocore(
         return np.asarray(guess)
 
     
-    def get_species_order(species_names, heterogeneous_pairs):
-        """
-        Builds a stable species ordering based on heterogeneous-pair constraints.
-
-        heterogeneous_pairs:
-            list of strings like ["ab", "ac"] meaning species a and b
-            should be adjacent in ordering.
-        """
-        ordered = list(species_names)
-
-        for pair in heterogeneous_pairs:
-            pair = pair.strip()
-            if len(pair) != 2:
-                continue
-
-            s1, s2 = pair[0], pair[1]
-            if s1 in ordered and s2 in ordered:
-                ordered.remove(s2)
-                idx = ordered.index(s1)
-                ordered.insert(idx + 1, s2)
-
-        reshuffle_back = [species_names.index(s) for s in ordered]
-        restore_original = [ordered.index(s) for s in species_names]
-
-        return ordered, reshuffle_back, restore_original
-
-
-    def reorder_to_original_order(rho, restore_original):
-        """Reorder densities back to original species order."""
-        return [rho[i] for i in restore_original]
-
-
-    # ============================================================
-    # Build ordering maps
-    # ============================================================
-
-    species_ordered, reshuffle_back, restore_original = get_species_order(
-        species_names, heterogeneous_pair
-    )
-
-    
-    
-    print(pvec)
-
     # ============================================================
     # General coexistence solver
     # ============================================================
