@@ -9,6 +9,7 @@ def py_closure(r, gamma, u, sigma_ab=None):
 
 
 def hnc_closure(r, gamma, u, sigma_ab=None):
+    print("HI I am being accessed")
     return safe_exp(- u + gamma) - gamma - 1.0
 
 
