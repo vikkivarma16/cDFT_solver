@@ -685,6 +685,9 @@ def coexistence_densities_isocore(
         compute_vij(initial_rhos[p], kernel="uniform")
         for p in range(n_phases)
     ]
+    
+    
+    print(vij_per_phase)
 
     global CURRENT_VIJ_PER_PHASE
     CURRENT_VIJ_PER_PHASE = vij_per_phase
