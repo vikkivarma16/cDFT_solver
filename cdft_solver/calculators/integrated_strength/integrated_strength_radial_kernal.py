@@ -102,7 +102,9 @@ def vij_radial_kernel(
     r = np.linspace(0, 5, n_grid)
     n = len(species)
     u_matrix = np.zeros((n, n, n_grid))
-
+    
+    print(beta)
+    
     for i, si in enumerate(species):
         for j in range(i, n):   # <-- only j >= i
             sj = species[j]
@@ -122,16 +124,9 @@ def vij_radial_kernel(
                 )
 
             # interpolate once
-            interp_u = interp1d(
-                pdata["r"],
-                pdata["U"],
-                bounds_error=False,
-                fill_value=0.0,
-                assume_sorted=True,
-            )
             r = pdata["r"] 
 
-            u_val = beta * interp_u(r)
+            u_val = beta * pdata["U"]
 
             # symmetric assignment
             u_matrix[i, j, :] = u_val
