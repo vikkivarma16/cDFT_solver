@@ -188,6 +188,11 @@ def vij_radial_kernel(
             # -------------------------
             Kc = interp1d(rk, K, kind="linear", bounds_error=False, fill_value=0.0)(r_common)
             Uc = interp1d(ru, Uv, kind="linear", bounds_error=False, fill_value=0.0)(r_common)
+
+
+            
+            print(Uc)
+            print(Kc)
             # -------------------------
             # Radial integral
             # -------------------------
