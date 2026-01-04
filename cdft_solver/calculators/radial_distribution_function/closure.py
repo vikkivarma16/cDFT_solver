@@ -36,8 +36,6 @@ def closure_update_c_matrix(
                 )
             else:
                 key = closure.upper()
-                
-                print(key)
                 if key not in closure_registry:
                     raise ValueError(f"Unknown closure '{key}'")
 
