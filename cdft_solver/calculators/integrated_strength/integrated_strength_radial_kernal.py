@@ -193,6 +193,7 @@ def vij_radial_kernel(
             
             print(Uc)
             print(Kc)
+            print (r_common)
             # -------------------------
             # Radial integral
             # -------------------------
