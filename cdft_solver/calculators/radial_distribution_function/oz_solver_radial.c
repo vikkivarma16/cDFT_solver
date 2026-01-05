@@ -6,13 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-void hankel_forward_dst(
-    int N,
-    const double *r,
-    const double *f_r,
-    double *k,
-    double *F_k
-){
+void hankel_forward_dst(int N, const double *r, const double *f_r, double *k, double *F_k) {
     double dr = r[1] - r[0];
     double Rmax = (N + 1) * dr;
 
@@ -25,21 +19,14 @@ void hankel_forward_dst(
     fftw_plan plan = fftw_plan_r2r_1d(N, x, x, FFTW_RODFT00, FFTW_ESTIMATE);
     fftw_execute(plan);
 
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < N; i++)
         F_k[i] = (2.0 * M_PI * dr / k[i]) * x[i];
-    }
 
     fftw_destroy_plan(plan);
     fftw_free(x);
 }
 
-void hankel_inverse_dst(
-    int N,
-    const double *r,
-    const double *k,
-    const double *F_k,
-    double *f_r
-){
+void hankel_inverse_dst(int N, const double *r, const double *k, const double *F_k, double *f_r) {
     double dr = r[1] - r[0];
     double Rmax = (N + 1) * dr;
     double dk = M_PI / Rmax;
@@ -58,14 +45,7 @@ void hankel_inverse_dst(
     fftw_free(y);
 }
 
-void solve_oz_matrix(
-    int N,
-    int Nr,
-    const double *r,
-    const double *densities,
-    const double *c_r,
-    double *gamma_r
-){
+void solve_oz_matrix(int N, int Nr, const double *r, const double *densities, const double *c_r, double *gamma_r) {
     const double eps = 1e-12;
     int Nk = Nr;
 
@@ -87,12 +67,13 @@ void solve_oz_matrix(
     // Hankel transform each (a,b)
     for (int a = 0; a < N; a++) {
         for (int b = 0; b < N; b++) {
+            // row-major flattening: index = a*Nr*N + b*Nr + r_index
             hankel_forward_dst(
                 Nr,
                 r,
-                &c_r[(a*N + b)*Nr],
+                &c_r[a*Nr*N + b*Nr],
                 k,
-                &c_k[(a*N + b)*Nk]
+                &c_k[a*Nk*N + b*Nk]
             );
         }
     }
@@ -102,7 +83,7 @@ void solve_oz_matrix(
         // extract Ck for this k
         for (int i = 0; i < N; i++)
             for (int j = 0; j < N; j++)
-                Ck[i*N + j] = c_k[(i*N + j)*Nk + ik];
+                Ck[i*N + j] = c_k[i*Nk*N + j*Nk + ik];
 
         // build A = I - C*rho + eps*I
         memset(A, 0, N*N*sizeof(double));
@@ -111,17 +92,14 @@ void solve_oz_matrix(
             for (int j = 0; j < N; j++)
                 A[i*N + j] -= Ck[i*N + j] * densities[j];
 
-        // num = Ck * rho * Ck  -> using row-major
+        // num = Ck * rho * Ck
         double *rho = (double *)malloc(N*N*sizeof(double));
         for (int i = 0; i < N; i++)
             for (int j = 0; j < N; j++)
                 rho[i*N + j] = (i==j) ? densities[i] : 0.0;
 
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                    N, N, N, 1.0, Ck, N, rho, N, 0.0, num, N);
-
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                    N, N, N, 1.0, num, N, Ck, N, 0.0, num, N);
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1.0, Ck, N, rho, N, 0.0, num, N);
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1.0, num, N, Ck, N, 0.0, num, N);
 
         free(rho);
 
@@ -131,7 +109,7 @@ void solve_oz_matrix(
         // copy to gamma_k
         for (int i = 0; i < N; i++)
             for (int j = 0; j < N; j++)
-                gamma_k[(i*N + j)*Nk + ik] = num[i*N + j];
+                gamma_k[i*Nk*N + j*Nk + ik] = num[i*N + j];
     }
 
     // inverse Hankel
@@ -141,8 +119,8 @@ void solve_oz_matrix(
                 Nr,
                 r,
                 k,
-                &gamma_k[(a*N + b)*Nk],
-                &gamma_r[(a*N + b)*Nr]
+                &gamma_k[a*Nk*N + b*Nk],
+                &gamma_r[a*Nr*N + b*Nr]
             );
 
     // free memory
