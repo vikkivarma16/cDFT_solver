@@ -407,7 +407,7 @@ def rdf_radial(
     system = rdf_config
     hc_data = hard_core_potentials(
         ctx=ctx,
-        input_data=,
+        input_data=system,
         grid_points=5000,
         file_name_prefix="supplied_data_potential_hc.json",
         export_files=False
