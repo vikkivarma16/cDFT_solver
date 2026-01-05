@@ -203,7 +203,7 @@ def hankel_forward_direct(f_r, r):
 
     # k grid consistent with finite r_max
     Rmax = r[-1]
-    k = np.pi * np.arange(1, N + 1) / Rmax
+    k = np.pi * np.arange(0, N + 1) / Rmax
 
     Fk = np.zeros_like(k)
 
