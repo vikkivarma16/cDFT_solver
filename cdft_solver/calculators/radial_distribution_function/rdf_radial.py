@@ -239,28 +239,36 @@ def inverse_hankel_transform_matrix_fast(f_k_matrix, k, r):
 # Closures and OZ solver
 # -----------------------------
 
-from cffi import FFI
+import ctypes
+from ctypes import *
+import importlib.resources as ir
 
-ffi = FFI()
+# --------------------------------------------------
+# Load shared library from installed package
+# --------------------------------------------------
 
-ffi.cdef("""
-void solve_oz_matrix(
-    int N,
-    int Nr,
-    const double *r,
-    const double *densities,
-    const double *c_r,
-    double *gamma_r
-);
-""")
+with ir.path(
+    "cdft_solver.calculators.radial_distribution_function",
+    "liboz_radial.so"
+) as lib_path:
+    lib = ctypes.CDLL(str(lib_path))
 
-import pkg_resources
+# --------------------------------------------------
+# Define function signature
+# --------------------------------------------------
 
-ffi = FFI()
+lib.solve_oz_matrix.argtypes = [
+    c_int,                  # N
+    c_int,                  # Nr
+    c_int,                  # Nk
+    POINTER(c_double),      # r
+    POINTER(c_double),      # densities
+    POINTER(c_double),      # c_r
+    POINTER(c_double),      # gamma_r
+]
 
-libpath = pkg_resources.resource_filename("liboz_radial.so")
+lib.solve_oz_matrix.restype = None
 
-lib = ffi.dlopen(libpath)
 
 
 def solve_oz_matrix_c(c_r, r, densities):
@@ -276,6 +284,9 @@ def solve_oz_matrix_c(c_r, r, densities):
     )
 
     return gamma_r
+    
+
+
 
 
 
