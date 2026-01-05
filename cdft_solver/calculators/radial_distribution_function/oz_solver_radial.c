@@ -5,7 +5,7 @@
 #include <lapacke.h>
 #include <stdlib.h>
 #include <stdio.h>
-
+//gcc -O3 -fPIC -shared oz_solver_radial.c -o liboz_radial.so -llapacke -lopenblas -lfftw3
 void hankel_forward_dst(int N, const double *r, const double *f_r, double *k, double *F_k) {
     double dr = r[1] - r[0];
     double Rmax = (N + 1) * dr;
@@ -153,7 +153,7 @@ void solve_oz_matrix(int N, int Nr, const double *r, const double *densities, do
             }    
         }
     }
-
+   
     // inverse Hankel
     for (int a = 0; a < N; a++)
         for (int b = 0; b < N; b++)
