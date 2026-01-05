@@ -264,14 +264,7 @@ if not os.path.exists(_lib_path):
 # Load shared library
 lib = ctypes.CDLL(_lib_path)
 
-void solve_oz_radial(
-    int N,
-    int Nr,
-    const double *r,
-    const double *c_r,
-    const double *densities,
-    double *gamma_r
-);
+
 
 # --------------------------------------------------
 # Define function signature
