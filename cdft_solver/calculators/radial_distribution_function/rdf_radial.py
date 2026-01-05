@@ -253,10 +253,7 @@ def solve_oz_matrix(c_r_matrix, r, densities):
         Ck = c_k_matrix[:, :, ik]
         num = Ck @ rho_matrix @ Ck
         A = I - Ck @ rho_matrix + eps_reg * I
-        w, V = np.linalg.eig(A)
-        w = np.clip(w, 1e-6, None)
-        A_reg = V @ np.diag(w) @ np.linalg.inv(V)
-        gamma_k_matrix[:, :, ik] = np.linalg.solve(A_reg, num)
+        gamma_k_matrix[:, :, ik] = np.linalg.solve(A, num)
 
         
 
@@ -274,7 +271,7 @@ def multi_component_oz_solver_alpha(
     c_initial=None,
     n_iter=10000,
     tol=1e-8,
-    alpha_rdf_max=0.1,
+    alpha_rdf_max=0.01,
 ):
     """
     Multi-component OZ solver with adaptive alpha-mixing
@@ -323,6 +320,8 @@ def multi_component_oz_solver_alpha(
             for j in range(N):
                 if c_update_flag[i, j]:
                     c_r[i, j, :] = c_trial[i, j, :]
+                    if (i == 2 and j ==2):
+                        print (c_r[i, j, :])
                 # else: keep frozen c_r[i,j,:]
 
         # --- Solve OZ
