@@ -267,7 +267,7 @@ def hankel_forward_matrix_direct(f_r_matrix, r, k):
     for i in range(N):
         for j in range(N):
             F_k[i, j, :] = hankel_forward_direct(
-                f_r_matrix[i, j], r, k
+                f_r_matrix[i, j, :], r, k
             )
 
     return F_k
@@ -281,7 +281,7 @@ def hankel_inverse_matrix_direct(F_k_matrix, k, r):
     for i in range(N):
         for j in range(N):
             f_r[i, j, :] = hankel_inverse_direct(
-                F_k_matrix[i, j], k, r
+                F_k_matrix[i, j, :], k, r
             )
 
     return f_r
