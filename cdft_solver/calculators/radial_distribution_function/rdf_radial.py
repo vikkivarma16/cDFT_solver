@@ -260,6 +260,7 @@ def solve_oz_matrix(c_r_matrix, r, densities):
     rho_matrix = np.diag(densities)
     I = np.identity(N)
     eps_reg =1e-12
+    print (rho_matrix)
     for ik in range(len(k)):
         Ck = c_k_matrix[:, :, ik]
         num = Ck @ rho_matrix @ Ck
