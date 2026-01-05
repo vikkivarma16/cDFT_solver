@@ -584,6 +584,21 @@ def rdf_radial(
     filename="pair_potentials.png",
 )
 
+  
+
+    # u_matrix: (N, N, Nr), r: (Nr,)
+    u_strength = np.zeros((N, N))
+
+    for i in range(N):
+        for j in range(N):
+            u = u_matrix[i, j, :]
+            integrand = r**2 * u
+            u_strength[i, j] = 4.0 * np.pi * np.trapz(integrand, r)
+
+    print("Integrated potential strength (trapezoidal) for each pair:")
+    print(u_strength)
+
+
 
     # -----------------------------
     # Sigma matrix
