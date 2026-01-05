@@ -11,7 +11,18 @@ def py_closure(r, gamma, u, sigma_ab=None):
 
 def hnc_closure(r, gamma, u, sigma_ab=None):
     #print("HI I am being accessed")
-    return np.exp(- u + gamma) - gamma - 1.0
+    
+    with np.errstate(over='ignore', invalid='ignore'):
+        # attempt the usual closure
+        value = np.exp(- u + gamma) - gamma - 1.0
+
+    # handle NaNs or infs due to overflow
+    mask = ~np.isfinite(value)  # True for NaN or inf
+    if np.any(mask):
+        # linearized approximation: exp(gamma) ≈ 1 + gamma
+        value = (1 + gamma[mask]) * (np.exp(-  u[mask]) - 1)
+    
+    return value
 
 
 def hybrid_closure(r, gamma, u, sigma_ab):
