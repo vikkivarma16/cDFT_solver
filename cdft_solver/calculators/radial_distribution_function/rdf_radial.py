@@ -191,6 +191,103 @@ def process_supplied_rdf(supplied_data, species, r_grid):
 
 
 
+def hankel_forward_direct(f_r, r, k):
+    """
+    Direct 3D radial Fourier/Hankel transform.
+
+    Parameters
+    ----------
+    f_r : (Nr,) ndarray
+        Function values f(r)
+    r : (Nr,) ndarray
+        Radial grid (r > 0, increasing)
+    k : (Nk,) ndarray
+        k grid
+
+    Returns
+    -------
+    F_k : (Nk,) ndarray
+        Hankel transform F(k)
+    """
+
+    dr = np.gradient(r)
+    F_k = np.zeros_like(k)
+
+    for i, ki in enumerate(k):
+        kr = ki * r
+        sinc = np.ones_like(r)
+        mask = kr != 0
+        sinc[mask] = np.sin(kr[mask]) / kr[mask]
+
+        integrand = r**2 * f_r * sinc
+        F_k[i] = 4.0 * np.pi * np.sum(integrand * dr)
+
+    return F_k
+
+
+def hankel_inverse_direct(F_k, k, r):
+    """
+    Direct inverse 3D radial Fourier/Hankel transform.
+
+    Parameters
+    ----------
+    F_k : (Nk,) ndarray
+        Function values in k-space
+    k : (Nk,) ndarray
+        k grid (k > 0)
+    r : (Nr,) ndarray
+        r grid
+
+    Returns
+    -------
+    f_r : (Nr,) ndarray
+        Inverse transform f(r)
+    """
+
+    dk = np.gradient(k)
+    f_r = np.zeros_like(r)
+
+    for i, ri in enumerate(r):
+        kr = k * ri
+        sinc = np.ones_like(k)
+        mask = kr != 0
+        sinc[mask] = np.sin(kr[mask]) / kr[mask]
+
+        integrand = k**2 * F_k * sinc
+        f_r[i] = (1.0 / (2.0 * np.pi**2)) * np.sum(integrand * dk)
+
+    return f_r
+
+
+def hankel_forward_matrix_direct(f_r_matrix, r, k):
+    N = f_r_matrix.shape[0]
+    Nk = len(k)
+    F_k = np.zeros((N, N, Nk))
+
+    for i in range(N):
+        for j in range(N):
+            F_k[i, j] = hankel_forward_direct(
+                f_r_matrix[i, j], r, k
+            )
+
+    return F_k
+
+
+def hankel_inverse_matrix_direct(F_k_matrix, k, r):
+    N = F_k_matrix.shape[0]
+    Nr = len(r)
+    f_r = np.zeros((N, N, Nr))
+
+    for i in range(N):
+        for j in range(N):
+            f_r[i, j] = hankel_inverse_direct(
+                F_k_matrix[i, j], k, r
+            )
+
+    return f_r
+
+
+
 
 def hankel_forward_dst(f_r, r):
     N = len(r)
@@ -243,7 +340,7 @@ def inverse_hankel_transform_matrix_fast(f_k_matrix, k, r):
 
 def solve_oz_matrix(c_r_matrix, r, densities):
     N = c_r_matrix.shape[0]
-    c_k_matrix, k = hankel_transform_matrix_fast(c_r_matrix, r)
+    c_k_matrix, k = hankel_forward_matrix_direct(c_r_matrix, r)
     gamma_k_matrix = np.zeros_like(c_k_matrix)
     rho_matrix = np.diag(densities)
     I = np.identity(N)
@@ -257,7 +354,7 @@ def solve_oz_matrix(c_r_matrix, r, densities):
 
         
 
-    gamma_r_matrix = inverse_hankel_transform_matrix_fast(gamma_k_matrix, k, r)
+    gamma_r_matrix = hankel_inverse_matrix_direct(gamma_k_matrix, k, r)
     return gamma_r_matrix
 
 
