@@ -111,19 +111,34 @@ def  build_strength_kernel(
     # RDF KERNEL
     # ==================================================
     system = config
+
     if kernel_type == "rdf":
-        print("🔄 Computing RDF-based integrated strength kernel for density:", densities)
-        
-        
+        print("🔄 Computing RDF-based integrated strength kernel for densities:", densities)
 
-        rdf_out = rdf_radial( ctx=ctx, rdf_config=config, densities=densities, supplied_data=None, export=False, plot=True, filename_prefix="rdf", )
+        # Compute RDF output
+        rdf_out = rdf_radial(
+            ctx=ctx,
+            rdf_config=config,
+            densities=densities,
+            supplied_data=None,
+            export=False,
+            plot=True,
+            filename_prefix="rdf",
+        )
 
-       
-
+        # Get species list
         species = find_key_recursive(system_cfg, "species")
-        Nr =  grid["n_points"]
+        N = len(species)
+
+        # Infer r-grid size from one of the RDF outputs
+        sample_key = (species[0], species[0])
+        r = rdf_out[sample_key]["r"]
+        Nr = len(r)
+
+        # Initialize kernel array
         kernel = np.zeros((N, N, Nr))
 
+        # Fill kernel from RDF
         for i, si in enumerate(species):
             for j, sj in enumerate(species):
                 kernel[i, j, :] = rdf_out[(si, sj)]["g_r"]
@@ -133,6 +148,7 @@ def  build_strength_kernel(
             "kernel": kernel,
             "r": r,
         }
+
 
     # ==================================================
     # ERROR
