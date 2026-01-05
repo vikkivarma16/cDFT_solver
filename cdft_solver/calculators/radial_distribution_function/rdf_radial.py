@@ -239,8 +239,41 @@ def inverse_hankel_transform_matrix_fast(f_k_matrix, k, r):
 # Closures and OZ solver
 # -----------------------------
 
+from cffi import FFI
+
+ffi = FFI()
+
+ffi.cdef("""
+void solve_oz_matrix(
+    int N,
+    int Nr,
+    const double *r,
+    const double *densities,
+    const double *c_r,
+    double *gamma_r
+);
+""")
+
+lib = ffi.dlopen("./liboz_radial.so")
+
+def solve_oz_matrix_c(c_r, r, densities):
+    N, _, Nr = c_r.shape
+    gamma_r = np.zeros_like(c_r)
+
+    lib.solve_oz_matrix(
+        N, Nr,
+        ffi.cast("double *", r.ctypes.data),
+        ffi.cast("double *", densities.ctypes.data),
+        ffi.cast("double *", c_r.ctypes.data),
+        ffi.cast("double *", gamma_r.ctypes.data),
+    )
+
+    return gamma_r
 
 
+
+
+'''
 def solve_oz_matrix(c_r_matrix, r, densities):
     N = c_r_matrix.shape[0]
 
@@ -270,7 +303,7 @@ def solve_oz_matrix(c_r_matrix, r, densities):
     gamma_r_matrix = inverse_hankel_transform_matrix_fast(gamma_k_matrix, k, r)
 
     return gamma_r_matrix
-
+'''
 
 
 def multi_component_oz_solver_alpha(
