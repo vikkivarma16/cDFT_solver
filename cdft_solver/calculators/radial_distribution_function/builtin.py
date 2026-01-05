@@ -6,12 +6,12 @@ from .utils import safe_exp
 
 def py_closure(r, gamma, u, sigma_ab=None):
     #print("its me running")
-    return (1.0 + gamma) * (np.exp(-u) - 1.0)
+    return (1.0 + gamma) * (safe_exp(- u) - 1.0)
 
 
 def hnc_closure(r, gamma, u, sigma_ab=None):
     #print("HI I am being accessed")
-    return safe_exp(- u + gamma) - gamma - 1.0
+    return np.exp(- u + gamma) - gamma - 1.0
 
 
 def hybrid_closure(r, gamma, u, sigma_ab):
