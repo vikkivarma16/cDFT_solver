@@ -121,7 +121,7 @@ void solve_oz_matrix(int N, int Nr, const double *r, const double *densities, do
             for (int j = 0; j < N; j++){
                 gamma_k[i*Nk*N + j*Nk + ik] = num[i*N + j];
                 
-                printf ("%lf \n", num[i*N + j]);
+                printf ("%lf  %lf \n", num[i*N + j], densities[i]);
             }    
         }
     }
