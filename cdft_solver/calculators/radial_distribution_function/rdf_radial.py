@@ -239,19 +239,39 @@ def inverse_hankel_transform_matrix_fast(f_k_matrix, k, r):
 # Closures and OZ solver
 # -----------------------------
 
+import os
+import sys
 import ctypes
-from ctypes import *
-import importlib.resources as ir
+from ctypes import c_double, c_int, POINTER
 
-# --------------------------------------------------
-# Load shared library from installed package
-# --------------------------------------------------
+# -------------------------------
+# Locate shared library reliably
+# -------------------------------
+_here = os.path.dirname(__file__)
 
-with ir.path(
-    "cdft_solver.calculators.radial_distribution_function",
-    "liboz_radial.so"
-) as lib_path:
-    lib = ctypes.CDLL(str(lib_path))
+if sys.platform == "darwin":
+    _libname = "liboz_radial.dylib"
+elif sys.platform == "win32":
+    _libname = "liboz_radial.dll"
+else:
+    _libname = "liboz_radial.so"
+
+_lib_path = os.path.join(_here, _libname)
+
+if not os.path.exists(_lib_path):
+    raise FileNotFoundError(f"Shared library not found: {_lib_path}")
+
+# Load shared library
+lib = ctypes.CDLL(_lib_path)
+
+void solve_oz_radial(
+    int N,
+    int Nr,
+    const double *r,
+    const double *c_r,
+    const double *densities,
+    double *gamma_r
+);
 
 # --------------------------------------------------
 # Define function signature
@@ -260,30 +280,35 @@ with ir.path(
 lib.solve_oz_matrix.argtypes = [
     c_int,                  # N
     c_int,                  # Nr
-    c_int,                  # Nk
     POINTER(c_double),      # r
     POINTER(c_double),      # densities
     POINTER(c_double),      # c_r
     POINTER(c_double),      # gamma_r
 ]
 
-lib.solve_oz_matrix.restype = None
 
 
-
-def solve_oz_matrix_c(c_r, r, densities):
+def solve_oz_matrix(c_r, r, densities):
     N, _, Nr = c_r.shape
     gamma_r = np.zeros_like(c_r)
 
+    # Flatten arrays for C
+    c_r_flat = c_r.ravel()
+    gamma_r_flat = gamma_r.ravel()
+
     lib.solve_oz_matrix(
-        N, Nr,
-        ffi.cast("double *", r.ctypes.data),
-        ffi.cast("double *", densities.ctypes.data),
-        ffi.cast("double *", c_r.ctypes.data),
-        ffi.cast("double *", gamma_r.ctypes.data),
+        c_int(N),
+        c_int(Nr),
+        r.ctypes.data_as(POINTER(c_double)),
+        densities.ctypes.data_as(POINTER(c_double)),
+        c_r_flat.ctypes.data_as(POINTER(c_double)),
+        gamma_r_flat.ctypes.data_as(POINTER(c_double)),
     )
 
+    # Reshape back to 3D
+    gamma_r = gamma_r_flat.reshape((N, N, Nr))
     return gamma_r
+
     
 
 
