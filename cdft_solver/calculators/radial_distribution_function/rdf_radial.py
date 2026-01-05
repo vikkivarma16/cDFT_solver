@@ -253,7 +253,7 @@ def solve_oz_matrix(c_r_matrix, r, densities):
     # Check the reconstruction error
     diff_matrix = c_r_matrix_new - c_r_matrix
     total_error = np.max(np.abs(diff_matrix))
-    print(f"Max absolute difference after forward+inverse Hankel: {total_error:.3e}")
+    #print(f"Max absolute difference after forward+inverse Hankel: {total_error:.3e}")
 
     # Solve OZ in k-space
     gamma_k_matrix = np.zeros_like(c_k_matrix)
@@ -305,7 +305,9 @@ def multi_component_oz_solver_alpha(
     if c_initial is not None:
         c_r = c_initial.copy()
     else:
-        c_r = np.zeros((N, N, Nr))
+        c_r = closure_update_c_matrix(
+            gamma_r, r, pair_closures, u_matrix, sigma_matrix
+        )
 
     # Default: update all c_ij
     if c_update_flag is None:
