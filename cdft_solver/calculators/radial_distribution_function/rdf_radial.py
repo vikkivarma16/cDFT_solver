@@ -241,7 +241,7 @@ def inverse_hankel_transform_matrix_fast(f_k_matrix, k, r):
 
 
 
-def solve_oz_matrix_debug(c_r_matrix, r, densities):
+def solve_oz_matrix(c_r_matrix, r, densities):
     N = c_r_matrix.shape[0]
 
     # Forward Hankel
