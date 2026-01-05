@@ -340,7 +340,8 @@ def inverse_hankel_transform_matrix_fast(f_k_matrix, k, r):
 
 def solve_oz_matrix(c_r_matrix, r, densities):
     N = c_r_matrix.shape[0]
-    c_k_matrix, k = hankel_forward_matrix_direct(c_r_matrix, r)
+    k = np.linspace(1e-4, 20.0, len(r))
+    c_k_matrix, k = hankel_forward_matrix_direct(c_r_matrix, r, k)
     gamma_k_matrix = np.zeros_like(c_k_matrix)
     rho_matrix = np.diag(densities)
     I = np.identity(N)
