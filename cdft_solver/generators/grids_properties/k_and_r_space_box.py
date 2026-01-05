@@ -128,11 +128,11 @@ def r_k_space_box(
     # Prepare output dictionary
     # -------------------------
     result = {
-        "r_space": r_space,
-        "k_space": k_space,
         "box_length": box_length,
         "box_points": box_points,
-        "dimension": dimension
+        "dimension": dimension,
+        "r_space": r_space,
+        "k_space": k_space,
     }
 
     # -------------------------

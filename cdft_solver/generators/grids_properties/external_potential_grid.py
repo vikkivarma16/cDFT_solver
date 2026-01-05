@@ -17,7 +17,7 @@ from cdft_solver.generators.potential.pair_potential_isotropic import pair_poten
 def external_potential_grid(
     ctx=None,
     data_dict=None,
-    grid_coordinates=None,
+    grid_properties=None,
     export_json=True,
     filename="supplied_data_external_potential.json",
     plot=False
@@ -123,7 +123,10 @@ def external_potential_grid(
     # -------------------------
     # Compute external potential
     # -------------------------
-    grid_coordinates = np.array(grid_coordinates)
+    grid_coordinates = np.array(grid_properties["r_space"])  # shape (N, 3)
+
+
+    
     N_grid = grid_coordinates.shape[0]
 
     external_potentials = {s: np.zeros(N_grid, dtype=float) for s in system_species}
