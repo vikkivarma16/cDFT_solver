@@ -280,7 +280,7 @@ lib.solve_oz_matrix.argtypes = [
 ]
 
 
-
+'''
 def solve_oz_matrix(c_r, r, densities):
     N, _, Nr = c_r.shape
     gamma_r = np.zeros_like(c_r)
@@ -307,11 +307,6 @@ def solve_oz_matrix(c_r, r, densities):
     # Reshape back to 3D
     gamma_r = gamma_r_flat.reshape((N, N, Nr))
     return gamma_r
-
-    
-
-
-
 
 
 
@@ -345,7 +340,6 @@ def solve_oz_matrix(c_r_matrix, r, densities):
     gamma_r_matrix = inverse_hankel_transform_matrix_fast(gamma_k_matrix, k, r)
 
     return gamma_r_matrix
-'''
 
 
 def multi_component_oz_solver_alpha(
