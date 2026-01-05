@@ -259,8 +259,7 @@ def solve_oz_matrix(c_r_matrix, r, densities):
     gamma_k_matrix = np.zeros_like(c_k_matrix)
     rho_matrix = np.diag(densities)
     I = np.identity(N)
-    eps_reg = max(1e-6, 1e-3 * np.max(densities))
-
+    eps_reg =1e-12
     for ik in range(len(k)):
         Ck = c_k_matrix[:, :, ik]
         num = Ck @ rho_matrix @ Ck
