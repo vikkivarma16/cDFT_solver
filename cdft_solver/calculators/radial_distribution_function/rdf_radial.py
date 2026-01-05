@@ -347,7 +347,8 @@ def multi_component_oz_solver_alpha(
         # --- Adaptive mixing
        
 
-        gamma_r = (1 - alpha) * gamma_r + alpha * gamma_new
+        gamma_alpha = (1 - alpha) * gamma_r + alpha * gamma_new
+        gamma_r = gamma_alpha
 
         if step % 10 == 0 or diff < tol:
         
