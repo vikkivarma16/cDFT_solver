@@ -79,8 +79,8 @@ def meanfield_potentials(
                     cutoff,
                     inter.get("cutoff", inter.get("sigma", 1.0) * 5.0)
                 )
-
-        r = np.linspace(1e-5, cutoff, grid_points)
+        grid_max  =  max(cutoff, 10.0)
+        r = np.linspace(1e-5, grid_max, grid_points)
         u_total = np.zeros_like(r)
 
         for lvl in converted:
