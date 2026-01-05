@@ -322,6 +322,7 @@ def multi_component_oz_solver_alpha(
                     c_r[i, j, :] = c_trial[i, j, :]
                     if (i == 2 and j ==2):
                         print (c_r[i, j, :])
+                        print (pair_closures[i, j])
                 # else: keep frozen c_r[i,j,:]
 
         # --- Solve OZ
