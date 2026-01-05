@@ -403,12 +403,11 @@ def rdf_radial(
     # -----------------------------
     # Build r grid
     # -----------------------------
-    r = np.linspace(
-        grid_dict["r_min"],
-        grid_dict["r_max"],
-        grid_dict["n_points"]
-    )
-    r_min = grid_dict["r_min"]
+    
+    
+    dr = grid_dict["r_max"] / (grid_dict["n_points"] + 1)
+    r = dr * np.arange(1, grid_dict["n_points"] + 1)
+    r_min = dr
     r_max = grid_dict["r_max"]
     n_points = grid_dict["n_points"]
 
