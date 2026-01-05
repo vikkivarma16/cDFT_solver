@@ -310,7 +310,7 @@ def multi_component_oz_solver_alpha(
         )
         
         
-    print (c_r[0, 0, :])
+    print (c_r[0, 1, :])
 
     # Default: update all c_ij
     if c_update_flag is None:
