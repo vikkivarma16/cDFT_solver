@@ -79,7 +79,7 @@ void solve_oz_matrix(
     double *gamma_r
 ){
 
-    printf("I am running till here !!!");
+    //printf("I am running till here !!!");
     const double eps = 1e-12;
     int Nk = Nr;
 
