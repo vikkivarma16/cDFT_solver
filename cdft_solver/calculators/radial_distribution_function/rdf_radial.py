@@ -192,82 +192,6 @@ def process_supplied_rdf(supplied_data, species, r_grid):
 
 
 
-
-# -------------------------
-# Direct Hankel (reference)
-# -------------------------
-
-def hankel_forward_direct(f_r, r):
-    N = len(r)
-    dr = np.gradient(r)
-
-    # k grid consistent with finite r_max
-    Rmax = r[-1]
-    k = np.pi * np.arange(0, N ) / Rmax
-
-    Fk = np.zeros_like(k)
-
-    for i, ki in enumerate(k):
-        kr = ki * r
-        sinc = np.ones_like(r)
-        mask = kr != 0.0
-        sinc[mask] = np.sin(kr[mask]) / kr[mask]
-
-        integrand = r**2 * f_r * sinc
-        Fk[i] = 4.0 * np.pi * np.sum(integrand * dr)
-
-    return k, Fk
-
-
-def hankel_inverse_direct(k, Fk, r):
-    dk = np.gradient(k)
-    f_r = np.zeros_like(r)
-
-    for i, ri in enumerate(r):
-        kr = k * ri
-        sinc = np.ones_like(k)
-        mask = kr != 0.0
-        sinc[mask] = np.sin(kr[mask]) / kr[mask]
-
-        integrand = k**2 * Fk * sinc
-        f_r[i] = (1.0 / (2.0 * np.pi**2)) * np.sum(integrand * dk)
-
-    return f_r
-
-
-# -------------------------
-# Matrix-level wrapper
-# -------------------------
-
-def hankel_transform_matrix_direct(f_r_matrix, r):
-    N = f_r_matrix.shape[0]
-    f_k_matrix = np.zeros_like(f_r_matrix)
-    k = None
-
-    for a in range(N):
-        for b in range(N):
-            k, Fk = hankel_forward_direct(f_r_matrix[a, b, :], r)
-            f_k_matrix[a, b, :] = Fk
-
-    return f_k_matrix, k
-
-
-def inverse_hankel_transform_matrix_direct(f_k_matrix, k, r):
-    N = f_k_matrix.shape[0]
-    f_r_matrix = np.zeros_like(f_k_matrix)
-
-    for a in range(N):
-        for b in range(N):
-            f_r_matrix[a, b, :] = hankel_inverse_direct(
-                k, f_k_matrix[a, b, :], r
-            )
-
-    return f_r_matrix
-
-
-
-
-
 def hankel_forward_dst(f_r, r):
     N = len(r)
     dr = r[1] - r[0]
@@ -319,8 +243,7 @@ def inverse_hankel_transform_matrix_fast(f_k_matrix, k, r):
 
 def solve_oz_matrix(c_r_matrix, r, densities):
     N = c_r_matrix.shape[0]
-    k = np.linspace(1e-4, 20.0, len(r))
-    c_k_matrix, k = hankel_transform_matrix_direct(c_r_matrix, r)
+    c_k_matrix, k = hankel_transform_matrix_fast(c_r_matrix, r)
     gamma_k_matrix = np.zeros_like(c_k_matrix)
     rho_matrix = np.diag(densities)
     I = np.identity(N)
@@ -334,7 +257,7 @@ def solve_oz_matrix(c_r_matrix, r, densities):
 
         
 
-    gamma_r_matrix = inverse_hankel_transform_matrix_direct(gamma_k_matrix, k, r)
+    gamma_r_matrix = inverse_hankel_transform_matrix_fast(gamma_k_matrix, k, r)
     return gamma_r_matrix
 
 
@@ -668,6 +591,7 @@ def rdf_radial(
     sigma_matrix = np.zeros((N, N)) if sigma is None else np.array (sigma)
     
     
+    print(sigma_matrix)
 
     # ============================================================
     # STEP 1: Unconstrained OZ solve
