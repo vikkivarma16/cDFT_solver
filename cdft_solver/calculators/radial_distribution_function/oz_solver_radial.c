@@ -116,9 +116,14 @@ void solve_oz_matrix(int N, int Nr, const double *r, const double *densities, do
         LAPACKE_dgesv(LAPACK_ROW_MAJOR, N, N, A, N, ipiv, num, N);
 
         // copy to gamma_k
-        for (int i = 0; i < N; i++)
-            for (int j = 0; j < N; j++)
+        for (int i = 0; i < N; i++){
+        
+            for (int j = 0; j < N; j++){
                 gamma_k[i*Nk*N + j*Nk + ik] = num[i*N + j];
+                
+                printf ("%lf \n", num[i*N + j]);
+            }    
+        }
     }
 
     // inverse Hankel
