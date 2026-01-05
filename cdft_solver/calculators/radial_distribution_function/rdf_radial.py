@@ -420,7 +420,7 @@ def multi_component_oz_solver_alpha(
         gamma_alpha = (1 - alpha) * gamma_r + alpha * gamma_new
         gamma_r = gamma_alpha
 
-        if step % 10 == 0 or diff < tol:
+        if step % 100 == 0 or diff < tol:
         
             if diff < prev_diff:
                 alpha = min(alpha * 1.05, alpha_rdf_max)
