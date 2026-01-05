@@ -258,9 +258,7 @@ import pkg_resources
 
 ffi = FFI()
 
-libpath = pkg_resources.resource_filename(
-    "oz_radial", "liboz_radial.so"
-)
+libpath = pkg_resources.resource_filename("liboz_radial.so")
 
 lib = ffi.dlopen(libpath)
 
