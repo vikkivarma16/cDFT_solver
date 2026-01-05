@@ -425,7 +425,7 @@ def multi_component_oz_solver_alpha(
             if diff < prev_diff:
                 alpha = min(alpha * 1.05, alpha_rdf_max)
             else:
-                alpha = max(alpha * 0.5, 1e-5)
+                alpha = max(alpha * 0.5, 1e-8)
         
             print(f"{step:6d} | {diff:12.3e} | {alpha:6.4f}")
 
@@ -678,8 +678,8 @@ def rdf_radial(
             integrand = r**2 * u
             u_strength[i, j] = 4.0 * np.pi * np.trapz(integrand, r)
 
-    print("Integrated potential strength (trapezoidal) for each pair:")
-    print(u_strength)
+    #print("Integrated potential strength (trapezoidal) for each pair:")
+    #print(u_strength)
 
 
 
@@ -689,7 +689,7 @@ def rdf_radial(
     sigma_matrix = np.zeros((N, N)) if sigma is None else np.array (sigma)
     
     
-    print(sigma_matrix)
+    #print(sigma_matrix)
 
     # ============================================================
     # STEP 1: Unconstrained OZ solve
