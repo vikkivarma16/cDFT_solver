@@ -7,6 +7,10 @@ from scipy.interpolate import interp1d
 from collections import defaultdict
 from pathlib import Path
 
+from collections.abc import Mapping
+from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
+from cdft_solver.generators.potential_splitter.mf import meanfield_potentials 
+from cdft_solver.generators.potential_splitter.total import total_potentials
 
 import matplotlib.pyplot as plt
 import re
@@ -371,9 +375,7 @@ def rdf_radial(
     ctx,
     rdf_config,
     grid_dict,
-    potential_dict,
     densities,
-    sigma=None,
     supplied_data=None,
     export=False,
     plot=True,
@@ -399,6 +401,37 @@ def rdf_radial(
     tol = rdf_block.get("tolerance", 1e-6)
     n_iter = rdf_block.get("max_iteration", 10000)
     alpha_max = rdf_block.get("alpha_max", 0.05)
+    
+    
+    
+    system = rdf_config
+    hc_data = hard_core_potentials(
+        ctx=ctx,
+        input_data=,
+        grid_points=5000,
+        file_name_prefix="supplied_data_potential_hc.json",
+        export_files=False
+    )
+
+    mf_data = meanfield_potentials(
+        ctx=ctx,
+        input_data=system,
+        grid_points=5000,
+        file_name_prefix="supplied_data_potential_mf.json",
+        export_files=False
+    )
+
+    total_data = total_potentials(
+        ctx=ctx,
+        hc_source= hc_data,
+        mf_source= mf_data,
+        file_name_prefix="supplied_data_potential_total.json",
+        export_files=False,
+       
+    )
+    
+    sigma = hc_data["sigma"]
+    potential_dict = total_data["total_potentials"]
 
     # -----------------------------
     # Build r grid
