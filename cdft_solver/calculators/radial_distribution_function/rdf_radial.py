@@ -543,6 +543,8 @@ def rdf_radial(
     beta = rdf_block.get("beta", 1.0)
     tol = rdf_block.get("tolerance", 1e-6)
     n_iter = find_key_recursive(rdf_config, "max_iteration")
+    
+    print (n_iter)
     alpha_max = rdf_block.get("alpha_max", 0.05)
     
     
