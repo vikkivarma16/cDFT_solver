@@ -71,6 +71,67 @@ def solve_oz_kspace(h_k, densities, eps=1e-12):
     return c_k
 
 
+import matplotlib.pyplot as plt
+from pathlib import Path
+
+def plot_u_matrix(r, u_matrix, species, outdir, filename="u_matrix.png"):
+    """
+    Plot and export u_ij(r) for all species pairs.
+
+    Parameters
+    ----------
+    r : (Nr,) ndarray
+        Radial grid (must match u_matrix)
+    u_matrix : (N, N, Nr) ndarray
+        Pair potential matrix
+    species : list[str]
+        Species labels, length N
+    outdir : str or Path
+        Output directory
+    filename : str
+        Output image filename
+    """
+
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    N = len(species)
+
+    fig, axes = plt.subplots(
+        N, N,
+        figsize=(3.2 * N, 3.2 * N),
+        sharex=True,
+        sharey=False,
+    )
+
+    if N == 1:
+        axes = [[axes]]
+
+    for i, si in enumerate(species):
+        for j, sj in enumerate(species):
+            ax = axes[i][j]
+
+            u = u_matrix[i, j]
+
+            ax.plot(r, u, lw=1.8)
+            ax.axhline(0.0, color="k", lw=0.8, alpha=0.4)
+
+            ax.set_title(f"{si}–{sj}", fontsize=10)
+            ax.grid(alpha=0.3)
+
+            if i == N - 1:
+                ax.set_xlabel("r")
+            if j == 0:
+                ax.set_ylabel(r"$u(r)$")
+
+    fig.suptitle("Pair Potentials $u_{ij}(r)$", fontsize=14)
+    fig.tight_layout(rect=[0, 0, 1, 0.96])
+
+    outpath = outdir / filename
+    fig.savefig(outpath, dpi=300)
+    plt.close(fig)
+
+    print(f"✅ u(r) matrix plot saved to: {outpath}")
 
 
 
@@ -431,7 +492,7 @@ def rdf_radial(
     )
     
     sigma = hc_data["sigma"]
-    potential_dict = total_data["total_potentials"]
+    
 
     # -----------------------------
     # Build r grid
@@ -477,11 +538,10 @@ def rdf_radial(
     # -----------------------------
     # Potentials
     # -----------------------------
+    
+    potential_dict = total_data["total_potentials"]
     u_matrix = np.zeros((N, N, len(r)))
-    
     print (pair_closures)
-    
-
     n = len(species)
     u_matrix = np.zeros((n, n, len(r)))
 
@@ -517,6 +577,16 @@ def rdf_radial(
             # symmetric assignment
             u_matrix[i, j, :] = u_val
             u_matrix[j, i, :] = u_val
+            
+    plots = Path(ctx.plots_dir)      
+    plot_u_matrix(
+    r=r,
+    u_matrix=u_matrix,
+    species=species,
+    outdir=plots,
+    filename="pair_potentials.png",
+)
+
 
     # -----------------------------
     # Sigma matrix
