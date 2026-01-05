@@ -310,7 +310,7 @@ def multi_component_oz_solver_alpha(
         )
         
         
-    print (c_r[0, 1, :])
+    
 
     # Default: update all c_ij
     if c_update_flag is None:
@@ -318,6 +318,8 @@ def multi_component_oz_solver_alpha(
     else:
         c_update_flag = c_update_flag.astype(bool)
 
+    print ("updating flag:",c_update_flag)
+    
     print(f"\n🚀 Starting OZ solver (adaptive α, α_max = {alpha_rdf_max})")
     print(f"{'Iter':>6s} | {'Δγ(max)':>12s} | {'α':>6s}")
 
