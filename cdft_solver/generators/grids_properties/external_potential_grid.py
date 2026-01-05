@@ -56,9 +56,6 @@ def external_potential_grid(
 
     if data_dict is None:
         raise ValueError("data_dict must be provided")
-    if grid_coordinates is None:
-        raise ValueError("grid_coordinates must be provided as Nx3 array")
-
     # -------------------------
     # Recursive search helper
     # -------------------------
