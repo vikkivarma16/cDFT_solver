@@ -293,7 +293,6 @@ def solve_oz_matrix(c_r, r, densities):
       c_r[1,1,3],
       c_r_flat[1*Nr*N + 1*Nr + 3])
     
-    exit (0)
 
     lib.solve_oz_matrix(
         c_int(N),
