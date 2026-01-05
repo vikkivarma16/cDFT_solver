@@ -320,9 +320,6 @@ def multi_component_oz_solver_alpha(
             for j in range(N):
                 if c_update_flag[i, j]:
                     c_r[i, j, :] = c_trial[i, j, :]
-                    if (i == 2 and j ==2):
-                        print (c_r[i, j, :])
-                        print (pair_closures[i, j])
                 # else: keep frozen c_r[i,j,:]
 
         # --- Solve OZ
@@ -594,7 +591,6 @@ def rdf_radial(
     sigma_matrix = np.zeros((N, N)) if sigma is None else np.array (sigma)
     
     
-    print(sigma_matrix)
 
     # ============================================================
     # STEP 1: Unconstrained OZ solve
