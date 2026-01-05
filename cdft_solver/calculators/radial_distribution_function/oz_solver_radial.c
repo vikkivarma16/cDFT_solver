@@ -131,9 +131,9 @@ void solve_oz_matrix(int N, int Nr, const double *r, const double *densities, do
 
         free(tmp);
         free(rho);
-        double norm = 0.0;
-        for (int i = 0; i < N*N; i++) norm += fabs(num[i]);
-        printf("||num|| = %e\n", norm);
+        //double norm = 0.0;
+        //for (int i = 0; i < N*N; i++) norm += fabs(num[i]);
+        //printf("||num|| = %e\n", norm);
 
 
         // solve A * gamma_k = num
