@@ -45,7 +45,7 @@ void hankel_inverse_dst(int N, const double *r, const double *k, const double *F
     fftw_free(y);
 }
 
-void solve_oz_matrix(int N, int Nr, const double *r, const double *densities, const double *c_r, double *gamma_r) {
+void solve_oz_matrix(int N, int Nr, const double *r, const double *densities, double *c_r, double *gamma_r) {
     const double eps = 1e-12;
     int Nk = Nr;
 
@@ -65,18 +65,52 @@ void solve_oz_matrix(int N, int Nr, const double *r, const double *densities, co
     }
 
     // Hankel transform each (a,b)
+   
+    
+    
     for (int a = 0; a < N; a++) {
         for (int b = 0; b < N; b++) {
-            // row-major flattening: index = a*Nr*N + b*Nr + r_index
+
+            // row-major flattening: index = a*Nr*N + b*Nr
+            int idx = a * Nr * N + b * Nr;
             hankel_forward_dst(
                 Nr,
                 r,
-                &c_r[a*Nr*N + b*Nr],
+                &c_r[idx],
                 k,
-                &c_k[a*Nk*N + b*Nk]
+                &c_k[a * Nk * N + b * Nk]
             );
+
+            // print c_r after returning
+            printf("c_r for a=%d, b=%d:\n", a, b);
+            for (int i = 0; i < Nr; i++) {
+                printf("%f ", c_r[idx + i]);
+            }
+            printf("\n");
         }
     }
+    
+    for (int a = 0; a < N; a++) {
+        for (int b = 0; b < N; b++) {
+            int idx = a * Nr * N + b * Nr;
+            hankel_inverse_dst(
+                Nr,
+                r,
+                k,
+                &c_k[a*Nk*N + b*Nk],
+                &c_r[a*Nr*N + b*Nr]
+            );
+            
+            printf("c_r for a=%d, b=%d:\n", a, b);
+            for (int i = 0; i < Nr; i++) {
+                printf("%f ", c_r[idx + i]);
+            }
+            printf("\n");
+        }       
+    }
+
+    
+    
 
     // OZ solve in k-space
     for (int ik = 0; ik < Nk; ik++) {
