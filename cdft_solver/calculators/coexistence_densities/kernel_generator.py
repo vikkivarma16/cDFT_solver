@@ -2,9 +2,6 @@
 
 import numpy as np
 from collections.abc import Mapping
-from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
-from cdft_solver.generators.potential_splitter.mf import meanfield_potentials 
-from cdft_solver.generators.potential_splitter.total import total_potentials
 from cdft_solver.calculators.radial_distribution_function.rdf_radial import rdf_radial
 
 
@@ -118,44 +115,10 @@ def  build_strength_kernel(
         print("🔄 Computing RDF-based integrated strength kernel for density:", densities)
         
         
-        
-        hc_data = hard_core_potentials(
-            ctx=ctx,
-            input_data=system,
-            grid_points=5000,
-            file_name_prefix="supplied_data_potential_hc.json",
-            export_files=False
-        )
 
-        mf_data = meanfield_potentials(
-            ctx=ctx,
-            input_data=system,
-            grid_points=5000,
-            file_name_prefix="supplied_data_potential_mf.json",
-            export_files=False
-        )
+        rdf_out = rdf_radial( ctx=ctx, rdf_config=config, densities=densities, supplied_data=None, export=False, plot=True, filename_prefix="rdf", )
 
-        total_data = total_potentials(
-            ctx=ctx,
-            hc_source= hc_data,
-            mf_source= mf_data,
-            file_name_prefix="supplied_data_potential_total.json",
-            export_files=False,
-           
-        )
-
-        rdf_out = rdf_radial(
-            ctx = ctx,
-            rdf_config = config,
-            grid_dict = grid,
-            potential_dict = total_data["total_potentials"],
-            densities = densities,
-            sigma = hc_data["sigma"],
-            supplied_data = None,
-            export = False,
-            plot = True,
-            filename_prefix="rdf",
-        )
+       
 
         species = find_key_recursive(system_cfg, "species")
         Nr =  grid["n_points"]
