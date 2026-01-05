@@ -450,7 +450,6 @@ def find_key_recursive(d, key):
 def rdf_radial(
     ctx,
     rdf_config,
-    grid_dict,
     densities,
     supplied_data=None,
     export=False,
@@ -513,15 +512,11 @@ def rdf_radial(
     # Build r grid
     # -----------------------------
     
-    
-    dr = grid_dict["r_max"] / (grid_dict["n_points"] + 1)
+    n_points = rdf_block.get("n_points", 300)
+    r_max  =  rdf_block.get("r_max", 6)
+    dr = r_max / (n_points + 1)
     r = dr * np.arange(1, grid_dict["n_points"] + 1)
-    r_min = dr
-    r_max = grid_dict["r_max"]
-    n_points = 200
     
-    r = np.linspace(5/200, 5, 200)
-
     # -----------------------------
     # Closures (all ON initially)
     # -----------------------------
