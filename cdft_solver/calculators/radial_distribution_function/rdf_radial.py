@@ -308,6 +308,9 @@ def multi_component_oz_solver_alpha(
         c_r = closure_update_c_matrix(
             gamma_r, r, pair_closures, u_matrix, sigma_matrix
         )
+        
+        
+    print (cr[0, 0, :])
 
     # Default: update all c_ij
     if c_update_flag is None:
