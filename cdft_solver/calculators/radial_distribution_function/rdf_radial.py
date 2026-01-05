@@ -500,7 +500,9 @@ def rdf_radial(
     r = dr * np.arange(1, grid_dict["n_points"] + 1)
     r_min = dr
     r_max = grid_dict["r_max"]
-    n_points = grid_dict["n_points"]
+    n_points = 200
+    
+    r = np.linspace(5/200, 5, 200)
 
     # -----------------------------
     # Closures (all ON initially)
