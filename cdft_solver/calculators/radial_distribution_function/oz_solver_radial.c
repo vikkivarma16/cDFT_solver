@@ -80,6 +80,8 @@ void solve_oz_matrix(int N, int Nr, const double *r, const double *densities, do
                 k,
                 &c_k[a * Nk * N + b * Nk]
             );
+            
+            
 
             // print c_r after returning
             printf("c_r for a=%d, b=%d:\n", a, b);
@@ -87,12 +89,8 @@ void solve_oz_matrix(int N, int Nr, const double *r, const double *densities, do
                 printf("%f ", c_r[idx + i]);
             }
             printf("\n");
-        }
-    }
-    
-    for (int a = 0; a < N; a++) {
-        for (int b = 0; b < N; b++) {
-            int idx = a * Nr * N + b * Nr;
+            
+            
             hankel_inverse_dst(
                 Nr,
                 r,
@@ -106,9 +104,11 @@ void solve_oz_matrix(int N, int Nr, const double *r, const double *densities, do
                 printf("%f ", c_r[idx + i]);
             }
             printf("\n");
-        }       
+            
+            exit(0);
+        }
     }
-
+    
     
     
 
