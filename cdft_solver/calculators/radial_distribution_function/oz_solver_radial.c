@@ -1,6 +1,8 @@
 #include <math.h>
 #include <fftw3.h>
 #include <string.h>
+#include <cblas.h>
+#include <lapacke.h>
 
 void hankel_forward_dst(
     int N,
@@ -66,8 +68,7 @@ void hankel_inverse_dst(
 
 
 
-#include <cblas.h>
-#include <lapacke.h>
+
 
 void solve_oz_matrix(
     int N,
@@ -77,6 +78,8 @@ void solve_oz_matrix(
     const double *c_r,
     double *gamma_r
 ){
+
+    printf("I am running till here !!!");
     const double eps = 1e-12;
     int Nk = Nr;
 
