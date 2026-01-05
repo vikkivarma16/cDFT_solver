@@ -254,7 +254,16 @@ void solve_oz_matrix(
 );
 """)
 
-lib = ffi.dlopen("./liboz_radial.so")
+import pkg_resources
+
+ffi = FFI()
+
+libpath = pkg_resources.resource_filename(
+    "oz_radial", "liboz_radial.so"
+)
+
+lib = ffi.dlopen(libpath)
+
 
 def solve_oz_matrix_c(c_r, r, densities):
     N, _, Nr = c_r.shape
