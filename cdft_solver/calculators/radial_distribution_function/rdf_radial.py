@@ -290,8 +290,8 @@ def solve_oz_matrix(c_r, r, densities):
     gamma_r_flat = gamma_r.ravel()
     
     print("Flatten check:",
-      c_r[1,2,3],
-      c_r_flat[1*Nr*N + 2*Nr + 3])
+      c_r[1,1,3],
+      c_r_flat[1*Nr*N + 1*Nr + 3])
     
     exit (0)
 
