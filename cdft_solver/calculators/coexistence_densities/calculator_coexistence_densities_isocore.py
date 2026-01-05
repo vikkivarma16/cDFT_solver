@@ -652,6 +652,11 @@ def coexistence_densities_isocore(
                                 f"in phase {p_idx+1}."
                             )
                         continue
+                        
+            for i in range (len(fractions)):
+                if(fractions[i]<0.0):
+                    print ( f"Attempt {attempt}: rejected — negative fraction {fractions[i]:.4f}")
+                continue
  
             
 
