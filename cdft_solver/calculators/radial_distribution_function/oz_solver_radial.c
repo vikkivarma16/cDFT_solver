@@ -107,13 +107,41 @@ void solve_oz_matrix(int N, int Nr, const double *r, const double *densities, do
             for (int j = 0; j < N; j++)
                 rho[i*N + j] = (i==j) ? densities[i] : 0.0;
 
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1.0, Ck, N, rho, N, 0.0, num, N);
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1.0, num, N, Ck, N, 0.0, num, N);
+        double *tmp = malloc(N*N*sizeof(double));
 
+        cblas_dgemm(
+            CblasRowMajor, CblasNoTrans, CblasNoTrans,
+            N, N, N,
+            1.0,
+            Ck,  N,
+            rho, N,
+            0.0,
+            tmp, N
+        );
+
+        cblas_dgemm(
+            CblasRowMajor, CblasNoTrans, CblasNoTrans,
+            N, N, N,
+            1.0,
+            tmp, N,
+            Ck,  N,
+            0.0,
+            num, N
+        );
+
+        free(tmp);
         free(rho);
+        double norm = 0.0;
+        for (int i = 0; i < N*N; i++) norm += fabs(num[i]);
+        printf("||num|| = %e\n", norm);
+
 
         // solve A * gamma_k = num
-        LAPACKE_dgesv(LAPACK_ROW_MAJOR, N, N, A, N, ipiv, num, N);
+        int info = LAPACKE_dgesv(LAPACK_ROW_MAJOR, N, N, A, N, ipiv, num, N);
+        if (info != 0) {
+            printf("dgesv failed at ik=%d, info=%d\n", ik, info);
+        }
+
 
         // copy to gamma_k
         for (int i = 0; i < N; i++){
@@ -121,7 +149,7 @@ void solve_oz_matrix(int N, int Nr, const double *r, const double *densities, do
             for (int j = 0; j < N; j++){
                 gamma_k[i*Nk*N + j*Nk + ik] = num[i*N + j];
                 
-                printf ("%lf  %lf \n", num[i*N + j], densities[i]);
+                //printf ("%lf  %lf \n", num[i*N + j], densities[i]);
             }    
         }
     }
