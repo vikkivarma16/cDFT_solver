@@ -260,7 +260,6 @@ def solve_oz_matrix(c_r_matrix, r, densities):
     rho_matrix = np.diag(densities)
     I = np.identity(N)
     eps_reg =1e-12
-    print (rho_matrix)
     for ik in range(len(k)):
         Ck = c_k_matrix[:, :, ik]
         num = Ck @ rho_matrix @ Ck
@@ -355,15 +354,7 @@ def multi_component_oz_solver_alpha(
         gamma_alpha = (1 - alpha) * gamma_r + alpha * gamma_new
         gamma_r = gamma_alpha
 
-        if step % 10 == 0 or diff < tol:
         
-            if diff < prev_diff:
-                alpha = min(alpha * 1.05, alpha_rdf_max)
-            else:
-                alpha = max(alpha * 0.5, 1e-5)
-        
-            print(f"{step:6d} | {diff:12.3e} | {alpha:6.4f}")
-
         if diff < tol:
             print(f"\n✅ Converged in {step+1} iterations.")
             break
