@@ -288,6 +288,12 @@ def solve_oz_matrix(c_r, r, densities):
     # Flatten arrays for C
     c_r_flat = c_r.ravel()
     gamma_r_flat = gamma_r.ravel()
+    
+    print("Flatten check:",
+      c_r[1,2,3],
+      c_r_flat[1*Nr*N + 2*Nr + 3])
+    
+    exit (0)
 
     lib.solve_oz_matrix(
         c_int(N),
