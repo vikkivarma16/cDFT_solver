@@ -95,7 +95,7 @@ def r_k_space_box(
         dim = len(lengths)
         if dim == 1:
             dr = lengths[0] / (points[0]-1)
-            kx = np.fft.fftfreq(points[0], d=dr) * 2*np.pi
+            kx = np.fft.fftfreq(points[0], d=dr)
             return kx, np.zeros_like(kx), np.zeros_like(kx)
         elif dim == 2:
             drx = lengths[0] / (points[0]-1)

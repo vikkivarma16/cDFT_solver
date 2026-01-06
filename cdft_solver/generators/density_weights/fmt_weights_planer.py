@@ -13,7 +13,7 @@ import json
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-EPSILON = 1e-10
+EPSILON = 1e-6
 PI = np.pi
 
 def fmt_weights_planer(

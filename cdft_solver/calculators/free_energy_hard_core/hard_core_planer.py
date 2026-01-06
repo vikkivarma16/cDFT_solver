@@ -121,36 +121,19 @@ def hard_core_planer(
         # -------------------------
         diff_1 = [sp.diff(phi0, etas[i]) for i in range(n_species)]
         diff_2 = [[sp.diff(phi0, etas[i], etas[j]) for j in range(n_species)] for i in range(n_species)]
-        diff_3 = [
-            [[sp.diff(phi0, etas[i], etas[j], etas[k]) for k in range(n_species)]
-             for j in range(n_species)]
-            for i in range(n_species)
-        ]
+        diff_3 = [[[sp.diff(phi0, etas[i], etas[j], etas[k]) for k in range(n_species)] for j in range(n_species)] for i in range(n_species)]
 
         # -------------------------
         # φ1, φ2, φ3
         # -------------------------
+    
+        
         phi1 = sum(variables[i][0] * diff_1[i] for i in range(n_species))
-        phi2 = sum((variables[i][1] * variables[j][2] - variables[i][4] * variables[j][5]) * diff_2[i][j]
-                   for i in range(n_species) for j in range(n_species))
-        phi3 = (1/(8*np.pi)) * sum(
-            ((variables[i][2]*variables[j][2]*variables[k][2]/3
-              - variables[i][2]*variables[j][5]*variables[k][5]
-              + (3/2)*(
-                  variables[i][5]*variables[k][5] *
-                  ((variables[j][2]-4*variables[j][3]/sigmai[j]) - variables[j][2]/3)
-                  - ((variables[i][2]-4*variables[i][3]/sigmai[i]) - variables[i][2]/3)
-                  * ((variables[j][2]-4*variables[j][3]/sigmai[j]) - variables[j][2]/3)
-                  * ((variables[k][2]-4*variables[k][3]/sigmai[k]) - variables[k][2]/3)
-                  + 2*((((variables[i][2]-4*variables[i][3]/sigmai[i])-variables[i][2]/3)/2)
-                      *((variables[j][2]-4*variables[j][3]/sigmai[j]-variables[j][2]/3)/2)
-                      *((variables[k][2]-4*variables[k][3]/sigmai[k]-variables[k][2]/3)/2)
-                     )
-              )
-            ) * diff_3[i][j][k])
-            for i in range(n_species) for j in range(n_species) for k in range(n_species)
-        )
-        phi3 = sp.simplify(phi3)
+        phi2 = sum((variables[i][1] * variables[j][2] - variables[i][4] * variables[j][5]) * diff_2[i][j] for i in range(n_species) for j in range(n_species))
+        phi3 = (1/(8*np.pi)) *sum( ((variables[i][2]*variables[j][2]*variables[k][2]/3.0)  - variables[i][2] *variables[j][5] * variables[k][5] + (3.0/2.0) * ( variables[i][5] *variables[k][5] * ((variables[j][2] - 4.0 * variables[j][3]/sigmai[j]) - variables[j][2]/3 ) - ((variables[i][2] - 4.0 * variables[i][3]/sigmai[i]) - variables[i][2]/3) * ((variables[j][2] - 4 * variables[j][3]/sigmai[j]) - variables[j][2]/3) * ((variables[k][2] - 4 * variables[k][3]/sigmai[k]) - variables[k][2]/3 ) + 2.0 * ( ((variables[i][2] - 4.0 * variables[i][3]/sigmai[i]) - variables[i][2]/3 )/2 *((variables[j][2] - 4 * variables[j][3]/sigmai[j]) - variables[j][2]/3 )/2 *((variables[k][2] - 4 * variables[k][3]/sigmai[k]) - variables[k][2]/3 )/2 )    )  ) * diff_3[i][j][k] for i in range(n_species) for j in range(n_species) for k in range(n_species) )
+            
+        
+        
         total_phi = phi1 + phi2 + phi3
 
     # -------------------------
