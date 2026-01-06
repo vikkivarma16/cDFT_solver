@@ -35,6 +35,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     from cdft_solver.calculators.free_energy_hard_core.hard_core_planer import hard_core_planer
     from cdft_solver.calculators.free_energy_mean_field.mean_field_planer import mean_field_planer
     from cdft_solver.generators.grids_properties.bulk_rho_mue_planer import bulk_rho_mue_planer
+    from cdft_solver.generators.density_weigts.fmt_weights_planer import fmt_weights_planer
+    
     
     
     
@@ -593,11 +595,11 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             raise KeyError(f"External potential missing for species '{key}'")
 
         v_ext[key] = np.asarray(external_pots[key])
-
-
     
-
-
+    
+    
+    
+    
 
 
 
@@ -611,6 +613,9 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     rho_r_current = np.array(rho_r)
 
     piee = np.pi
+    
+    
+    weights = fmt_weights_planer(ctx=ctx, data_dict=hc_data, grid_properties=r_k_grid, export_json=True, filename="supplied_data_weight_FMT_k_space.json", plot=False )
 
     exit(0)
 

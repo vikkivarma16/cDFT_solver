@@ -16,7 +16,7 @@ from pathlib import Path
 EPSILON = 1e-10
 PI = np.pi
 
-def fmt_weights_one_d_cylindrical(
+def fmt_weights_planer(
     ctx=None,
     data_dict=None,
     grid_properties=None,
@@ -71,29 +71,26 @@ def fmt_weights_one_d_cylindrical(
     # -------------------------
     # Recursive search helper
     # -------------------------
-    def find_species_sigma(d):
-        """
-        Recursively find all species and their sigma from a dictionary.
-        Returns dict {species: sigma}
-        """
-        result = {}
-        if not isinstance(d, dict):
-            return result
-        if "species" in d and isinstance(d["species"], list):
-            for s in d["species"]:
-                if s in d and "sigma" in d[s]:
-                    result[s] = float(d[s]["sigma"])
-        for v in d.values():
-            if isinstance(v, dict):
-                result.update(find_species_sigma(v))
-        return result
-
     # -------------------------
     # Extract species and sigma
     # -------------------------
-    particle_sizes = find_species_sigma(data_dict)
-    if not particle_sizes:
-        raise ValueError("No species with sigma found in dictionary")
+    species = data_dict["species"]
+    sigma_matrix = np.asarray(data_dict["sigma"])
+
+    n_species = len(species)
+
+    # Validate sigma matrix
+    if sigma_matrix.shape != (n_species, n_species):
+        raise ValueError(
+            f"sigma must be a {n_species}×{n_species} matrix, "
+            f"got shape {sigma_matrix.shape}"
+        )
+
+    # Particle sizes = diagonal elements
+    particle_sizes = {
+        species[i]: float(sigma_matrix[i, i])
+        for i in range(n_species)
+    }
 
     # -------------------------
     # Prepare k-space
