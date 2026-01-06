@@ -775,9 +775,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         or True  # symmetry depends on how you filled it
 
     dz = x[1] - x[0]
-    
-    print (vij_array)
-    
+    #integration step
 
 
     while (iteration < iteration_max):
