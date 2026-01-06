@@ -199,8 +199,8 @@ def coexistence_densities_isocore(
     # --------------------------------------------------------
     species = deep_get(config_dict, "species")
     ensemble = deep_get(config_dict, "ensemble")
-    if ensemble != "isochem":
-        raise ValueError(f"Expected ensemble='isochem', got {ensemble}")
+    if ensemble != "isocore":
+        raise ValueError(f"Expected ensemble='isocore', got {ensemble}")
 
     # --------------------------------------------------------
     # 2) FREE ENERGY PARAMETERS
@@ -770,7 +770,7 @@ def coexistence_densities_isocore(
         raise RuntimeError("No converged coexistence solution")
 
     out = {
-        "ensemble": "isochore",
+        "ensemble": "isocore",
         "species": species_names,
         "n_phases": n_phases,
         "fractions": final_solution["fractions"],
