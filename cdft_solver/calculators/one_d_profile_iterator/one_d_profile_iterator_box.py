@@ -1,4 +1,4 @@
-def one_d_profile_iterator_box(ctx, config):   
+def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = True, filename  = "one_d_profiles"):   
 
 
 
