@@ -35,7 +35,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     from cdft_solver.calculators.free_energy_hard_core.hard_core_planer import hard_core_planer
     from cdft_solver.calculators.free_energy_mean_field.mean_field_planer import mean_field_planer
     from cdft_solver.generators.grids_properties.bulk_rho_mue_planer import bulk_rho_mue_planer
-    from cdft_solver.generators.density_weigts.fmt_weights_planer import fmt_weights_planer
+    from cdft_solver.generators.density_weights.fmt_weights_planer import fmt_weights_planer
     
     
     
@@ -597,11 +597,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         v_ext[key] = np.asarray(external_pots[key])
     
     
-    
-    
-    
-
-
 
     # this is the main regions for the calculation for the 1 d walls confinement DFT simulation ...
 
