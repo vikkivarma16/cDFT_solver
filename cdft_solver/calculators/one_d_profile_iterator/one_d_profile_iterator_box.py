@@ -102,7 +102,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     ky = k_space[:,1]
     kz = k_space[:,2]
 
-
+    
+    species = hc_data["species"]
 
     external_pots  = v_ext["external_potentials"]
     v_ext = {}
