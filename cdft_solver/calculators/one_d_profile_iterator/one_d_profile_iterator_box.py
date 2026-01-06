@@ -37,6 +37,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     from cdft_solver.generators.grids_properties.bulk_rho_mue_planer import bulk_rho_mue_planer
     from cdft_solver.generators.density_weights.fmt_weights_planer import fmt_weights_planer
     from cdft_solver.generators.density_weights.mf_weights_planer import mf_weights_planer
+    from cdft_solver.calculators.one_d_profile_iterator.kernel_generator_planer import build_strength_kernel_planer
+    from cdft_solver.calculators.integrated_strenth.integrated_strength_planer_kernal import vij_planer_kernel
     
     
     
@@ -683,6 +685,19 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
     piee = np.pi
     
+
+    def compute_vij (densities, kernel  =  "uniform"):
+        kernel = build_strength_kernel_planer( ctx, config, densities = densities, supplied_data=None, kernel_type=kernel, )
+        vij  =  vij_planar_kernel( ctx, config, kernel_data= kernel, u_data = mean_f_weights, export_json=False, filename="vij_planar_kernel_u.json", plot = True)
+        
+        return vij
+    vij  =  compute_vij (densities =  rho_r, kernel  =  "uniform"):
+        
+
+
+
+
+
 
    
     exit(0)
