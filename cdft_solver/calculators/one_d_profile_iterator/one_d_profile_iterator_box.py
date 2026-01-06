@@ -156,7 +156,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         grid_properties=r_k_grid_planer,
         export_json=True,
         filename="supplied_data_weight_mf_planer.json",
-        plot=False
+        plot=True
     )
 
     # Grid info
