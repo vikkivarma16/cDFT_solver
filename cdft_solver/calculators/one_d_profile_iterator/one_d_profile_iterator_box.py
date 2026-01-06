@@ -527,13 +527,17 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     tol = find_key_recursive(profile_p, "tolerance")
 
 
+
+
+
+    exit(0) 
     if (ensemble == "isocore"):
         value = coexistence_densities_isocore( ctx = ctx, config_dict = config, fe_res = free_energy, supplied_data = None, max_outer_iters = 10, tol_outer = 1e-3,tol_solver = 1e-8, verbose = True)
     elif (ensemble == "isochem"):
         value = coexistence_densities_isochem( ctx = ctx, config_dict = config, fe_res = free_energy, supplied_data = None, max_outer_iters = 10, tol_outer = 1e-3,tol_solver = 1e-8, verbose = True)
 
     
-    exit(0)    
+       
     
     
     
