@@ -588,7 +588,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
     external_pots  = v_ext["external_potentials"]
     v_ext = {}
-    external_pots = result["external_potentials"]
     for key in species:
         if key not in external_pots:
             raise KeyError(f"External potential missing for species '{key}'")
