@@ -130,10 +130,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     # --------------------------------------
     # Load k-space coordinates
     # --------------------------------------
-    k_space = np.asarray(weights["k_space"])   # shape (Nk, 3)
-    kx = k_space[:, 0]
-    ky = k_space[:, 1]
-    kz = k_space[:, 2]
 
     # --------------------------------------
     # Reconstruct FMT weights (complex)
@@ -1071,13 +1067,13 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             for particle in species:
                 free_energy = 0.0
                 if grand_rosenfeld_flag == 1:
-                    free_energy += total_df_ext[i][int(nx/2)]
+                    free_energy += total_df_ext[i][int(nx/4)]
                 if grand_meanfield_flag == 1:
-                    free_energy += total_f_ext_mf[i][int(nx/2)]
+                    free_energy += total_f_ext_mf[i][int(nx/4)]
 
-                line = f"inhomogeneous free energy per particle, for the species {particle}: {free_energy + np.log(rho_r_current[i][int(nx/2)]):.6e} " \
-                       f"mue: {mue_r[i][int(nx/2)]:.6e} " \
-                       f"current density at the center of the profile: {rho_r_current[i][int(nx/2)]:.6e}\n"
+                line = f"inhomogeneous free energy per particle, for the species {particle}: {free_energy + np.log(rho_r_current[i][int(nx/4)]):.6e} " \
+                       f"mue: {mue_r[i][int(nx/4)]:.6e} " \
+                       f"current density at the center of the profile: {rho_r_current[i][int(nx/4)]:.6e}\n"
 
                 print(line, end="")  # print to console
                 log_fu.write(line)   # write to file
