@@ -579,7 +579,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
 
 
-    k_space =  r_k_grid["k_space"]
+    k_space =  np.asarray(r_k_grid["k_space"])
     kx = k_space[:,0]
     ky = k_space[:,1]
     kz = k_space[:,2]
