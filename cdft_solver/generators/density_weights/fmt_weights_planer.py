@@ -137,10 +137,10 @@ def fmt_weights_planer(
     # Export JSON
     # -------------------------
     def complex_to_json_safe(arr):
-    return {
-        "real": np.real(arr).tolist(),
-        "imag": np.imag(arr).tolist()
-    }
+        return {
+            "real": np.real(arr).tolist(),
+            "imag": np.imag(arr).tolist()
+        }
 
 
     
