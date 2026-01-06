@@ -149,7 +149,49 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
 
     
-    mf_weights = mf_weights_planer(ctx=ctx, data_dict=system, grid_properties=r_k_grid_planer, export_json=True, filename="supplied_data_weight_mf_planer.json", plot=False )
+    # Generate mean-field weights using the planner function
+    mean_f_weights = mf_weights_planer(
+        ctx=ctx,
+        data_dict=system,
+        grid_properties=r_k_grid_planer,
+        export_json=True,
+        filename="supplied_data_weight_mf_planer.json",
+        plot=False
+    )
+
+    # Grid info
+    z_grid = np.array(mean_f_weights["z_grid"])
+    r_grid = np.array(mean_f_weights["r_grid"])
+    Nz = len(z_grid)
+    Nr = len(r_grid)
+
+    # Initialize mf_weight structure: list of lists, one per species pair
+    mf_weight = []
+    n_species = len(species)
+
+    for i in range(n_species):
+        row = []
+        for j in range(n_species):
+            # Initialize with zeros for shape (Nz, Nz, Nr) and complex dtype
+            row.append(np.zeros((Nz, Nz, Nr), dtype=complex))
+        mf_weight.append(row)
+
+    # Fill mf_weight from the returned mean_f_weights dictionary
+    for i, key_1 in enumerate(species):
+        for j, key_2 in enumerate(species):
+            # Only fill upper triangle and mirror to lower triangle
+            if j >= i:
+                pair = f"{key_1}{key_2}" if f"{key_1}{key_2}" in mean_f_weights["mf_weights"] else f"{key_2}{key_1}"
+                if pair not in mean_f_weights["mf_weights"]:
+                    print(f"⚠️ Pair {pair} not found in mean-field weights, skipping")
+                    continue
+                Umat = np.array(mean_f_weights["mf_weights"][pair], dtype=float)
+                mf_weight[i][j] = Umat
+                mf_weight[j][i] = Umat  # symmetric
+
+
+
+    
     
     
     exit(0)
@@ -657,56 +699,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
    
     exit(0)
 
-    threshold = 0.001
-
-    print("\n\n... Total number of iteration is given as:", iteration_max, "\n\n\n\n\n")
-
-
-    mf_weight = []
     
-        
-        
-    for key_1 in species:
-         mf_weight_in = []
-         for key_2 in species:
-            mf_weight_in.append(np.zeros(nx, dtype = complex))
-            
-         mf_weight.append(mf_weight_in)
-        
-    i = 0 
-    for key in species:
-         # Initialize a list for individual species weights
-        j = 0
-       
-        for key_in in species:
-            if (j >= i):
-                
-                # Open file for the current species
-                with open(scratch / f"supplied_data_weight_MF_k_space_{key}{key_in}.txt", "r") as file:
-                    k =0
-                    for line in file:
-                        # Skip comment lines
-                        if line.startswith("#"):
-                            continue
-
-                        # Split the line into columns and convert them to floats
-                        columns = line.strip().split()
-                       
-                        
-                        # Collect rho-related values for this species
-                    
-                   
-                        mf_weight[i][j][k] = complex(columns[0])
-                        mf_weight[j][i][k] = complex(columns[0])
-                        k = k+1
-                
-                
-            
-            j = j + 1
-        # Append the individual weights list to fmt_weights
-        i = i + 1
-
-
 
 
     pressure_values = np.zeros(nx)

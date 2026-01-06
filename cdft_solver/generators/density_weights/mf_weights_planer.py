@@ -161,7 +161,7 @@ def mf_weights_planer(
         out_file = scratch_dir / filename
         with open(out_file, "w") as f:
             json.dump(result, f, indent=2)
-        print(f"✅ MF cylindrical weights exported to {out_file}")
+        print(f"✅ MF cylindrical-planer weights exported to {out_file}")
 
     return result
 
