@@ -579,44 +579,24 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
 
 
-    exit(0)
-
-
-
-
-   
-
-
-
-    k_space_file_path = scratch/ 'supplied_data_k_space.txt'
-    k_space = np.loadtxt(k_space_file_path)
-    k_space = np.array(k_space)
-
+    k_space =  r_k_grid["k_space"]
     kx = k_space[:,0]
     ky = k_space[:,1]
     kz = k_space[:,2]
 
 
 
-
-
-    v_ext={}
+    external_pots  = v_ext["external_potentials"]
+    v_ext = {}
+    external_pots = result["external_potentials"]
     for key in species:
-        with open(scratch / f"supplied_data_walls_potential_{key}_r_space.txt", "r") as file:
-            v_ind=[]
-            for line in file:
-                # Skip comment lines
-                if line.startswith("#"):
-                    continue
-                # Split the line into columns and convert them to floats
-                columns = line.strip().split()
-                v_ind.append( float(columns[3]))
-            v_ext[key] = np.array(v_ind)
-            
-    print ("\n\n... supplied data has been imported successfully ...\n\n\n")
+        if key not in external_pots:
+            raise KeyError(f"External potential missing for species '{key}'")
+
+        v_ext[key] = np.asarray(external_pots[key])
 
 
-
+    
 
 
 
@@ -633,7 +613,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
     piee = np.pi
 
-
+    exit(0)
 
 
     json_file_particles_interactions = scratch / "input_data_particles_interactions_parameters.json"
