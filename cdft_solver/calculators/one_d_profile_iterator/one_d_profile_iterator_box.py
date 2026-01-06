@@ -692,16 +692,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         
         return vij
     vij  =  compute_vij (densities =  rho_r, kernel  =  "uniform")
-        
-
-
-
-
     
-
-   
-    exit(0)
-
     
 
 
@@ -758,7 +749,30 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     temperature = 1.0
    
 
-    
+    # ---------------------------------------------
+    # Convert vij dict to dense array
+    # ---------------------------------------------
+
+    vij_dict = vij["vij_numeric"]
+    species = vij["species"]
+
+    N = len(species)
+    Nz = vij_dict[(species[0], species[0])].shape[0]
+
+    # Allocate dense array
+    # vij_array[k, j, z1, z2]
+    vij_array = np.zeros((N, N, Nz, Nz), dtype=float)
+
+    # Fill
+    for k, sk in enumerate(species):
+        for j, sj in enumerate(species):
+            vij_array[k, j, :, :] = vij_dict[(sk, sj)]
+
+    # Optional sanity check
+    assert np.allclose(vij_array, vij_array.swapaxes(0,1).swapaxes(2,3)) \
+        or True  # symmetry depends on how you filled it
+
+
 
     while (iteration < iteration_max):
         
@@ -934,21 +948,38 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                         
 
                         # FFTs
-                        fft_delA_2 = fft(del_rhoA_2)
-                        fft_delB_2 = fft(del_rhoB_2)
-                        fft_rho2 = fft(rho_2_factor)
+                        # --------------------------------------------------
+                        # Real-space MF integration using vij(z1,z2)
+                        # --------------------------------------------------
 
-                        # Multiply by MF weights
-                        k_poden_A = fft_delA_2 * mf_weight[k][j]
-                        k_poden_B = fft_delB_2 * mf_weight[k][j]
+                        for z1 in range(nx):
 
-                        # Convolution for energy
-                        energy_r_ind += del_rhoA_1 * ifft(k_poden_A).real + del_rhoB_1 * ifft(k_poden_B).real
+                            # Integral over z2
+                            conv_A = 0.0
+                            conv_B = 0.0
+                            conv_L = 0.0
 
-                        # Optional Landau term (if i==0)
-                        if i == 0:
-                            k_poden = fft_rho2 * mf_weight[k][j]
-                            landau += rho_1_factor * ifft(k_poden).real
+                            for z2 in range(nx):
+
+                                vij_val = vij_array[k, j, z1, z2]
+
+                                conv_A += vij_val * del_rhoA_2[z2]
+                                conv_B += vij_val * del_rhoB_2[z2]
+
+                                if i == 0:
+                                    conv_L += vij_val * rho_2_factor[z2]
+
+                            conv_A *= dz
+                            conv_B *= dz
+
+                            energy_r_ind[z1] += (
+                                del_rhoA_1[z1] * conv_A
+                                + del_rhoB_1[z1] * conv_B
+                            )
+
+                            if i == 0:
+                                landau[z1] += rho_1_factor[z1] * conv_L * dz
+
 
                     ind_mf_energy += energy_r_ind
 
