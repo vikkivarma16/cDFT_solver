@@ -117,15 +117,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
     # this is the main regions for the calculation for the 1 d walls confinement DFT simulation ...
 
-    i = 0
-    j = 0
-
-    iteration = 0
-    rho_r_initial = np.array(rho_r)
-    rho_r_current = np.array(rho_r)
-
-    piee = np.pi
-    
+   
     
     weights = fmt_weights_planer(ctx=ctx, data_dict=hc_data, grid_properties=r_k_grid, export_json=True, filename="supplied_data_weight_FMT_k_space.json", plot=True )
 
@@ -647,7 +639,15 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     rho_r = bulk_rhos.T
     mue_r = bulk_mues.T
 
+    i = 0
+    j = 0
 
+    iteration = 0
+    rho_r_initial = np.array(rho_r)
+    rho_r_current = np.array(rho_r)
+
+    piee = np.pi
+    
 
    
     exit(0)
