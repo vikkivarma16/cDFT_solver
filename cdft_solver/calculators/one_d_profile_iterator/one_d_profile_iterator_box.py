@@ -1022,8 +1022,20 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                     free_energy = free_energy + total_df_ext[pid][i]
                 if (grand_meanfield_flag == 1):
                     free_energy = free_energy + total_f_ext_mf[pid][i]
-                  
-                density = (np.exp( - v_ext[particle][i]/ temperature) * np.exp(mue_r[pid][i]) * np.exp( - free_energy) )
+
+                # Compute the exponent
+                exponent = -v_ext[particle][i] / temperature + mue_r[pid][i] - free_energy
+
+                # Clip the exponent to prevent overflow/underflow
+                # np.exp(700) is already ~1e304, np.exp(-700) is ~1e-304, safe
+                exponent_clipped = np.clip(exponent, -700, 700)
+
+                # Compute density
+                density = np.exp(exponent_clipped)
+
+                
+                
+                
                 grand_landau = grand_landau + (v_ext[particle][i]/ temperature - mue_r[pid][i]) * rho_r_current[pid][i] + rho_r_current[pid][i] *np.log(rho_r_current[pid][i]) -  rho_r_current[pid][i]
                 rho_r_current[pid][i] = alpha * density + (1-alpha) * rho_r_initial[pid][i] 
                 rho_r_initial[pid][i] = rho_r_current[pid][i]
