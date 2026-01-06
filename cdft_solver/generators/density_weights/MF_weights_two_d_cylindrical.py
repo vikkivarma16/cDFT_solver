@@ -5,12 +5,12 @@ import json
 import matplotlib.pyplot as plt
 from pathlib import Path
 from scipy.interpolate import interp1d
-
+from cdft_solver.generators.potential_splitter.mf import meanfield_potentials as mmf
 
 def mf_weights_two_d_cylindrical(
     ctx=None,
     data_dict=None,
-    r_space_coordinates=None,
+    grid_properties=None,
     export_json=True,
     filename="supplied_data_weight_mf_cylindrical.json",
     plot=False
@@ -60,14 +60,16 @@ def mf_weights_two_d_cylindrical(
     species = find_key_recursive(data_dict, "species")
     if not species:
         raise KeyError("No 'species' found in dictionary")
-
-
-    mf_potentials = find_key_recursive(data_dict, "mf_potentials")
+    
+    
+    mf_data = mmf( ctx=ctx, input_data=data_dict, grid_points=5000, file_name_prefix="supplied_data_potential_mf.json", export_files=False )
+    mf_potentials = mf_data["potentials"]
+    
     if not mf_potentials:
         raise KeyError("No 'mf_potentials' found in dictionary")
 
    # Extract r-space
-    r_space = r_space_coordinates
+    r_space = np.array(grid_properties["r_space"]) 
 
     r_space = np.array(r_space, dtype=float)
     if r_space.shape[1] < 2:

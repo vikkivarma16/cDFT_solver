@@ -6,4 +6,4 @@ for running isochores DFT minimization.
 """
 
 
-from .calculator_one_d_profile_iterator import one_d_profile_iterator_cartesian
+from  .one_d_profile_iterator_box import one_d_profile_iterator_box

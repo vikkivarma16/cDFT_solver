@@ -19,7 +19,7 @@ PI = np.pi
 def fmt_weights_one_d_cylindrical(
     ctx=None,
     data_dict=None,
-    k_space_coordinates=None,
+    grid_properties=None,
     export_json=True,
     filename="supplied_data_weight_FMT_k_space.json",
     plot=False
@@ -60,8 +60,7 @@ def fmt_weights_one_d_cylindrical(
         raise ValueError("ctx with scratch_dir must be provided")
     if data_dict is None:
         raise ValueError("data_dict must be provided")
-    if k_space_coordinates is None:
-        raise ValueError("k_space_coordinates must be provided as Nx3 array")
+    
 
     scratch_dir = Path(ctx.scratch_dir)
     scratch_dir.mkdir(parents=True, exist_ok=True)
@@ -99,7 +98,9 @@ def fmt_weights_one_d_cylindrical(
     # -------------------------
     # Prepare k-space
     # -------------------------
-    k_space_coordinates = np.array(k_space_coordinates)
+    
+    k_space_coordinates = np.array(grid_properties["k_space"])  # shape (N, 3)
+    
     N_k = k_space_coordinates.shape[0]
     dimension = 1  # cylindrical 1D weight function
 

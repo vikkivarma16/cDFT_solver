@@ -1,48 +1,4 @@
-import numpy as np
-import json
-import math
-import matplotlib.pyplot as plt
-from pynufft import NUFFT
-from scipy.fft import fft, ifft
-import pyfftw.interfaces as fftw
-import sympy as sp
-from scipy.integrate import simpson
-from pathlib import Path
-from sympy import log, diff, lambdify
-from scipy import integrate
-from scipy.special import j0
-from collections.abc import Mapping
-        
-
-
-from cdft_solver.calculators.total_free_energy.total_free_energy import total_free_energy
-from cdft_solver.calculators.total_free_energy.total_free_energy_z import total_free_energy_z as tfez
-from cdft_solver.calculators.coexistence_densities.calculator_coexistence_densities_isocore import coexistence_densities_isocore
-from cdft_solver.calculators.coexistence_densities.calculator_coexistence_densities_isochem import coexistence_densities_isochem
-
-
-
-from cdft_solver.generators.potential_splitter.hc import hard_core_potentials
-from cdft_solver.generators.grids_properties.external_potential_grid import external_potential_grid
-from cdft_solver.generators.grids_properties.k_and_r_space_box import r_k_space_box
-from cdft_solver.generators.grids_properties.k_and_r_space_cylindrical import r_k_space_cylindrical
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def one_d_profile_iterator_box (ctx, config, export_json= True, export_plots = True, filename  = "one_d_profiles"):
+def one_d_profile_iterator_box(ctx, config):   
 
 
 
@@ -50,6 +6,34 @@ def one_d_profile_iterator_box (ctx, config, export_json= True, export_plots = T
     Required solvers (install via pip if needed). 
     For restricted systems, activate the environment first.
     """
+    import numpy as np
+    import json
+    import math
+    import matplotlib.pyplot as plt
+    from pynufft import NUFFT
+    from scipy.fft import fft, ifft
+    import pyfftw.interfaces as fftw
+    import sympy as sp
+    from scipy.integrate import simpson
+    from pathlib import Path
+    from sympy import log, diff, lambdify
+    from scipy import integrate
+    from scipy.special import j0
+            
+    
+    
+    from cdft_solver.calculators.total_free_energy.total_free_energy import total_free_energy
+    from cdft_solver.calculators.total_free_energy.total_free_energy_z import total_free_energy_z as tfez
+    from cdft_solver.calculators.coexistence_densities.calculator_coexistence_densities_isocore import coexistence_densities_isocore
+    from cdft_solver.calculators.coexistence_densities.calculator_coexistence_densities_isochem import coexistence_densities_isochem
+
+    
+    
+    from cdft_solver.generators.potential_splitter.hc import hard_core_potentials
+    from cdft_solver.generators.grids_properties.external_potential_grid import external_potential_grid
+    from cdft_solver.generators.grids_properties.k_and_r_space_box import r_k_space_box
+    from cdft_solver.generators.grids_properties.k_and_r_space_cylindrical import r_k_space_cylindrical
+    
     
     
     scratch = Path(ctx.scratch_dir)
