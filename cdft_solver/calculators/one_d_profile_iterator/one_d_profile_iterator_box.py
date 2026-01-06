@@ -695,6 +695,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     
     
 
+    nx  =  len(x)
 
     pressure_values = np.zeros(nx)
 
