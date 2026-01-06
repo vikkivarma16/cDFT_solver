@@ -190,19 +190,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                 mf_weight[j][i] = Umat  # symmetric
 
 
-
     
-    
-    
-    exit(0)
-    
-    
-    
-    
-    
-    
-    
-   
     
     import sympy as sp
 
