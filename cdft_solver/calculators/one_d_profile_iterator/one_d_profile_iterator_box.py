@@ -610,48 +610,37 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     piee = np.pi
     
     
-    weights = fmt_weights_planer(ctx=ctx, data_dict=hc_data, grid_properties=r_k_grid, export_json=True, filename="supplied_data_weight_FMT_k_space.json", plot=False )
+    weights = fmt_weights_planer(ctx=ctx, data_dict=hc_data, grid_properties=r_k_grid, export_json=True, filename="supplied_data_weight_FMT_k_space.json", plot=True )
+
+    
+    # weights already computed above
+    # weights = fmt_weights_planer(...)
+
+    # --------------------------------------
+    # Load k-space coordinates
+    # --------------------------------------
+    k_space = np.asarray(weights["k_space"])   # shape (Nk, 3)
+    kx = k_space[:, 0]
+    ky = k_space[:, 1]
+    kz = k_space[:, 2]
+
+    # --------------------------------------
+    # Reconstruct FMT weights (complex)
+    # --------------------------------------
+    fmt_weights = {}
+
+    for sp in weights["species"]:
+        wf = weights["weight_functions"][sp]
+
+        real_part = np.asarray(wf["real"], dtype=float)
+        imag_part = np.asarray(wf["imag"], dtype=float)
+
+        fmt_weights[sp] = real_part + 1j * imag_part
+
+
+    
 
     exit(0)
-
-
-    json_file_particles_interactions = scratch / "input_data_particles_interactions_parameters.json"
-    json_file_simulation_thermodynamics = scratch / "input_data_simulation_thermodynamic_parameters.json"
-    r_space_file = scratch / "supplied_data_r_space.txt"
-    
-    kx, ky, kz = [], [], []  # Define kx, ky, kz before the loop
-    fmt_weights = {}  # Define fmt_weights to hold all species weights
-
-    for key in species:
-        fmt_weights_ind = []  # Initialize a list for individual species weights
-        
-        # Open file for the current species
-        with open(scratch/ f"supplied_data_weight_FMT_k_space_{key}.txt", "r") as file:
-            for line in file:
-                # Skip comment lines
-                if line.startswith("#"):
-                    continue
-
-                # Split the line into columns and convert them to floats
-                columns = line.strip().split()
-               
-                
-                # Collect rho-related values for this species
-                li = []
-
-                li.append(complex(columns[3]))
-                li.append(complex(columns[4]))
-                li.append(complex(columns[5]))
-                li.append(complex(columns[6]))
-                li.append(complex(columns[7]))
-                li.append(complex(columns[8]))
-           
-                fmt_weights_ind.append(li)
-                
-        
-        fmt_weights_ind = np.array (fmt_weights_ind)
-        fmt_weights[key] = fmt_weights_ind # Append the individual weights list to fmt_weights
-
 
     threshold = 0.001
 

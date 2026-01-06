@@ -136,12 +136,24 @@ def fmt_weights_planer(
     # -------------------------
     # Export JSON
     # -------------------------
-    result = {
-        "species": list(particle_sizes.keys()),
-        "k_space": k_space_coordinates.tolist(),
-        "weight_functions": {p: weight_functions[p].tolist() for p in particle_sizes}
+    def complex_to_json_safe(arr):
+    return {
+        "real": np.real(arr).tolist(),
+        "imag": np.imag(arr).tolist()
     }
 
+
+    
+    
+    
+    result = {
+    "species": list(particle_sizes.keys()),
+    "k_space": k_space_coordinates.tolist(),
+    "weight_functions": {
+        p: complex_to_json_safe(weight_functions[p])
+        for p in particle_sizes
+    }}
+    
     if export_json:
         out_file = scratch_dir / filename
         with open(out_file, "w") as f:
