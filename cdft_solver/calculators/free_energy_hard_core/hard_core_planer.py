@@ -157,7 +157,7 @@ def hard_core_planer(
     # Treat as symbolic function
     # -------------------------
     flat_variables = [v for var_list in variables for v in var_list]
-    F_hc = sp.Lambda(flat_variables, total_phi)
+    F_hc = sp.Lambda(tuple(flat_variables), total_phi)
 
     # -------------------------
     # Prepare result
