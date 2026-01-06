@@ -773,6 +773,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     assert np.allclose(vij_array, vij_array.swapaxes(0,1).swapaxes(2,3)) \
         or True  # symmetry depends on how you filled it
 
+    dz = x[1] - x[0]
 
 
     while (iteration < iteration_max):
