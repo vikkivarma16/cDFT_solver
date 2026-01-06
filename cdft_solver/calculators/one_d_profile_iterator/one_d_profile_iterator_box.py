@@ -38,7 +38,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     
     scratch = Path(ctx.scratch_dir)
     plots = Path(ctx.plots_dir)
-    systme  =  config
+    system  =  config
     
     
     
