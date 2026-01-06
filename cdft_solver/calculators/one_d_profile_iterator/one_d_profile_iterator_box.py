@@ -56,6 +56,20 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     
     
     
+    r_k_grid = r_k_space_box(ctx=ctx, data_dict=system, export_json=True, filename="supplied_data_r_k_space_box.json")
+    v_ext = external_potential_grid( ctx=ctx, data_dict=system, grid_properties=r_k_grid, export_json=True, filename="supplied_data_external_potential.json", plot=True )
+    
+    
+    
+    rdf_planer  =  find_key_recursive(config, "rdf_planer")
+    planer_grid_config = {}
+    planer_grid_config ["space_confinement_parameters"] = rdf_planer
+    r_k_grid_planer = r_k_space_cylindrical(ctx = ctx, data_dict = rdf_planer, export_json = True, filename = "supplied_data_r_k_space_box_planer.json")
+    
+    
+    
+    
+    
     ensemble  =  find_key_recursive(config, "ensemble")
     filenames = {}
     filenames["hard_core"] = "supplied_data_free_energy_hard_core.json"
@@ -77,15 +91,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
 
     
-    r_k_grid = r_k_space_box(ctx=ctx, data_dict=system, export_json=True, filename="supplied_data_r_k_space_box.json")
-    v_ext = external_potential_grid( ctx=ctx, data_dict=system, grid_properties=r_k_grid, export_json=True, filename="supplied_data_external_potential.json", plot=True )
-    
-    
-    
-    rdf_planer  =  find_key_recursive(config, "rdf_planer")
-    planer_grid_config = {}
-    planer_grid_config [space_confinement_parameters] = rdf_planer
-    r_k_grid_planer = r_k_space_cylindrical(ctx = ctx, data_dict = rdf_planer, export_json = True, filename = "supplied_data_r_k_space_box_planer.json")
+   
     
     
     
