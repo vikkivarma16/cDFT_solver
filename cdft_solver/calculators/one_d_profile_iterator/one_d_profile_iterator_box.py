@@ -688,7 +688,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
     def compute_vij (densities, kernel  =  "uniform"):
         kernel = build_strength_kernel_planer( ctx, config, densities = densities, supplied_data=None, kernel_type=kernel, )
-        vij  =  vij_planar_kernel( ctx, config, kernel_data= kernel, u_data = mean_f_weights, export_json=False, filename="vij_planar_kernel_u.json", plot = True)
+        vij  =  vij_planer_kernel( ctx, config, kernel_data= kernel, u_data = mean_f_weights, export_json=False, filename="vij_planar_kernel_u.json", plot = True)
         
         return vij
     vij  =  compute_vij (densities =  rho_r, kernel  =  "uniform")
