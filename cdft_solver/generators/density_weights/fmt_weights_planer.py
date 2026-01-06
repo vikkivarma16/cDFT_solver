@@ -109,27 +109,38 @@ def fmt_weights_planer(
         weight_list = []
         for kx, ky, kz in k_space_coordinates:
             k_value = kx
-            weight_vector = [kx, ky, kz]
-            if np.abs(k_value) < EPSILON:
-                # Avoid division by zero
-                weight_vector.extend([
-                    1.0,
-                    size * 0.5,
-                    PI * size**2,
-                    PI * size**3 / 6.0,
+            weight_vector = []
+            if (size <0.000001):
+                 weight_vector.extend([
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
                     0.0,
                     0.0
                 ])
-            else:
-                weight_vector.extend([
-                    np.sin(k_value * PI * size) / (k_value * size * PI),
-                    np.sin(k_value * PI * size) / (2.0 * k_value * PI),
-                    size * np.sin(k_value * PI * size) / k_value,
-                    (np.sin(k_value * PI * size) / (2.0 * k_value**3 * PI**2)
-                     - size * np.cos(k_value * PI * size) / (2.0 * k_value**2 * PI)),
-                    1j*(k_value * PI * size * np.cos(k_value * PI * size) - np.sin(k_value * PI * size)) / (2.0 * size * PI**2 * k_value**2),
-                    1j*(k_value * PI * size * np.cos(k_value * PI * size) - np.sin(k_value * PI * size)) / (k_value**2 * PI)
-                ])
+            else :
+            
+                if np.abs(k_value) < EPSILON:
+                    # Avoid division by zero
+                    weight_vector.extend([
+                        1.0,
+                        size * 0.5,
+                        PI * size**2,
+                        PI * size**3 / 6.0,
+                        0.0,
+                        0.0
+                    ])
+                else:
+                    weight_vector.extend([
+                        np.sin(k_value * PI * size) / (k_value * size * PI),
+                        np.sin(k_value * PI * size) / (2.0 * k_value * PI),
+                        size * np.sin(k_value * PI * size) / k_value,
+                        (np.sin(k_value * PI * size) / (2.0 * k_value**3 * PI**2)
+                         - size * np.cos(k_value * PI * size) / (2.0 * k_value**2 * PI)),
+                        1j*(k_value * PI * size * np.cos(k_value * PI * size) - np.sin(k_value * PI * size)) / (2.0 * size * PI**2 * k_value**2),
+                        1j*(k_value * PI * size * np.cos(k_value * PI * size) - np.sin(k_value * PI * size)) / (k_value**2 * PI)
+                    ])
             weight_list.append(np.array(weight_vector))
         weight_functions[particle] = np.array(weight_list)
 
