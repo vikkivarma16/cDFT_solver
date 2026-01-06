@@ -4,7 +4,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 
-def bulk_rho_mue_z_space_box(
+def bulk_rho_mue_planer(
     ctx,
     thermodynamic_parameter: dict,
     r_space_coordinates: dict,
