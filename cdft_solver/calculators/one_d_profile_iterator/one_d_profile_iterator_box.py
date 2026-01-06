@@ -38,7 +38,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     from cdft_solver.generators.density_weights.fmt_weights_planer import fmt_weights_planer
     from cdft_solver.generators.density_weights.mf_weights_planer import mf_weights_planer
     from cdft_solver.calculators.one_d_profile_iterator.kernel_generator_planer import build_strength_kernel_planer
-    from cdft_solver.calculators.integrated_strenth.integrated_strength_planer_kernal import vij_planer_kernel
+    from cdft_solver.calculators.integrated_strength.integrated_strength_planer_kernal import vij_planer_kernel
     
     
     
