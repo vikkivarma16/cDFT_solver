@@ -36,7 +36,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     from cdft_solver.calculators.free_energy_mean_field.mean_field_planer import mean_field_planer
     from cdft_solver.generators.grids_properties.bulk_rho_mue_planer import bulk_rho_mue_planer
     from cdft_solver.generators.density_weights.fmt_weights_planer import fmt_weights_planer
-    
+    from cdft_solver.generators.density_weights.mf_weights_planer import mf_weights_planer
     
     
     
@@ -147,8 +147,13 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         fmt_weights[sp] = real_part + 1j * imag_part
 
 
-    
 
+    
+    mf_weights = mf_weights_planer(ctx=ctx, data_dict=system, grid_properties=r_k_grid_planer, export_json=True, filename="supplied_data_weight_mf_planer.json", plot=False )
+    
+    
+    exit(0)
+    
     
     
     

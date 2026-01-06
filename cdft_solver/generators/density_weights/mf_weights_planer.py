@@ -7,7 +7,7 @@ from pathlib import Path
 from scipy.interpolate import interp1d
 from cdft_solver.generators.potential_splitter.mf import meanfield_potentials as mmf
 
-def mf_weights_two_d_cylindrical(
+def mf_weights_planer(
     ctx=None,
     data_dict=None,
     grid_properties=None,
