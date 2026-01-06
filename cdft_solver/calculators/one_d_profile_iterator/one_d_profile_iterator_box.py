@@ -86,11 +86,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     
     
 
-    if (ensemble == "isocore"):
-        value = coexistence_densities_isocore( ctx = ctx, config_dict = config, fe_res = free_energy, supplied_data = None, max_outer_iters = 10, tol_outer = 1e-3,tol_solver = 1e-8, verbose = True)
-    elif (ensemble == "isochem"):
-        value = coexistence_densities_isochem( ctx = ctx, config_dict = config, fe_res = free_energy, supplied_data = None, max_outer_iters = 10, tol_outer = 1e-3,tol_solver = 1e-8, verbose = True)
-
+    
 
     
     hc_free_energy_planer = hard_core_planer( ctx=ctx, hc_data=hc_data, export_json=False, filename="Solution_hardcore_z.json" )
@@ -529,6 +525,12 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     iteration_max = find_key_recursive(profile_p, "iteration_max")
     log_period = find_key_recursive(profile_p, "log_period")
     tol = find_key_recursive(profile_p, "tolerance")
+
+
+    if (ensemble == "isocore"):
+        value = coexistence_densities_isocore( ctx = ctx, config_dict = config, fe_res = free_energy, supplied_data = None, max_outer_iters = 10, tol_outer = 1e-3,tol_solver = 1e-8, verbose = True)
+    elif (ensemble == "isochem"):
+        value = coexistence_densities_isochem( ctx = ctx, config_dict = config, fe_res = free_energy, supplied_data = None, max_outer_iters = 10, tol_outer = 1e-3,tol_solver = 1e-8, verbose = True)
 
     
     exit(0)    

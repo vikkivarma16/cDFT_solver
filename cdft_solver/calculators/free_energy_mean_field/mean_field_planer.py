@@ -97,7 +97,6 @@ def mean_field_planer(
     # -------------------------
     # Attach system metadata
     # -------------------------
-    result["system"] = system
     result["method"] = method
 
     return result
