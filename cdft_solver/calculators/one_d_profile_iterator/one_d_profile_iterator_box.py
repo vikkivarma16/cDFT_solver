@@ -94,7 +94,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
     
     hc_free_energy_planer = hard_core_planer( ctx=ctx, hc_data=hc_data, export_json=False, filename="Solution_hardcore_z.json" )
-    mf_free_energy_planer =  mean_field_planer( ctx=None, hc_data=None, system_config=system, export_json=False, filename=None,)
+    mf_free_energy_planer =  mean_field_planer( ctx=ctx, hc_data=hc_data, system_config=system, export_json=False, filename=None,)
     
    
     
