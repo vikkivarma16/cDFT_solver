@@ -95,6 +95,73 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     hc_free_energy_planer = hard_core_planer( ctx=ctx, hc_data=hc_data, export_json=False, filename="Solution_hardcore_z.json" )
     mf_free_energy_planer =  mean_field_planer( ctx=ctx, hc_data=hc_data, system_config=system, export_json=False, filename=None,)
     
+    
+    
+    k_space =  np.asarray(r_k_grid["k_space"])
+    kx = k_space[:,0]
+    ky = k_space[:,1]
+    kz = k_space[:,2]
+
+
+
+    external_pots  = v_ext["external_potentials"]
+    v_ext = {}
+    for key in species:
+        if key not in external_pots:
+            raise KeyError(f"External potential missing for species '{key}'")
+
+        v_ext[key] = np.asarray(external_pots[key])
+    
+    
+
+    # this is the main regions for the calculation for the 1 d walls confinement DFT simulation ...
+
+    i = 0
+    j = 0
+
+    iteration = 0
+    rho_r_initial = np.array(rho_r)
+    rho_r_current = np.array(rho_r)
+
+    piee = np.pi
+    
+    
+    weights = fmt_weights_planer(ctx=ctx, data_dict=hc_data, grid_properties=r_k_grid, export_json=True, filename="supplied_data_weight_FMT_k_space.json", plot=True )
+
+    
+    # weights already computed above
+    # weights = fmt_weights_planer(...)
+
+    # --------------------------------------
+    # Load k-space coordinates
+    # --------------------------------------
+    k_space = np.asarray(weights["k_space"])   # shape (Nk, 3)
+    kx = k_space[:, 0]
+    ky = k_space[:, 1]
+    kz = k_space[:, 2]
+
+    # --------------------------------------
+    # Reconstruct FMT weights (complex)
+    # --------------------------------------
+    fmt_weights = {}
+
+    for sp in weights["species"]:
+        wf = weights["weight_functions"][sp]
+
+        real_part = np.asarray(wf["real"], dtype=float)
+        imag_part = np.asarray(wf["imag"], dtype=float)
+
+        fmt_weights[sp] = real_part + 1j * imag_part
+
+
+    
+
+    
+    
+    
+    
+    
+    
    
     
     import sympy as sp
@@ -581,65 +648,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
 
 
-    k_space =  np.asarray(r_k_grid["k_space"])
-    kx = k_space[:,0]
-    ky = k_space[:,1]
-    kz = k_space[:,2]
-
-
-
-    external_pots  = v_ext["external_potentials"]
-    v_ext = {}
-    for key in species:
-        if key not in external_pots:
-            raise KeyError(f"External potential missing for species '{key}'")
-
-        v_ext[key] = np.asarray(external_pots[key])
-    
-    
-
-    # this is the main regions for the calculation for the 1 d walls confinement DFT simulation ...
-
-    i = 0
-    j = 0
-
-    iteration = 0
-    rho_r_initial = np.array(rho_r)
-    rho_r_current = np.array(rho_r)
-
-    piee = np.pi
-    
-    
-    weights = fmt_weights_planer(ctx=ctx, data_dict=hc_data, grid_properties=r_k_grid, export_json=True, filename="supplied_data_weight_FMT_k_space.json", plot=True )
-
-    
-    # weights already computed above
-    # weights = fmt_weights_planer(...)
-
-    # --------------------------------------
-    # Load k-space coordinates
-    # --------------------------------------
-    k_space = np.asarray(weights["k_space"])   # shape (Nk, 3)
-    kx = k_space[:, 0]
-    ky = k_space[:, 1]
-    kz = k_space[:, 2]
-
-    # --------------------------------------
-    # Reconstruct FMT weights (complex)
-    # --------------------------------------
-    fmt_weights = {}
-
-    for sp in weights["species"]:
-        wf = weights["weight_functions"][sp]
-
-        real_part = np.asarray(wf["real"], dtype=float)
-        imag_part = np.asarray(wf["imag"], dtype=float)
-
-        fmt_weights[sp] = real_part + 1j * imag_part
-
-
-    
-
+   
     exit(0)
 
     threshold = 0.001
