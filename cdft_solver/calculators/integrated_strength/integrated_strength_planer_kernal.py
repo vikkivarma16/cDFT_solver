@@ -148,7 +148,8 @@ def vij_planer_kernel(
 
         plot_dir.mkdir(parents=True, exist_ok=True)
 
-        # Δz grid
+        dz = np.gradient(z_grid)
+
         for (si, sj), vij in vij_numeric.items():
 
             # Only plot upper triangle once
@@ -160,15 +161,24 @@ def vij_planer_kernel(
 
             plt.figure(figsize=(7, 5))
 
+            print(f"\n🔎 Integrated vij(z) for pair {si}-{sj}:")
+
             for idx in z_indices:
                 z0 = z_grid[idx]
                 delta_z = z0 - z_grid  # z - z'
+
+                # Plot v(z0, z')
                 plt.plot(
                     delta_z,
                     vij[idx, :],
                     lw=1.2,
                     label=f"z={z0:.3f}"
                 )
+
+                # ---- Integrated vij over z'
+                vij_int = np.trapz(vij[idx, :], z_grid)
+
+                print(f"   z = {z0: .5f}  →  ∫dz' v_ij = {vij_int: .6e}")
 
             plt.axvline(0.0, color="k", ls="--", lw=0.8)
             plt.xlabel(r"$z - z'$")
