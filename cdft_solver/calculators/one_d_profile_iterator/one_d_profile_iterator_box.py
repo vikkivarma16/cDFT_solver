@@ -33,6 +33,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     from cdft_solver.generators.grids_properties.external_potential_grid import external_potential_grid
     from cdft_solver.generators.grids_properties.k_and_r_space_box import r_k_space_box
     from cdft_solver.generators.grids_properties.k_and_r_space_cylindrical import r_k_space_cylindrical
+    from cdft_solver.calculators.free_energy_hard_core.hard_core_planer import hard_core_planer
+    from cdft_solver.calculators.free_energy_mean_field.mean_field_planer import mean_field_planer
     
     
     
@@ -64,7 +66,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     rdf_planer  =  find_key_recursive(config, "planer_rdf")
     planer_grid_config = {}
     planer_grid_config ["space_confinement_parameters"] = rdf_planer
-    print (planer_grid_config)
     
     r_k_grid_planer = r_k_space_cylindrical(ctx = ctx,  data_dict =  planer_grid_config, export_json = True, filename = "supplied_data_r_k_space_box_planer.json")
     
@@ -93,11 +94,87 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
 
     
+    hc_free_energy_planer = hard_core_planer( ctx=ctx, hc_data=hc_data, export_json=False, filename="Solution_hardcore_z.json" )
+    mf_free_energy_planer =  mean_field_planer( ctx=None, hc_data=None, system_config=system, export_json=False, filename=None,)
+    
    
     
+    import sympy as sp
+
+    def build_symbolic_free_energy_payload(
+        hc_result,
+        mf_result,
+        hc_data,
+    ):
+        """
+        Merge hard-core and mean-field symbolic results into a single payload
+        suitable for activate_free_energy_symbolics().
+        """
+
+        species = hc_data["species"]
+        n_species = len(species)
+
+        # --------------------------------------------------
+        # Density symbols
+        # --------------------------------------------------
+        rho_z  = [f"rho_{s}_z"  for s in species]
+        rho_zs = [f"rho_{s}_zs" for s in species]
+
+        # --------------------------------------------------
+        # Weighted densities (already symbolic)
+        # --------------------------------------------------
+        variables = [
+            [str(v) for v in var_list]
+            for var_list in hc_result["variables"]
+        ]
+
+        # --------------------------------------------------
+        # Pair interactions
+        # --------------------------------------------------
+        vij = [
+            [f"v_{species[i]}_{species[j]}" for j in range(n_species)]
+            for i in range(n_species)
+        ]
+
+        # --------------------------------------------------
+        # Free-energy expressions
+        # --------------------------------------------------
+        FE_hc = hc_result["expression"]
+        FE_mf = mf_result["expression"]
+
+        FE_excess = sp.simplify(FE_hc + FE_mf)
+
+        # --------------------------------------------------
+        # Final payload
+        # --------------------------------------------------
+        payload = {
+            "species": species,
+            "sigma_eff": hc_data.get("sigma"),
+            "flag": hc_data.get("flag"),
+
+            "densities_z": rho_z,
+            "densities_zs": rho_zs,
+
+            "variables": variables,
+            "vij": vij,
+
+            "free_energy_mf_symbolic": str(FE_mf),
+            "free_energy_hc_symbolic": str(FE_hc),
+            "free_energy_excess_symbolic": str(FE_excess),
+        }
+
+        return payload
+        
+    symbolic_payload = build_symbolic_free_energy_payload(hc_result=hc_free_energy_planer,mf_result=mf_free_energy_planer,hc_data=hc_data,)
+
     
     
-    exit(0)
+    
+    
+    
+    
+    
+    
     
     
     
@@ -154,10 +231,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         # -------------------------------------------------------
         # 5) Volume factors
         # -------------------------------------------------------
-        volume_factors = [
-            sp.sympify(v, locals=symbol_table) 
-            for v in result["volume_factors"]
-        ]
 
         # -------------------------------------------------------
         # 6) Parse free energy expressions
@@ -179,7 +252,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         FE.rhos = rhos
         FE.n = n
         FE.v = vij
-        FE.vol = volume_factors
         FE.mf = FE_mf
         FE.hc = FE_hc
         FE.excess = FE_excess
@@ -196,7 +268,10 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
         
         
-    FE = activate_free_energy_symbolics(result)
+    FE = activate_free_energy_symbolics(symbolic_payload)
+    
+    
+    
     def build_mf_c1(FE, i):
         """
         Extract contributions of species i to all pair interactions (j,k):
@@ -448,37 +523,16 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     species  =  FE.species
 
     
-    
-
-    # --- JSON file with simulation profile parameters ---
-    json_file_profile = scratch/ "input_data_simulation_profile_parameters.json"
 
     # --- Default values (in case needed) ---
-    alpha = 0.0001
-    iteration_max = 10000
-    log_period = 10  # default log period
-
-    try:
-        with open(json_file_profile, 'r') as file:
-            data_profile = json.load(file)["simulation_profile_parameters"]
-            alpha = data_profile.get("alpha", alpha)
-            iteration_max = data_profile.get("iteration_max", iteration_max)
-            log_period = data_profile.get("log_period", log_period)
-
-    except FileNotFoundError:
-        print(f"⚠️ JSON file not found: {json_file_profile}")
-    except KeyError as e:
-        print(f"⚠️ Missing expected key in JSON: {e}")
-    except json.JSONDecodeError:
-        print(f"⚠️ Failed to decode JSON file: {json_file_profile}")
-
-    print(f"Loaded simulation profile parameters:")
-    print(f"  alpha = {alpha}")
-    print(f"  iteration_max = {iteration_max}")
-    print(f"  log_period = {log_period}")
+    profile_p = find_key_recursive(config, "profile")
+    alpha = find_key_recursive(profile_p, "alpha_mixing_max")
+    iteration_max = find_key_recursive(profile_p, "iteration_max")
+    log_period = find_key_recursive(profile_p, "log_period")
+    tol = find_key_recursive(profile_p, "tolerance")
 
     
-    
+    exit(0)    
     
     
     
