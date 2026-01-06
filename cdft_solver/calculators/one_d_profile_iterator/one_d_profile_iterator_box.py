@@ -23,7 +23,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     
     
     from cdft_solver.calculators.total_free_energy.total_free_energy import total_free_energy
-    from cdft_solver.calculators.total_free_energy.total_free_energy_z import total_free_energy_planer
+    from cdft_solver.calculators.total_free_energy.total_free_energy_planer import total_free_energy_planer
     from cdft_solver.calculators.coexistence_densities.calculator_coexistence_densities_isocore import coexistence_densities_isocore
     from cdft_solver.calculators.coexistence_densities.calculator_coexistence_densities_isochem import coexistence_densities_isochem
 
