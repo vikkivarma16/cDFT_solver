@@ -41,11 +41,20 @@ def mean_field_planer(
         Output of the selected free energy function
     """
 
-    if system_config is None or "system" not in system_config:
-        raise ValueError("system_config must contain a 'system' section")
+    
+    def find_key_recursive(d, key):
+        if not isinstance(d, dict):
+            return None
+        if key in d:
+            return d[key]
+        for v in d.values():
+            if isinstance(v, dict):
+                found = find_key_recursive(v, key)
+                if found is not None:
+                    return found
+        return None
 
-    system = system_config["system"]
-    method = system.get("method", "").lower()
+    method = find_key_recursive(system_config, "method").lower()
 
     # -------------------------
     # Dispatch table
