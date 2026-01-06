@@ -64,6 +64,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     rdf_planer  =  find_key_recursive(config, "rdf_planer")
     planer_grid_config = {}
     planer_grid_config ["space_confinement_parameters"] = rdf_planer
+    print (planer_grid_config)
+    
     r_k_grid_planer = r_k_space_cylindrical(ctx = ctx,  data_dict =  planer_grid_config, export_json = True, filename = "supplied_data_r_k_space_box_planer.json")
     
     
