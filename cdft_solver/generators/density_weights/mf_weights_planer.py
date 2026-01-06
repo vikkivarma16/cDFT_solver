@@ -113,7 +113,7 @@ def mf_weights_planer(
             continue
 
         pot_data = mf_potentials[pair]
-        R_grid = np.array(pot_data["R"], dtype=float)
+        R_grid = np.array(pot_data["r"], dtype=float)
         U_R = np.array(pot_data["U"], dtype=float)
 
         R_cut = R_grid.max()
