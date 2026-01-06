@@ -61,7 +61,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     
     
     
-    rdf_planer  =  find_key_recursive(config, "rdf_planer")
+    rdf_planer  =  find_key_recursive(config, "planer_rdf")
     planer_grid_config = {}
     planer_grid_config ["space_confinement_parameters"] = rdf_planer
     print (planer_grid_config)
