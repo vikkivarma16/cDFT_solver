@@ -34,6 +34,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     from cdft_solver.generators.grids_properties.k_and_r_space_cylindrical import r_k_space_cylindrical
     from cdft_solver.calculators.free_energy_hard_core.hard_core_planer import hard_core_planer
     from cdft_solver.calculators.free_energy_mean_field.mean_field_planer import mean_field_planer
+    from cdft_solver.generators.grids_properties.bulk_rho_mue_planer import bulk_rho_mue_planer
     
     
     
@@ -528,9 +529,16 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
 
 
+    params = find_key_recursive(system, "space_confinement_parameters")
+    if params is None:
+        raise KeyError("Could not find 'space_confinement_parameters' in the dictionary.")
+
+    box_length = params["box_properties"]["box_length"]
+    box_points = [int(p) for p in params["box_properties"]["box_points"]]
+    dimension = int(params["space_properties"]["dimension"])
 
 
-    exit(0) 
+    
     if (ensemble == "isocore"):
         value = coexistence_densities_isocore( ctx = ctx, config_dict = config, fe_res = free_energy, supplied_data = None, max_outer_iters = 10, tol_outer = 1e-3,tol_solver = 1e-8, verbose = True)
     elif (ensemble == "isochem"):
@@ -539,96 +547,39 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     
        
     
-    
-    
-    
-    # density functional minimizer/executor
 
+    # Call the new bulk assignment
+    rho_mue = bulk_rho_mue_planer(
+        ctx=ctx,
+        thermodynamic_parameter=value,
+        r_space_coordinates=r_k_grid,
+        export_json=True,
+        filename="supplied_data_bulk_mue_rho_r_space.json",
+        plot=False,
+    )
 
-    '''
-    ....this section is used for the purpose of printing variables... 
-    '''
+    # ---------------------------------
+    # Extract data directly (NO FILE IO)
+    # ---------------------------------
+    r_space = np.asarray(rho_mue["r_space"])     # (N,3)
+    bulk_rhos = np.asarray(rho_mue["bulk_rhos"]) # (N, nspecies)
+    bulk_mues = np.asarray(rho_mue["bulk_mues"]) # (N, nspecies)
 
- 
-    json_file_interaction = scratch / "input_data_particles_interactions_parameters.json"
-    json_file_thermodynamics = scratch / "input_data_simulation_thermodynamic_parameters.json"
-    json_file_confinement = scratch/ "input_data_space_confinement_parameters.json"
+    x = r_space[:, 0]
+    y = r_space[:, 1]
+    z = r_space[:, 2]
 
-   
-    
-       
-       
-    try: 
-        with open(json_file_confinement, 'r') as file:
-            data = json.load(file)
-
-        # Accessing data from the JSON
-        space_properties = data["space_confinement_parameters"]["space_properties"]
-        box_properties = data["space_confinement_parameters"]["box_properties"]
-
-        # Print the loaded data
-        print("Space Properties:")
-        print(f"  Dimension: {space_properties['dimension']}")
-        print(f"  Confinement Type: {space_properties['confinement']}")
-
-        print("\nBox Properties:")
-        print(f"  Box Lengths: {box_properties['box_length']}")
-        print(f"  Box Points: {box_properties['box_points']}")
-
-        # Example: Access individual values if needed
-        dimension = space_properties["dimension"]
-        confinement_type = space_properties["confinement"]
-        box_lengths = box_properties["box_length"]
-        box_points = box_properties["box_points"]
-
-    except FileNotFoundError:
-        print("Space and properties file could not be found.")
-        exit()
-
-
-    
+    # ---------------------------------
+    # Reformat to match old expectations
+    # rho_r[pid, :] and mue_r[pid, :]
+    # ---------------------------------
+    # Old code expected shape: (nspecies, N)
+    rho_r = bulk_rhos.T
+    mue_r = bulk_mues.T
 
 
 
-
-    nx= int(box_points[0])
-
-    # Initialize empty lists for each column
-    x, y, z, rho_r, mue_r = [], [], [], [], []
-    # Read the text file for the bulk rho mue values ... 
-    pid=0
-    for particle in species:
-        
-        rho_ind= []
-        mue_ind= []
-        with open(scratch / "supplied_data_bulk_mue_rho_r_space.txt", "r") as file:
-            for line in file:
-                # Skip comment lines
-                if line.startswith("#"):
-                    continue
-                # Split the line into columns and convert them to floats
-                columns = line.strip().split()
-                if (pid == 0 ):
-                    x.append(float(columns[0]))
-                    y.append(float(columns[1]))
-                    z.append(float(columns[2]))
-                
-                li=[]
-                chi=[]
-                i=3+pid*2
-                
-                rho_ind.append(float(columns[i]))
-                mue_ind.append (float(columns[i+1]))
-        rho_r.append(rho_ind)
-        mue_r.append(mue_ind)
-        pid = pid+1
-        # Convert lists to numpy arrays
-    x = np.array(x)
-    y = np.array(y)
-    z = np.array(z)
-    rho_r = np.array(rho_r)
-    mue_r = np.array(mue_r)
-
+    exit(0)
 
 
 
