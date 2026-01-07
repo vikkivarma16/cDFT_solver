@@ -156,7 +156,7 @@ def rdf_planer(
     # k-grid (radial k)
     k_grid = np.sort(np.unique(k_space[:, 1]))
     z_grid = np.sort(np.unique(r_space[:, 0]))
-    r_grid = np.sort(np.unique(z_space[:, 0]))
+    r_grid = np.sort(np.unique(r_space[:, 1]))
 
     
 
