@@ -1014,6 +1014,9 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                 grand_landau = grand_landau + (v_ext[particle][i]/ temperature - mue_r[pid][i]) * rho_r_current[pid][i] + rho_r_current[pid][i] *np.log(rho_r_current[pid][i]) -  rho_r_current[pid][i]
                 rho_r_current[pid][i] = alpha * density + (1-alpha) * rho_r_initial[pid][i] 
                 pid = pid + 1
+            grand_landau += landau[i]
+            surface_tension_values [i] =  func_pressure(bulk_dens) + grand_landau # - func_pressure(*ind_density) #
+            pressure_values[i] = func_pressure(ind_density)
                 
                 
             # -------------------------
@@ -1040,9 +1043,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             break
 
                 
-        grand_landau += landau[i]
-        surface_tension_values [i] =  func_pressure(bulk_dens) + grand_landau # - func_pressure(*ind_density) #
-        pressure_values[i] = func_pressure(ind_density)
+       
        
         i_start = int(2*nx / 6)
         i_end   = int(4*nx / 6)
