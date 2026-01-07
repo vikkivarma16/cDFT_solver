@@ -6,6 +6,10 @@ from scipy.special import j0
 
 from .closure import closure_update_c_matrix
 from .rdf_radial import find_key_recursive
+
+from ctypes import CDLL, c_int
+from numpy.ctypeslib import ndpointer
+
 from cdft_solver.generators.grids_properties.k_and_r_space_cylindrical import r_k_space_cylindrical
 from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
 from cdft_solver.generators.potential_splitter.mf import meanfield_potentials 
@@ -13,6 +17,16 @@ from cdft_solver.generators.potential_splitter.total import total_potentials
 # -------------------------------------------------
 # Hankel DST transforms (radial)
 # -------------------------------------------------
+
+lib = CDLL("./liboz.so")
+lib.solve_linear_system.argtypes = [
+    ndpointer(dtype=c_int, flags="C_CONTIGUOUS"),
+    ndpointer(dtype=c_int, flags="C_CONTIGUOUS"),
+    ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),
+    ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),
+]
+
+
 
 '''
 
@@ -81,8 +95,12 @@ def inverse_hankel_transform_2d(F_k, r, k_grid):
 # -------------------------------------------------
 # Solve OZ in k-space
 # -------------------------------------------------
-def solve_oz_matrix_2d(c_r_matrix, densities, r, k_grid, dz):
-    """2D OZ solver along r for each plane z_i, z_j."""
+
+
+def solve_oz_matrix_2d(c_r_matrix, RHO, r, k_grid):
+    """
+    2D OZ solver along r for each plane z_i, z_j using the C solver.
+    """
     Ns, _, Nz, _, Nr = c_r_matrix.shape
     Ck = np.zeros_like(c_r_matrix)
     gamma_k = np.zeros_like(c_r_matrix)
@@ -92,22 +110,37 @@ def solve_oz_matrix_2d(c_r_matrix, densities, r, k_grid, dz):
         for b in range(Ns):
             for i in range(Nz):
                 for j in range(Nz):
-                    Ck[a,b,i,j,:] = hankel_transform_2d(c_r_matrix[a,b,i,j,:], r, k_grid)
+                    Ck[a, b, i, j, :] = hankel_transform_2d(c_r_matrix[a, b, i, j, :], r, k_grid)
 
-    # OZ in k-space (plane-wise)
-    #rho_diag = np.diag(np.repeat(densities, Nz))
     Nd = Ns * Nz
     
-    rho_flat = densities.reshape(Nd)
-    rho_diag = np.diag(rho_flat * dz)
-    
-    I = np.eye(Nd)
+    I_Nd = np.eye(Nd)
+
+    # Pre-allocate matrices for C solver
+    A = np.empty((Nd, Nd))
+    B = np.empty((Nd, Nd))
+
+    N_ptr = np.array([Nd], dtype=np.int32)
+    M_ptr = np.array([Nd], dtype=np.int32)
 
     for ik in range(len(k_grid)):
-        C_big = Ck[..., ik].transpose(0,2,1,3).reshape(Nd, Nd)
-        M = I - C_big @ rho_diag
-        gamma_k_flat = np.linalg.solve(M, (C_big @ rho_diag @ C_big))
-        gamma_k[..., ik] = gamma_k_flat.reshape(Ns, Nz, Ns, Nz).transpose(0,2,1,3)
+        # Flatten to (Nd, Nd) per k
+        C_big = Ck[..., ik].transpose(0, 2, 1, 3).reshape(Nd, Nd)
+
+        # Construct matrices
+        C_rho = C_big @ RHO
+        A[:] = I_Nd - C_rho
+        B[:] = C_rho @ C_big
+
+        # Fortran-contiguous arrays for C solver
+        A_f = np.asfortranarray(A)
+        B_f = np.asfortranarray(B)
+
+        # Call C solver
+        lib.solve_linear_system(N_ptr, M_ptr, A_f, B_f)
+
+        # Reshape back to (Ns, Nz, Ns, Nz)
+        gamma_k[..., ik] = B_f.reshape(Ns, Nz, Ns, Nz).transpose(0, 2, 1, 3)
 
     # Inverse Hankel
     gamma_r = np.zeros_like(c_r_matrix)
@@ -115,9 +148,10 @@ def solve_oz_matrix_2d(c_r_matrix, densities, r, k_grid, dz):
         for b in range(Ns):
             for i in range(Nz):
                 for j in range(Nz):
-                    gamma_r[a,b,i,j,:] = inverse_hankel_transform_2d(gamma_k[a,b,i,j,:], r, k_grid)
+                    gamma_r[a, b, i, j, :] = inverse_hankel_transform_2d(gamma_k[a, b, i, j, :], r, k_grid)
 
     return gamma_r
+
 
 # -------------------------------------------------
 # Main 2D RDF solver
@@ -313,6 +347,10 @@ def rdf_planer(
     alpha_min = 0.01
     relax_increase = 1.05
     relax_decrease = 0.7
+    
+    Nd = Ns * Nz
+    rho_flat = densities.reshape(Nd)
+    RHO = np.diag(rho_flat * dz)
 
     for it in range(n_iter):
         gamma_old = gamma_r.copy()
@@ -330,7 +368,7 @@ def rdf_planer(
         
 
         # (2) Solve OZ
-        gamma_new = solve_oz_matrix_2d(c_r, densities, r_grid, k_grid, dz)
+        gamma_new = solve_oz_matrix_2d(c_r, RHO, r_grid, k_grid)
         
 
         # (3) Dynamic alpha mixing
@@ -362,8 +400,6 @@ def rdf_planer(
     
     
     
-
-'''
 
     # -----------------------------
     # Supplied RDF projection (if any)
@@ -459,4 +495,3 @@ def rdf_planer(
         print(f"✅ Exported RDF to JSON → {filename_prefix}.json")
 
     return {"g_r": g_r, "h_r": h_r, "c_r": c_r, "gamma_r": gamma_r, "u_r": u_matrix}
-'''
