@@ -119,60 +119,35 @@ def inverse_hankel_transform_2d(F_k, r, k_grid):
 # -------------------------------------------------
 
 
-def solve_oz_matrix_2d(c_r_matrix, RHO, r, k_grid):
-    """
-    2D OZ solver along r for each plane z_i, z_j using the C solver.
-    """
-    Ns, _, Nz, _, Nr = c_r_matrix.shape
-    Ck = np.zeros_like(c_r_matrix)
-    gamma_k = np.zeros_like(c_r_matrix)
-
-    # Forward Hankel along r
-    for a in range(Ns):
-        for b in range(Ns):
-            for i in range(Nz):
-                for j in range(Nz):
-                    Ck[a, b, i, j, :] = hankel_transform_2d(c_r_matrix[a, b, i, j, :], r, k_grid)
-
+def solve_oz_matrix_2d(c_r_matrix, RHO, r, k_grid, J0, Ns, Nz, Nr):   
+    # Flatten i,j
     Nd = Ns * Nz
-    
-    I_Nd = np.eye(Nd)
+    c_flat = c_r.reshape(Ns, Ns, Nz*Nz, Nr)
+    gamma_flat = np.zeros_like(c_flat)
 
-    # Pre-allocate matrices for C solver
-    A = np.empty((Nd, Nd))
-    B = np.empty((Nd, Nd))
+    # Vectorized Hankel transform
+    r_f = c_flat * r_grid[None,None,None,:]  # shape: Ns,Ns,Nz*Nz,Nr
+    Ck_flat = 2*np.pi * np.tensordot(r_f, J0.T, axes=([3],[0])) * (r_grid[1]-r_grid[0])  # Ns,Ns,Nz*Nz,len(k)
 
-    N_ptr = np.array([Nd], dtype=np.int32)
-    M_ptr = np.array([Nd], dtype=np.int32)
-
+    # OZ solve using C solver per k
     for ik in range(len(k_grid)):
-        # Flatten to (Nd, Nd) per k
-        C_big = Ck[..., ik].transpose(0, 2, 1, 3).reshape(Nd, Nd)
-
-        # Construct matrices
+        C_big = Ck_flat[..., ik].reshape(Nd, Nd)
         C_rho = C_big @ RHO
-        A[:] = I_Nd - C_rho
-        B[:] = C_rho @ C_big
-
-        # Fortran-contiguous arrays for C solver
+        A = np.eye(Nd) - C_rho
+        B = C_rho @ C_big
         A_f = np.asfortranarray(A)
         B_f = np.asfortranarray(B)
-
-        # Call C solver
-        lib.solve_linear_system(N_ptr, M_ptr, A_f, B_f)
-
-        # Reshape back to (Ns, Nz, Ns, Nz)
-        gamma_k[..., ik] = B_f.reshape(Ns, Nz, Ns, Nz).transpose(0, 2, 1, 3)
+        lib.solve_linear_system(np.array([Nd],dtype=np.int32), np.array([Nd],dtype=np.int32), A_f, B_f)
+        gamma_flat[..., ik] = B_f.reshape(Ns,Ns,Nz*Nz)
 
     # Inverse Hankel
-    gamma_r = np.zeros_like(c_r_matrix)
-    for a in range(Ns):
-        for b in range(Ns):
-            for i in range(Nz):
-                for j in range(Nz):
-                    gamma_r[a, b, i, j, :] = inverse_hankel_transform_2d(gamma_k[a, b, i, j, :], r, k_grid)
-
+    gamma_r = np.zeros_like(c_r)
+    r_f = gamma_flat * k_grid[None,None,None,:]
+    gamma_r[:] = np.tensordot(r_f, J0, axes=([3],[0])) * (k_grid[1]-k_grid[0]) / (2*np.pi)
+    gamma_r = gamma_r.reshape(Ns,Ns,Nz,Nz,Nr)
+    
     return gamma_r
+
 
 
 # -------------------------------------------------
@@ -373,6 +348,8 @@ def rdf_planer(
     Nd = Ns * Nz
     rho_flat = densities.reshape(Nd)
     RHO = np.diag(rho_flat * dz)
+    
+    J0 = j0(np.outer(k_grid, r))
 
     for it in range(n_iter):
         gamma_old = gamma_r.copy()
@@ -390,7 +367,7 @@ def rdf_planer(
         
 
         # (2) Solve OZ
-        gamma_new = solve_oz_matrix_2d(c_r, RHO, r_grid, k_grid)
+        gamma_new = solve_oz_matrix_2d(c_r, RHO, r_grid, k_grid, J0, Ns, Nz, Nr)
         
 
         # (3) Dynamic alpha mixing
@@ -422,7 +399,7 @@ def rdf_planer(
     
     
     
-
+    '''
     # -----------------------------
     # Supplied RDF projection (if any)
     # -----------------------------
@@ -516,4 +493,5 @@ def rdf_planer(
             json.dump(json_out, f, indent=4)
         print(f"✅ Exported RDF to JSON → {filename_prefix}.json")
 
+    '''
     return {"g_r": g_r, "h_r": h_r, "c_r": c_r, "gamma_r": gamma_r, "u_r": u_matrix}
