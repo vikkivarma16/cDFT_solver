@@ -251,6 +251,12 @@ def rdf_planer(
     
     # Geometry
     R_ijr = np.sqrt(Zij[:, :, None]**2 + r_grid[None, None, :]**2)
+    
+    print ("\n\n\n length one :", len(R_ijr))
+    print ("\n\n\n length two :", len(R_ijr[0]))
+    print ("\n\n\n length three :", len(R_ijr[0][0]))
+    
+    
     u_matrix = np.zeros((Ns, Ns, Nz, Nz, Nr))
 
     for i, si in enumerate(species):
