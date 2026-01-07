@@ -7,6 +7,9 @@ from scipy.special import j0
 from .closure import closure_update_c_matrix
 from .rdf_radial import find_key_recursive
 from cdft_solver.generators.grids_properties.k_and_r_space_cylindrical import r_k_space_cylindrical
+from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
+from cdft_solver.generators.potential_splitter.mf import meanfield_potentials 
+from cdft_solver.generators.potential_splitter.total import total_potentials
 # -------------------------------------------------
 # Hankel DST transforms (radial)
 # -------------------------------------------------
