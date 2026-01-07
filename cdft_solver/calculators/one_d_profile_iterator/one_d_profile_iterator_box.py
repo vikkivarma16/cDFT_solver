@@ -595,6 +595,11 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         phiz = FE.hc  
         # Flatten weighted densities into a list
         n_vars = [FE.n[i][a] for i in range(len(FE.n)) for a in range(6)]
+        
+        print(FE.n[0])
+        print(FE.n[1])
+        print(FE.n[2])
+        
         # Compute derivatives
         functions = [[sp.diff(phiz, FE.n[i][a]) for a in range(6)] for i in range(len(FE.n))]
         # Lambdify derivatives
@@ -604,7 +609,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         free_energy_func = sp.lambdify(n_vars, phiz, 'numpy')
 
         return functions_func, free_energy_func
-
+        
+        
 
 
     c1_hc_fn, Fhc_fn = build_free_energy_and_derivatives_n_only(FE)
