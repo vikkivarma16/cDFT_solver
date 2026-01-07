@@ -326,12 +326,14 @@ def rdf_planer(
         err = np.max(np.abs(gamma_r - gamma_old))
 
         # adapt alpha
+        '''
         if err > 2 * tol:
             # possibly oscillating, reduce alpha
             alpha = max(alpha * relax_decrease, alpha_min)
         else:
             # stable convergence, increase alpha gradually
             alpha = min(alpha * relax_increase, alpha_max)
+        '''
 
         if it % 10 == 0:
             print(f"Iteration {it} | Δγ = {err:.3e} | α = {alpha:.3f}")
