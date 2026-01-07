@@ -6,7 +6,7 @@ from scipy.special import j0
 
 from .closure import closure_update_c_matrix
 from .rdf_radial import find_key_recursive
-
+from cdft_solver.generators.grids_properties.k_and_r_space_cylindrical import r_k_space_cylindrical
 # -------------------------------------------------
 # Hankel DST transforms (radial)
 # -------------------------------------------------
@@ -77,7 +77,7 @@ def solve_oz_realspace_planar(h_r, densities, r_grid, z_grid):
 # -------------------------------------------------
 # Solve OZ in k-space
 # -------------------------------------------------
-def solve_oz_matrix_2d(c_r_matrix, densities, r, k_grid):
+def solve_oz_matrix_2d(c_r_matrix, densities, r, k_grid, dz):
     """2D OZ solver along r for each plane z_i, z_j."""
     Ns, _, Nz, _, Nr = c_r_matrix.shape
     Ck = np.zeros_like(c_r_matrix)
@@ -91,8 +91,12 @@ def solve_oz_matrix_2d(c_r_matrix, densities, r, k_grid):
                     Ck[a,b,i,j,:] = hankel_transform_2d(c_r_matrix[a,b,i,j,:], r, k_grid)
 
     # OZ in k-space (plane-wise)
-    rho_diag = np.diag(np.repeat(densities, Nz))
+    #rho_diag = np.diag(np.repeat(densities, Nz))
     Nd = Ns * Nz
+    
+    rho_flat = densities.reshape(Nd)
+    rho_diag = np.diag(rho_flat * dz)
+    
     I = np.eye(Nd)
 
     for ik in range(len(k_grid)):
@@ -117,18 +121,12 @@ def solve_oz_matrix_2d(c_r_matrix, densities, r, k_grid):
 def rdf_planer(
     ctx,
     rdf_config,
-    r_space,           # shape (N,3), N = Nz*Nr
-    potential_dict,
     densities,
-    sigma=None,
     supplied_data=None,
     export=True,
     plot=True,
     filename_prefix="rdf_2d"
 ):
-    """
-    Planar/cylindrical 2D RDF solver
-    """
 
     # -----------------------------
     # Extract RDF parameters
@@ -137,69 +135,87 @@ def rdf_planer(
     if rdf_block is None:
         raise KeyError("No 'rdf' key found in rdf_config")
 
-    params = rdf_config["rdf_parameters"]
-    species = params["species"]
+    species = find_key_recursive(rdf_config, "species")
     Ns = len(species)
 
     beta = rdf_block.get("beta", 1.0)
     tol = rdf_block.get("tolerance", 1e-6)
-    n_iter = rdf_block.get("max_iteration", 10000)
+    n_iter = find_key_recursive(rdf_config, "max_iteration")
     alpha_max = rdf_block.get("alpha_max", 0.05)
+    
+    
+    rdf_planer  =  find_key_recursive(config, "planer_rdf")
+    planer_grid_config = {}
+    planer_grid_config ["space_confinement_parameters"] = rdf_planer
+    
+    r_k_grid_planer = r_k_space_cylindrical(ctx = ctx,  data_dict =  planer_grid_config, export_json = True, filename = "supplied_data_r_k_space_box_planer.json")
+    
+    
+    r_space =  np.array(r_k_grid_planer["r_space"])
+    
+    z_grid = r_space[:, 0]
+    r_grid = z_space[:, 0]
+    
 
     # -----------------------------
-    # Extract cylindrical grids
+    # Build potentials (same strategy as rdf_radial)
     # -----------------------------
-    NzNr = r_space.shape[0]
-    Nz = len(np.unique(r_space[:,0]))   # assuming z first column
-    Nr = len(np.unique(r_space[:,1]))   # assuming r second column
-    z_grid = np.unique(r_space[:,0])
-    r_grid = np.unique(r_space[:,1])
+    system = rdf_config
 
-    # Radial Hankel k-grid
-    k_grid = np.linspace(0.0, 20.0, Nr)
+    hc_data = hard_core_potentials(
+        ctx=ctx,
+        input_data=system,
+        grid_points=5000,
+        file_name_prefix="supplied_data_potential_hc.json",
+        export_files=False
+    )
 
-    # -----------------------------
-    # Closure matrix
-    # -----------------------------
-    closure_cfg = rdf_block.get("closure", {})
-    pair_closures = np.empty((Ns,Ns), dtype=object)
+    mf_data = meanfield_potentials(
+        ctx=ctx,
+        input_data=system,
+        grid_points=5000,
+        file_name_prefix="supplied_data_potential_mf.json",
+        export_files=False
+    )
+
+    total_data = total_potentials(
+        ctx=ctx,
+        hc_source=hc_data,
+        mf_source=mf_data,
+        file_name_prefix="supplied_data_potential_total.json",
+        export_files=False,
+    )
+
+    potential_dict = total_data["total_potentials"]
+    sigma = hc_data["sigma"]
+
+
+
+    closure_cfg = find_key_recursive(rdf_config, "closure")
+    if closure_cfg is None:
+        raise KeyError("No closure definitions found")
+
+    pair_closures = np.empty((Ns, Ns), dtype=object)
+
     for i, si in enumerate(species):
-        for j, sj in enumerate(species):
-            key = f"{si}{sj}"
-            pair_closures[i,j] = closure_cfg[key]
+        for j in range(i, Ns):
+            sj = species[j]
 
-    # -----------------------------
-    # Potential matrix
-    # -----------------------------
-    # z_grid: shape (Nz,)
-    # r_grid: shape (Nr,)
+            key_ij = si + sj
+            key_ji = sj + si
 
-    Zij = z_grid[:, None] - z_grid[None, :]     # (Nz, Nz)
-    R_ijr = np.sqrt(Zij[:, :, None]**2 + r_grid[None, None, :]**2)
-    # shape: (Nz, Nz, Nr)
+            if key_ij in closure_cfg:
+                closure = closure_cfg[key_ij]
+            elif key_ji in closure_cfg:
+                closure = closure_cfg[key_ji]
+            else:
+                raise KeyError(
+                    f"Missing closure for pair '{key_ij}' or '{key_ji}'"
+                )
 
-    u_matrix = np.zeros((Ns, Ns, Nz, Nz, Nr))
-    for a, sa in enumerate(species):
-        for b, sb in enumerate(species):
-
-            pdata = potential_dict.get((sa, sb), potential_dict.get((sb, sa)))
-            if pdata is None:
-                raise KeyError(f"Missing potential for pair {sa}-{sb}")
-
-            ru = np.asarray(pdata["r"], float)
-            uu = np.asarray(pdata["u"], float)
-
-            interp_u = interp1d(
-                ru,
-                uu,
-                bounds_error=False,
-                fill_value=0.0
-            )
-
-            # evaluate on full (Nz, Nz, Nr) distance grid
-            u_matrix[a, b] = beta * interp_u(R_ijr)
-
-
+            pair_closures[i, j] = closure
+            pair_closures[j, i] = closure
+            
     # -----------------------------
     # Sigma matrix
     # -----------------------------
@@ -208,6 +224,49 @@ def rdf_planer(
     # -----------------------------
     # Initialize correlation functions
     # -----------------------------
+    Zij = z_grid[:, None] - z_grid[None, :]
+    
+    dz = z_grid[1] - z_grid[0]
+    
+    
+    
+    
+    R_ijr = np.sqrt(Zij[:, :, None]**2 + r_grid[None, None, :]**2)
+
+    u_matrix = np.zeros((Ns, Ns, Nz, Nz, Nr))
+
+    for i, si in enumerate(species):
+        for j in range(i, Ns):
+            sj = species[j]
+
+            key_ij = si + sj
+            key_ji = sj + si
+
+            pdata = (
+                potential_dict.get(key_ij)
+                or potential_dict.get(key_ji)
+            )
+
+            if pdata is None:
+                raise KeyError(
+                    f"Missing potential for pair '{si}-{sj}'"
+                )
+
+            interp_u = interp1d(
+                pdata["r"],
+                pdata["U"],
+                bounds_error=False,
+                fill_value=0.0,
+                assume_sorted=True,
+            )
+
+            u_val = beta * interp_u(R_ijr)
+
+            u_matrix[i, j] = u_val
+            u_matrix[j, i] = u_val
+
+    
+    
     gamma_r = np.zeros_like(u_matrix)
     c_r = np.zeros_like(u_matrix)
 
@@ -238,7 +297,7 @@ def rdf_planer(
         c_r[:] = c_trial.reshape(Ns,Ns,Nz,Nz,Nr)
 
         # (2) Solve OZ
-        gamma_new = solve_oz_matrix_2d(c_r, densities, r_grid, k_grid)
+        gamma_new = solve_oz_matrix_2d(c_r, densities, r_grid, k_grid, dz)
 
         # (3) Dynamic alpha mixing
         gamma_r = (1 - alpha) * gamma_old + alpha * gamma_new
