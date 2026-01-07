@@ -144,7 +144,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
         fmt_weights[sp] = real_part + 1j * imag_part
 
-
+    print ( fmt_weights["c"] [3])
 
     
     # Generate mean-field weights using the planner function
