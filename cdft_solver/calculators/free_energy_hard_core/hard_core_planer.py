@@ -93,8 +93,8 @@ def hard_core_planer(
     sigmai = [float(s) for s in sigmai]
     flag   = [int(f) for f in flag]
 
-    print ("\n\n\n", flag, "\n\n\n\n")
-    print ("\n\n\n", sigmai, "\n\n\n\n")
+    #print ("\n\n\n", flag, "\n\n\n\n")
+    #print ("\n\n\n", sigmai, "\n\n\n\n")
     
     
     

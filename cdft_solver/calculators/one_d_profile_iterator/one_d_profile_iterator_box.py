@@ -795,8 +795,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                 li=[]
                 for i in range(6):
                     omega_rho_k[i,:] = fmt_weights[particle][:, i] * rho_k_ind 
-                    print (fmt_weights[particle][:, i])
-                    exit(0)
+                    #print (fmt_weights[particle][:, i])
+                    #exit(0)
                     
                         #print(fmt_weights[particle1][:, i])
                    
