@@ -144,10 +144,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
         fmt_weights[sp] = real_part + 1j * imag_part
 
-    print ( fmt_weights["a"] [3])
-    print ( fmt_weights["b"] [3])
-    print ( fmt_weights["c"] [3])
-
     
     # Generate mean-field weights using the planner function
     mean_f_weights = mf_weights_planer(
@@ -598,11 +594,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         # Flatten weighted densities into a list
         n_vars = [FE.n[i][a] for i in range(len(FE.n)) for a in range(6)]
         
-        print(FE.n[0])
-        print(FE.n[1])
-        print(FE.n[2])
-        
-        print (n_vars)
         
         # Compute derivatives
         functions = [[sp.diff(phiz, FE.n[i][a]) for a in range(6)] for i in range(len(FE.n))]
@@ -806,6 +797,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                 li=[]
                 for i in range(6):
                     omega_rho_k[i,:] = fmt_weights[particle][:, i] * rho_k_ind 
+                    print (fmt_weights[particle][:, i])
+                    exit(0)
                     
                         #print(fmt_weights[particle1][:, i])
                    
