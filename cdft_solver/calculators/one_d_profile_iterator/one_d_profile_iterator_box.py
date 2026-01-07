@@ -689,6 +689,10 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     iteration = 0
     rho_r_initial = np.array(rho_r)
     rho_r_current = np.array(rho_r)
+    
+    
+    print(rho_r_current[2])
+    
 
     piee = np.pi
     
