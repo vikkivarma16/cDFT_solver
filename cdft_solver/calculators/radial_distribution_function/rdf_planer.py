@@ -6,9 +6,12 @@ from scipy.special import j0
 
 from .closure import closure_update_c_matrix
 from .rdf_radial import find_key_recursive
+import ctypes
 
 from ctypes import CDLL, c_int
 from numpy.ctypeslib import ndpointer
+import os
+import sys
 
 from cdft_solver.generators.grids_properties.k_and_r_space_cylindrical import r_k_space_cylindrical
 from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
@@ -18,7 +21,26 @@ from cdft_solver.generators.potential_splitter.total import total_potentials
 # Hankel DST transforms (radial)
 # -------------------------------------------------
 
-lib = CDLL("./liboz.so")
+
+_here = os.path.dirname(__file__)
+
+if sys.platform == "darwin":
+    _libname = "liboz.dylib"
+elif sys.platform == "win32":
+    _libname = "liboz.dll"
+else:
+    _libname = "liboz.so"
+
+_lib_path = os.path.join(_here, _libname)
+
+if not os.path.exists(_lib_path):
+    raise FileNotFoundError(f"Shared library not found: {_lib_path}")
+
+# Load shared library
+lib = ctypes.CDLL(_lib_path)
+
+
+
 lib.solve_linear_system.argtypes = [
     ndpointer(dtype=c_int, flags="C_CONTIGUOUS"),
     ndpointer(dtype=c_int, flags="C_CONTIGUOUS"),
