@@ -98,9 +98,9 @@ def r_k_space_cylindrical(
     # -------------------------
     # Cylindrical k-space
     # -------------------------
-    kz = np.fft.fftfreq(Nz, d=box_length[0]/(Nz-1)) * 2*np.pi
+    kz = np.fft.fftfreq(Nz, d=box_length[0]/(Nz-1)) 
     if dimension >= 2:
-        kr = np.fft.fftfreq(Nr, d=box_length[1]/(Nr-1)) * 2*np.pi
+        kr = np.fft.fftfreq(Nr, d=box_length[1]/(Nr-1))
     else:
         kr = np.array([0.0])
     if dimension == 3:

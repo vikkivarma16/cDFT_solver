@@ -144,7 +144,7 @@ def rdf_planer(
     alpha_max = rdf_block.get("alpha_max", 0.05)
     
     
-    rdf_planer  =  find_key_recursive(config, "planer_rdf")
+    rdf_planer  =  find_key_recursive(rdf_config, "planer_rdf")
     planer_grid_config = {}
     planer_grid_config ["space_confinement_parameters"] = rdf_planer
     
@@ -152,9 +152,12 @@ def rdf_planer(
     
     
     r_space =  np.array(r_k_grid_planer["r_space"])
-    
-    z_grid = r_space[:, 0]
-    r_grid = z_space[:, 0]
+    k_space =  np.array(r_k_grid_planer["k_space"])
+    # k-grid (radial k)
+    k_grid = np.sort(np.unique(k_space[:, 1]))
+    z_grid = np.sort(np.unique(r_space[:, 0]))
+    r_grid = np.sort(np.unique(z_space[:, 0]))
+
     
 
     # -----------------------------
@@ -220,19 +223,16 @@ def rdf_planer(
     # Sigma matrix
     # -----------------------------
     sigma_matrix = np.zeros((Ns,Ns)) if sigma is None else sigma
-
     # -----------------------------
     # Initialize correlation functions
     # -----------------------------
     Zij = z_grid[:, None] - z_grid[None, :]
-    
     dz = z_grid[1] - z_grid[0]
     
     
     
     
     R_ijr = np.sqrt(Zij[:, :, None]**2 + r_grid[None, None, :]**2)
-
     u_matrix = np.zeros((Ns, Ns, Nz, Nz, Nr))
 
     for i, si in enumerate(species):
