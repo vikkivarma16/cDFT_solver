@@ -160,6 +160,9 @@ def rdf_planer(
     k_grid = np.sort(np.unique(k_space[:, 1]))
     z_grid = np.sort(np.unique(r_space[:, 0]))
     r_grid = np.sort(np.unique(r_space[:, 1]))
+    
+    Nr = len(r_grid)
+    Nz = len(z_grid)
 
     
 
