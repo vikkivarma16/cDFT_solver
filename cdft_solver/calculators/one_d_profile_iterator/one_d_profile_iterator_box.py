@@ -782,6 +782,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     iteration_max = profile_p[ "iteration_max" ]
     log_period = profile_p [ "log_period" ]
     tol = find_key_recursive(profile_p, "tolerance")
+    alpha_min  =  0.00001
     
     prev_residual = np.inf
     
