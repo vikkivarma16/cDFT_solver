@@ -217,14 +217,14 @@ def solve_oz_realspace_planar(h_r, densities, r_grid, z_grid):
 
 '''
 
-def hankel_transform_2d(f_r, r, k_grid):
+def hankel_transform_2d(f_r, r, k_grid, J0):
     """Apply Hankel transform for cylindrical coordinates along r."""
     dr = r[1] - r[0]
-    return 2 * np.pi * (j0(np.outer(k_grid, r)) @ (r * f_r)) * dr
+    return 2 * np.pi * (J0 @ (r * f_r)) * dr
 
-def inverse_hankel_transform_2d(F_k, r, k_grid):
+def inverse_hankel_transform_2d(F_k, r, k_grid, J0):
     dk = k_grid[1] - k_grid[0]
-    return (j0(np.outer(k_grid, r)).T @ (k_grid * F_k)) * dk / (2*np.pi)
+    return (J0.T @ (k_grid * F_k)) * dk / (2*np.pi)
     
 
 
@@ -258,6 +258,61 @@ def solve_oz_matrix_2d(c_r, RHO, r_grid, k_grid, J0, Ns, Nz, Nr):
     r_f = gamma_flat * k_grid[None,None,None,:]
     gamma_r_flat = np.tensordot(r_f, J0, axes=([3],[0])) * (k_grid[1]-k_grid[0]) / (2*np.pi)
     gamma_r = gamma_r_flat.reshape(Ns, Ns, Nz, Nz, Nr)  # <-- reshape to original 5D
+    return gamma_r
+
+
+
+def solve_oz_matrix_2d(c_r_matrix, RHO, r, k_grid, J0, Ns, Nz, Nr):
+    """
+    2D OZ solver along r for each plane z_i, z_j using the C solver.
+    """
+    Ck = np.zeros_like(c_r_matrix)
+    gamma_k = np.zeros_like(c_r_matrix)
+
+    # Forward Hankel along r
+    for a in range(Ns):
+        for b in range(Ns):
+            for i in range(Nz):
+                for j in range(Nz):
+                    Ck[a, b, i, j, :] = hankel_transform_2d(c_r_matrix[a, b, i, j, :], r, k_grid, J0)
+
+    Nd = Ns * Nz
+    I_Nd = np.eye(Nd)
+
+    # Pre-allocate matrices for C solver
+    A = np.empty((Nd, Nd))
+    B = np.empty((Nd, Nd))
+
+    N_ptr = np.array([Nd], dtype=np.int32)
+    M_ptr = np.array([Nd], dtype=np.int32)
+
+    for ik in range(len(k_grid)):
+        # Flatten to (Nd, Nd) per k
+        C_big = Ck[..., ik].transpose(0, 2, 1, 3).reshape(Nd, Nd)
+
+        # Construct matrices
+        C_rho = C_big @ RHO
+        A[:] = I_Nd - C_rho
+        B[:] = C_rho @ C_big
+
+        # Fortran-contiguous arrays for C solver
+        A_f = np.asfortranarray(A)
+        B_f = np.asfortranarray(B)
+
+        # Call C solver
+        lib.solve_linear_system(N_ptr, M_ptr, A_f, B_f)
+
+        # Reshape back to (Ns, Nz, Ns, Nz)
+        gamma_k[..., ik] = B_f.reshape(Ns, Nz, Ns, Nz).transpose(0, 2, 1, 3)
+
+    # Inverse Hankel
+    gamma_r = np.zeros_like(c_r_matrix)
+    for a in range(Ns):
+        for b in range(Ns):
+            for i in range(Nz):
+                for j in range(Nz):
+                    gamma_r[a, b, i, j, :] = inverse_hankel_transform_2d(gamma_k[a, b, i, j, :], r, k_grid, J0)
+
     return gamma_r
 
 
