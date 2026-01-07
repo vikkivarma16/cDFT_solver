@@ -159,6 +159,8 @@ def rdf_planer(
     k_space =  np.array(r_k_grid_planer["k_space"])
     # k-grid (radial k)
     k_grid = np.sort(np.unique(k_space[:, 1]))
+    
+    k_grid = np.linspace(0.0, 20.0, nr)
     z_grid = np.sort(np.unique(r_space[:, 0]))
     r_grid = np.sort(np.unique(r_space[:, 1]))
     
@@ -243,7 +245,7 @@ def rdf_planer(
     dz = z_grid[1] - z_grid[0]
     
     
-    
+    print(z_grid)
     
     # Geometry
     R_ijr = np.sqrt(Zij[:, :, None]**2 + r_grid[None, None, :]**2)
@@ -312,6 +314,10 @@ def rdf_planer(
             sigma_matrix
         )
         c_r[:] = c_trial.reshape(Ns,Ns,Nz,Nz,Nr)
+        
+        print (c_r)
+        exit (0)
+        
 
         # (2) Solve OZ
         gamma_new = solve_oz_matrix_2d(c_r, densities, r_grid, k_grid, dz)
