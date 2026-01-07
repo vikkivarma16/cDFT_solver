@@ -778,7 +778,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
     profile_p = find_key_recursive(config, "profile")
     alpha_max = profile_p [ "alpha_mixing_max" ]
-    alpha = 0.01
+    alpha = 0.05
     
     iteration_max = profile_p[ "iteration_max" ]
     log_period = profile_p [ "log_period" ]
@@ -1011,7 +1011,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                 density = np.exp(exponent_clipped)
                 grand_landau = grand_landau + (v_ext[particle][i]/ temperature - mue_r[pid][i]) * rho_r_current[pid][i] + rho_r_current[pid][i] *np.log(rho_r_current[pid][i]) -  rho_r_current[pid][i]
                 rho_r_current[pid][i] = alpha * density + (1-alpha) * rho_r_initial[pid][i] 
-                rho_r_initial[pid][i] = rho_r_current[pid][i]
                 pid = pid + 1
                 
                 
