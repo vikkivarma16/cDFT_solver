@@ -602,6 +602,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         print(FE.n[1])
         print(FE.n[2])
         
+        print (n_vars)
+        
         # Compute derivatives
         functions = [[sp.diff(phiz, FE.n[i][a]) for a in range(6)] for i in range(len(FE.n))]
         # Lambdify derivatives
