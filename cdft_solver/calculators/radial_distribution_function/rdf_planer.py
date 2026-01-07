@@ -50,6 +50,120 @@ lib.solve_linear_system.argtypes = [
 
 
 
+
+
+
+
+from pathlib import Path
+import matplotlib.pyplot as plt
+import numpy as np
+
+def plot_correlation_functions(gamma_r, c_r, r_grid, z_grid, Ns, Nz, Nr, ctx, plot=True):
+    """
+    Plot and save RDF results.
+    - Radial correlations at diagonal z_i = z_j
+    - Plane–plane correlations at r = 0
+    """
+    if not plot:
+        return
+    
+    h_r = gamma_r + c_r
+    g_r = h_r + 1.0
+
+    # Create plots directory
+    plots = Path(ctx.plots_dir)
+    plots.mkdir(parents=True, exist_ok=True)
+
+    # -----------------------------
+    # 1️⃣ Radial correlations (r vs h(r) for z_i=z_j)
+    # -----------------------------
+    curves_per_fig = 5
+    n_figs = int(np.ceil(Nz / curves_per_fig))
+    cmap = plt.cm.RdBu
+    norm = plt.Normalize(vmin=0, vmax=Nz-1)
+
+    for fig_id in range(n_figs):
+        i_start = fig_id * curves_per_fig
+        i_end = min((fig_id+1) * curves_per_fig, Nz)
+        i_debug = np.arange(i_start, i_end)
+
+        fig, axes = plt.subplots(Ns, Ns, figsize=(4*Ns+1.2, 4*Ns), sharex=True, sharey=True)
+        if Ns == 1:
+            axes = np.array([[axes]])
+
+        for a in range(Ns):
+            for b in range(Ns):
+                ax = axes[a, b]
+                for i in i_debug:
+                    color = cmap(norm(i))
+                    hr_vals = h_r[a, b, i, i, :]
+                    ax.plot(r_grid, hr_vals, color=color, alpha=0.9, linewidth=1.5)
+                ax.set_title(rf"$h_{{{a}{b}}}(z_i=z_j,r)$")
+                ax.grid(True)
+                if a == Ns-1:
+                    ax.set_xlabel(r"$r$")
+                if b == 0:
+                    ax.set_ylabel(r"$h(r)$")
+
+        plt.suptitle(f"Radial correlations (z_i=z_j) — planes {i_start} to {i_end-1}")
+        plt.tight_layout()
+        fname = plots / f"h_r_diag_z_planes_{i_start:03d}_{i_end-1:03d}.png"
+        plt.savefig(fname, dpi=300, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Saved {fname}")
+
+    # -----------------------------
+    # 2️⃣ Plane–plane correlations at r=0
+    # -----------------------------
+    r0_idx = 0  # index for r=0
+    for fig_id in range(n_figs):
+        i_start = fig_id * curves_per_fig
+        i_end = min((fig_id+1) * curves_per_fig, Nz)
+        i_debug = np.arange(i_start, i_end)
+
+        fig, axes = plt.subplots(Ns, Ns, figsize=(4*Ns+1.2, 4*Ns), sharex=True, sharey=True)
+        if Ns == 1:
+            axes = np.array([[axes]])
+
+        for a in range(Ns):
+            for b in range(Ns):
+                ax = axes[a,b]
+                for i in i_debug:
+                    color = cmap(norm(i))
+                    # + side (z_j > z_i)
+                    if i < Nz-1:
+                        dz_plus = z_grid[i+1:] - z_grid[i]
+                        h_plus = h_r[a,b,i,i+1:,r0_idx]
+                        ax.plot(dz_plus, h_plus, color=color, alpha=0.9, linewidth=1.4)
+                    # - side (z_j < z_i)
+                    if i > 0:
+                        dz_minus = z_grid[i] - z_grid[:i]
+                        h_minus = h_r[a,b,i,:i,r0_idx][::-1]
+                        ax.plot(dz_minus, h_minus, color=color, alpha=0.6, linewidth=1.4, linestyle='--')
+                    # origin point
+                    ax.plot(0, h_r[a,b,i,i,r0_idx], 'ko')
+
+                ax.set_title(rf"$h_{{{a}{b}}}(z_i,z_j,r=0)$")
+                ax.grid(True)
+                if a == Ns-1:
+                    ax.set_xlabel(r"$|z_j - z_i|$")
+                if b == 0:
+                    ax.set_ylabel(r"$h(z_i,z_j,0)$")
+
+        plt.suptitle(f"Plane–plane correlations at r=0 — planes {i_start} to {i_end-1}")
+        plt.tight_layout()
+        fname = plots / f"h_z_r0_planes_{i_start:03d}_{i_end-1:03d}.png"
+        plt.savefig(fname, dpi=300, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Saved {fname}")
+
+
+
+
+
+
+
+
 '''
 
 def solve_oz_realspace_planar(h_r, densities, r_grid, z_grid):
@@ -493,4 +607,7 @@ def rdf_planer(
         print(f"✅ Exported RDF to JSON → {filename_prefix}.json")
 
     '''
+    
+    plot_correlation_functions(gamma_r, c_r, r_grid, z_grid, Ns, Nz, Nr, ctx, plot=True)
+    
     return {"g_r": g_r, "h_r": h_r, "c_r": c_r, "gamma_r": gamma_r, "u_r": u_matrix}
