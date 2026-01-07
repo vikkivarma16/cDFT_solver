@@ -751,7 +751,9 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
     temperature = 1.0
    
-
+    print(grand_rosenfeld_flag)
+    
+    exit(0)
     # ---------------------------------------------
     # Convert vij dict to dense array
     # ---------------------------------------------
