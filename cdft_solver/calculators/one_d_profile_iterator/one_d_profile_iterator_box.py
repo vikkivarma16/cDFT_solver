@@ -1040,9 +1040,9 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             break
 
                 
-            grand_landau += landau[i]
-            surface_tension_values [i] =  func_pressure(bulk_dens) + grand_landau # - func_pressure(*ind_density) #
-            pressure_values[i] = func_pressure(ind_density)
+        grand_landau += landau[i]
+        surface_tension_values [i] =  func_pressure(bulk_dens) + grand_landau # - func_pressure(*ind_density) #
+        pressure_values[i] = func_pressure(ind_density)
        
         i_start = int(2*nx / 6)
         i_end   = int(4*nx / 6)
