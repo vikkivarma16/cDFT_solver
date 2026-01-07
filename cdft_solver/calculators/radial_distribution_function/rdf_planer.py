@@ -22,10 +22,7 @@ def inverse_hankel_transform_2d(F_k, r, k_grid):
     dk = k_grid[1] - k_grid[0]
     return (j0(np.outer(k_grid, r)).T @ (k_grid * F_k)) * dk / (2*np.pi)
     
-    
-    
-    
-import numpy as np
+
 
 def solve_oz_realspace_planar(h_r, densities, r_grid, z_grid):
     """
@@ -164,7 +161,8 @@ def rdf_planer(
     Nr = len(r_grid)
     Nz = len(z_grid)
 
-    
+    print ("supplied radial grid points are :", Nr)
+    print ("supplied planer points are :", Nz)
 
     # -----------------------------
     # Build potentials (same strategy as rdf_radial)
@@ -228,7 +226,12 @@ def rdf_planer(
     # -----------------------------
     # Sigma matrix
     # -----------------------------
+    
+    print ("supplied pair closures are given as:", pair_closures)
+    
     sigma_matrix = np.zeros((Ns,Ns)) if sigma is None else np.array(sigma)
+    
+    print ("Given sigma matrix is :", sigma_matrix)
     # -----------------------------
     # Initialize correlation functions
     # -----------------------------
