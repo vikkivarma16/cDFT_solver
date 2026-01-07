@@ -119,7 +119,7 @@ def inverse_hankel_transform_2d(F_k, r, k_grid):
 # -------------------------------------------------
 
 
-def solve_oz_matrix_2d(c_r, RHO, r_grid, k_grid, J0, Ns, Nz, Nr):   
+def solve_oz_matrix_2d(c_r, RHO, r_grid, k_grid, J0, Ns, Nz, Nr):
     # Flatten i,j
     Nd = Ns * Nz
     c_flat = c_r.reshape(Ns, Ns, Nz*Nz, Nr)
@@ -141,12 +141,11 @@ def solve_oz_matrix_2d(c_r, RHO, r_grid, k_grid, J0, Ns, Nz, Nr):
         gamma_flat[..., ik] = B_f.reshape(Ns,Ns,Nz*Nz)
 
     # Inverse Hankel
-    gamma_r = np.zeros_like(c_r)
     r_f = gamma_flat * k_grid[None,None,None,:]
-    gamma_r[:] = np.tensordot(r_f, J0, axes=([3],[0])) * (k_grid[1]-k_grid[0]) / (2*np.pi)
-    gamma_r = gamma_r.reshape(Ns,Ns,Nz,Nz,Nr)
-    
+    gamma_r_flat = np.tensordot(r_f, J0, axes=([3],[0])) * (k_grid[1]-k_grid[0]) / (2*np.pi)
+    gamma_r = gamma_r_flat.reshape(Ns, Ns, Nz, Nz, Nr)  # <-- reshape to original 5D
     return gamma_r
+
 
 
 
