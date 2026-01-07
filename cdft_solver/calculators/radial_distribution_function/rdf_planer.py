@@ -228,7 +228,7 @@ def rdf_planer(
     # -----------------------------
     # Sigma matrix
     # -----------------------------
-    sigma_matrix = np.zeros((Ns,Ns)) if sigma is None else sigma
+    sigma_matrix = np.zeros((Ns,Ns)) if sigma is None else np.array(sigma)
     # -----------------------------
     # Initialize correlation functions
     # -----------------------------
