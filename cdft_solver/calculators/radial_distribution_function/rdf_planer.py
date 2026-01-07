@@ -247,14 +247,14 @@ def rdf_planer(
     dz = z_grid[1] - z_grid[0]
     
     
-    print(z_grid)
+    #print(z_grid)
     
     # Geometry
     R_ijr = np.sqrt(Zij[:, :, None]**2 + r_grid[None, None, :]**2)
     
-    print ("\n\n\n length one :", len(R_ijr))
-    print ("\n\n\n length two :", len(R_ijr[0]))
-    print ("\n\n\n length three :", len(R_ijr[0][0]))
+    #print ("\n\n\n length one :", len(R_ijr))
+    #print ("\n\n\n length two :", len(R_ijr[0]))
+    #print ("\n\n\n length three :", len(R_ijr[0][0]))
     
     
     u_matrix = np.zeros((Ns, Ns, Nz, Nz, Nr))
@@ -323,15 +323,11 @@ def rdf_planer(
         )
         c_r[:] = c_trial.reshape(Ns,Ns,Nz,Nz,Nr)
         
-        print (c_r)
-        exit (0)
         
 
         # (2) Solve OZ
         gamma_new = solve_oz_matrix_2d(c_r, densities, r_grid, k_grid, dz)
         
-        
-        print (gamma_new)
 
         # (3) Dynamic alpha mixing
         gamma_r = (1 - alpha) * gamma_old + alpha * gamma_new
