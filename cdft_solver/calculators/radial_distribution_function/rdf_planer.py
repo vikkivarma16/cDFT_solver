@@ -13,16 +13,8 @@ from cdft_solver.generators.potential_splitter.total import total_potentials
 # -------------------------------------------------
 # Hankel DST transforms (radial)
 # -------------------------------------------------
-def hankel_transform_2d(f_r, r, k_grid):
-    """Apply Hankel transform for cylindrical coordinates along r."""
-    dr = r[1] - r[0]
-    return 2 * np.pi * (j0(np.outer(k_grid, r)) @ (r * f_r)) * dr
 
-def inverse_hankel_transform_2d(F_k, r, k_grid):
-    dk = k_grid[1] - k_grid[0]
-    return (j0(np.outer(k_grid, r)).T @ (k_grid * F_k)) * dk / (2*np.pi)
-    
-
+'''
 
 def solve_oz_realspace_planar(h_r, densities, r_grid, z_grid):
     """
@@ -72,6 +64,18 @@ def solve_oz_realspace_planar(h_r, densities, r_grid, z_grid):
         c_r[..., ir] = C_reshaped
 
     return c_r
+
+'''
+
+def hankel_transform_2d(f_r, r, k_grid):
+    """Apply Hankel transform for cylindrical coordinates along r."""
+    dr = r[1] - r[0]
+    return 2 * np.pi * (j0(np.outer(k_grid, r)) @ (r * f_r)) * dr
+
+def inverse_hankel_transform_2d(F_k, r, k_grid):
+    dk = k_grid[1] - k_grid[0]
+    return (j0(np.outer(k_grid, r)).T @ (k_grid * F_k)) * dk / (2*np.pi)
+    
 
 
 # -------------------------------------------------
@@ -241,6 +245,7 @@ def rdf_planer(
     
     
     
+    # Geometry
     R_ijr = np.sqrt(Zij[:, :, None]**2 + r_grid[None, None, :]**2)
     u_matrix = np.zeros((Ns, Ns, Nz, Nz, Nr))
 
@@ -251,30 +256,34 @@ def rdf_planer(
             key_ij = si + sj
             key_ji = sj + si
 
-            pdata = (
-                potential_dict.get(key_ij)
-                or potential_dict.get(key_ji)
-            )
-
+            pdata = potential_dict.get(key_ij) or potential_dict.get(key_ji)
             if pdata is None:
-                raise KeyError(
-                    f"Missing potential for pair '{si}-{sj}'"
-                )
+                raise KeyError(f"Missing potential for pair '{si}-{sj}'")
+
+            R_tab = np.asarray(pdata["r"], dtype=float)
+            U_tab = np.asarray(pdata["U"], dtype=float)
+
+            R_cut = R_tab.max()
 
             interp_u = interp1d(
-                pdata["r"],
-                pdata["U"],
+                R_tab,
+                U_tab,
                 bounds_error=False,
                 fill_value=0.0,
                 assume_sorted=True,
             )
 
+            # Vectorized potential evaluation
             u_val = beta * interp_u(R_ijr)
 
+            # Explicit cutoff enforcement (optional but robust)
+            u_val[R_ijr > R_cut] = 0.0
+ 
+            # Symmetric assignment
             u_matrix[i, j] = u_val
             u_matrix[j, i] = u_val
 
-    
+        
     
     gamma_r = np.zeros_like(u_matrix)
     c_r = np.zeros_like(u_matrix)
@@ -283,8 +292,7 @@ def rdf_planer(
     # Supplied data processing
     # -----------------------------
     
-
-   # -----------------------------
+    # -----------------------------
     # Main OZ iteration with dynamic alpha
     # -----------------------------
     alpha = 0.1       # initial mixing fraction
@@ -332,6 +340,12 @@ def rdf_planer(
     # (5) Total correlation
     h_r = gamma_r + c_r
     g_r = h_r + 1.0
+    
+    
+    
+    
+
+'''
 
     # -----------------------------
     # Supplied RDF projection (if any)
@@ -427,4 +441,4 @@ def rdf_planer(
         print(f"✅ Exported RDF to JSON → {filename_prefix}.json")
 
     return {"g_r": g_r, "h_r": h_r, "c_r": c_r, "gamma_r": gamma_r, "u_r": u_matrix}
-
+'''
