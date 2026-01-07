@@ -122,7 +122,7 @@ def inverse_hankel_transform_2d(F_k, r, k_grid):
 def solve_oz_matrix_2d(c_r_matrix, RHO, r, k_grid, J0, Ns, Nz, Nr):   
     # Flatten i,j
     Nd = Ns * Nz
-    c_flat = c_r.reshape(Ns, Ns, Nz*Nz, Nr)
+    c_flat = c_r_matrix.reshape(Ns, Ns, Nz*Nz, Nr)
     gamma_flat = np.zeros_like(c_flat)
 
     # Vectorized Hankel transform
