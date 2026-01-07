@@ -349,7 +349,7 @@ def rdf_planer(
     rho_flat = densities.reshape(Nd)
     RHO = np.diag(rho_flat * dz)
     
-    J0 = j0(np.outer(k_grid, r))
+    J0 = j0(np.outer(k_grid, r_grid))
 
     for it in range(n_iter):
         gamma_old = gamma_r.copy()
