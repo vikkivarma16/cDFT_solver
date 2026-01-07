@@ -11,6 +11,7 @@ Outputs a JSON-ready dictionary and optionally writes to `ctx.scratch_dir`.
 import json
 import numpy as np
 from pathlib import Path
+from scipy.special import jn_zeros
 
 
 def r_k_space_cylindrical(
@@ -79,7 +80,7 @@ def r_k_space_cylindrical(
     z = np.linspace(0.0, box_length[0], Nz)
 
     # r-axis
-    if dimension >= 2:
+    if dimension == 2:
         Nr = box_points[1]
         r = np.linspace(0.0, box_length[1], Nr)
     else:
@@ -99,8 +100,12 @@ def r_k_space_cylindrical(
     # Cylindrical k-space
     # -------------------------
     kz = np.fft.fftfreq(Nz, d=box_length[0]/(Nz-1)) 
-    if dimension >= 2:
-        kr = np.fft.fftfreq(Nr, d=box_length[1]/(Nr-1))
+    if dimension == 2:
+        #kr = np.fft.fftfreq(Nr, d=box_length[1]/(Nr-1))
+        r_max = r[-1]
+        alpha = jn_zeros(0, Nr)   # zeros of J0
+        kr = alpha / r_max
+
     else:
         kr = np.array([0.0])
     if dimension == 3:
