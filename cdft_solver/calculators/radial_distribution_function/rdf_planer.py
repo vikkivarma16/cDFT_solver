@@ -315,6 +315,9 @@ def rdf_planer(
 
         # (2) Solve OZ
         gamma_new = solve_oz_matrix_2d(c_r, densities, r_grid, k_grid, dz)
+        
+        
+        print (gamma_new)
 
         # (3) Dynamic alpha mixing
         gamma_r = (1 - alpha) * gamma_old + alpha * gamma_new
