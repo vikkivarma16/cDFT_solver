@@ -621,7 +621,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     alpha = profile_p [ "alpha_mixing_max" ]
     iteration_max = profile_p[ "iteration_max" ]
     log_period = profile_p [ "log_period" ]
-    
     tol = find_key_recursive(profile_p, "tolerance")
 
 
@@ -777,9 +776,17 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     #integration step
 
 
+    profile_p = find_key_recursive(config, "profile")
+    alpha_max = profile_p [ "alpha_mixing_max" ]
+    alpha = 0.01
+    
+    iteration_max = profile_p[ "iteration_max" ]
+    log_period = profile_p [ "log_period" ]
+    tol = find_key_recursive(profile_p, "tolerance")
+    
     while (iteration < iteration_max):
         
-        rho_r_initial = rho_r_current 
+        rho_r_initial = rho_r_current.copy()  # IMPORTANT: real copy for residual
         
         landau = np.zeros(nx) 
         # energy filtration for the hard core fmt terms ...
@@ -789,9 +796,10 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         
         if (grand_rosenfeld_flag == 1):
             pid = 0
+            omega_rho_k = np.zeros((6, nx), dtype=complex)
             for particle in species:
                 rho_k_ind = fft(rho_r_current[pid])
-                omega_rho_k = np.zeros((6, nx), dtype=complex)
+                
                 li=[]
                 for i in range(6):
                     omega_rho_k[i,:] = fmt_weights[particle][:, i] * rho_k_ind 
@@ -855,9 +863,10 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             pid = 0
             
             f_ext_frag = []
+            omega_dphi_k = np.zeros((6, nx), dtype=complex)
             for particle in species:
                 dphi_k_ind = dphi_k_new[pid]
-                omega_dphi_k = np.zeros((6, nx), dtype=complex)
+               
                 li=[]
                 for i in range(6):
                     omega_dphi_k[i,:] = fmt_weights[particle][:, i] * dphi_k_ind[i] 
@@ -880,9 +889,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             for particle in species:
                 
                 df_ext_ind = np.zeros(nx)
-                
-                for i in range(nx):
-                    df_ext_ind[i] = np.sum(f_ext_frag[pid][:, i])
+                df_ext_ind[:] = np.sum(f_ext_frag[pid], axis=0)
+
                 
                 total_df_ext.append(df_ext_ind)
                 pid = pid +1
@@ -896,7 +904,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         if grand_meanfield_flag == 1:
 
             total_f_ext_mf = []
-
             N = len(species)  # number of species
             nx = len(rho_r_current[0])  # grid points
 
@@ -923,21 +930,9 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                             # Build densities vector for lambdified functions
                             #print (rho_r_current)
                             
-                            
                             rho_point = rho_r_current[:, ldx]  # shape (N,)
                             densities = np.concatenate([rho_point, rho_point])
                             
-                            
-                            #print ("\n\n\n\n", rho_point, "this is the value which has been concatenated please rectify the same!!!!\n\n\n")
-                            
-                            #print (densities)
-                            
-                            #print ("\n\n\n\n")
-                            
-                            #exit(0)
-                            
-                        
-                            # Evaluate N x N MF parts for this i,k,j
                             del_rhoA_1[ldx] = c1_mf_parts[i][0][k][j](*densities)
                             del_rhoA_2[ldx] = c1_mf_parts[i][1][k][j](*densities)
                             del_rhoB_1[ldx] = c1_mf_parts[i][2][k][j](*densities)
@@ -947,16 +942,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                             rho_1_factor[ldx] = A_fn[k][j](*densities)
                             rho_2_factor[ldx] = B_fn[k][j](*densities)
                             
-                            
-                        
-                            
-                        
-
-                        # FFTs
-                        # --------------------------------------------------
-                        # Real-space MF integration using vij(z1,z2)
-                        # --------------------------------------------------
-
                         for z1 in range(nx):
 
                             # Integral over z2
@@ -999,19 +984,12 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         for particle  in species:
             bulk_dens.append(rho_r_current[pid][i])        
             pid = pid +1
-         
-         
         j = 0
         
-
-    
-        
-        for i in range(nx):
-                
+        for i in range(nx):        
             pid = 0
             grand_landau = 0.0
             ind_density = []
-            
             for particle in species:
                 
                 ind_density.append(rho_r_current[pid][i])
@@ -1031,26 +1009,44 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
                 # Compute density
                 density = np.exp(exponent_clipped)
-
-                
-                
-                
                 grand_landau = grand_landau + (v_ext[particle][i]/ temperature - mue_r[pid][i]) * rho_r_current[pid][i] + rho_r_current[pid][i] *np.log(rho_r_current[pid][i]) -  rho_r_current[pid][i]
                 rho_r_current[pid][i] = alpha * density + (1-alpha) * rho_r_initial[pid][i] 
                 rho_r_initial[pid][i] = rho_r_current[pid][i]
                 pid = pid + 1
                 
                 
+            # -------------------------
+# Convergence check
+# -------------------------
+        residual = 0.0
+        for pid in range(len(species)):
+            residual = max(
+                residual,
+                np.max(np.abs(rho_r_current[pid] - rho_r_initial[pid]))
+            )
+
+        # Dynamic alpha mixing
+        if residual < prev_residual:
+            alpha = min(alpha * 1.05, alpha_max)
+        else:
+            alpha = max(alpha * 0.5, alpha_min)
+
+        prev_residual = residual
+
+        # Tolerance-based stopping
+        if residual < tol:
+            print(f"Converged at iteration {iteration+1} with residual {residual:.3e}")
+            break
+
+                
             grand_landau += landau[i]
             surface_tension_values [i] =  func_pressure(bulk_dens) + grand_landau # - func_pressure(*ind_density) #
             pressure_values[i] = func_pressure(ind_density)
-  
        
         i_start = int(2*nx / 6)
         i_end   = int(4*nx / 6)
         
         surface_tension_values = np.array(surface_tension_values)
-
         
         # Slice the relevant domain
         x_slice = x[i_start:i_end]
@@ -1092,13 +1088,11 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             log_fu.write(pressure_line)
             log_fu.close()
             #log_fu.write(iteration_line)
-        
         iteration =  iteration + 1 
        
     
     fu.close()
-
-
+    
 
     file_name_pressure = scratch / f"data_pressure.txt"
     data = np.column_stack((x, pressure_values))
@@ -1108,11 +1102,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     file_name_domega = scratch /  f"data_delta_omega.txt"
     data = np.column_stack((x, surface_tension_values))
     np.savetxt(file_name_domega, data)
-
-
-
-
-
+    
+    
     i=0
     for other_species in species:
         file_name = scratch / f"data_density_distribution_r_{other_species}.txt"
