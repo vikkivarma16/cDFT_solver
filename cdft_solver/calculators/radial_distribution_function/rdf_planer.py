@@ -161,6 +161,8 @@ def rdf_planer(
     k_grid = np.sort(np.unique(k_space[:, 1]))
     
     
+    print ("old grid k", k_grid)
+    
     z_grid = np.sort(np.unique(r_space[:, 0]))
     r_grid = np.sort(np.unique(r_space[:, 1]))
     
@@ -168,6 +170,8 @@ def rdf_planer(
     Nz = len(z_grid)
     
     k_grid = np.linspace(0.0, 20.0, Nr)
+    
+    print(k_grid)
 
     print ("supplied radial grid points are :", Nr)
     print ("supplied planer points are :", Nz)
