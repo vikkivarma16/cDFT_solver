@@ -195,7 +195,7 @@ def process_supplied_rdf(supplied_data, species, r_grid):
 def hankel_forward_dst(f_r, r):
     N = len(r)
     dr = r[1] - r[0]
-    Rmax = (N + 1) * dr
+    Rmax = max(r)
     k = np.pi * np.arange(1, N + 1) / Rmax
     x = r * f_r
     X = dst(x, type=1)
@@ -205,7 +205,7 @@ def hankel_forward_dst(f_r, r):
 def hankel_inverse_dst(k, Fk, r):
     N = len(r)
     dr = r[1] - r[0]
-    Rmax = (N + 1) * dr
+    Rmax = max (r)
     dk = np.pi / Rmax
     Y = k * Fk
     y = idst(Y, type=1)
