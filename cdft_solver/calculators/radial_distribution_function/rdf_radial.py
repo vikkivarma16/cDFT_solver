@@ -320,11 +320,13 @@ def solve_oz_matrix(c_r_matrix, r, densities):
 
     # Inverse Hankel
     c_r_matrix_new = inverse_hankel_transform_matrix_fast(c_k_matrix, k, r)
+    
+    #c_r_matrix_new = inverse_hankel_transform_matrix_fast(c_k_matrix, k, r)
 
     # Check the reconstruction error
     diff_matrix = c_r_matrix_new - c_r_matrix
     total_error = np.max(np.abs(diff_matrix))
-    #print(f"Max absolute difference after forward+inverse Hankel: {total_error:.3e}")
+    print(f"Max absolute difference after forward+inverse Hankel: {total_error:.6e}")
 
     # Solve OZ in k-space
     gamma_k_matrix = np.zeros_like(c_k_matrix)
@@ -587,11 +589,7 @@ def rdf_radial(
     n_points = rdf_block.get("n_points", 300)
     r_max  =  rdf_block.get("r_max", 6)
     dr = r_max / (n_points + 1)
-    r = dr * np.arange(2, n_points + 2)
-    
-    print (r)
-    print ((n_points+1 )*dr)
-    print (len (r))
+    r = dr * np.arange(1, n_points + 1)
     
     # -----------------------------
     # Closures (all ON initially)
