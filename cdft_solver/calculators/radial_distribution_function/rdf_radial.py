@@ -392,7 +392,7 @@ def multi_component_oz_solver_alpha(
 
     prev_diff = np.inf
     alpha = min(0.001, alpha_rdf_max)
-    alpha  =  0.001
+    alpha  =  0.0001
     # -----------------------------
     # Iteration loop
     # -----------------------------
