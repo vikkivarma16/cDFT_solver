@@ -362,105 +362,73 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     print (FE.mf)
     
     
-    
+    def decompose_mf_by_vij(FE):
+        """
+        Returns Phi[j][k] such that:
+            FE.mf = sum_{j,k} v[j][k] * Phi[j][k]
+        """
+        N = len(FE.v)
+        Phi = [[0]*N for _ in range(N)]
+
+        for j in range(N):
+            for k in range(N):
+                Phi[j][k] = sp.diff(FE.mf, FE.v[j][k])
+
+        return Phi
+
     
     def build_mf_c1(FE, i):
-        """
-        Extract contributions of species i to all pair interactions (j,k):
-
-            - rho1_part[j][k], rho2_part[j][k]
-
-        After removing v_ij terms and splitting into rho1/rho2 dependencies.
-        """
 
         N = len(FE.rho)
 
-        # -------------------------------------------------------------
-        # 1. Derivatives
-        # -------------------------------------------------------------
-        dF_dz  = sp.diff(FE.mf,  FE.rho[i])
-        dF_dzs = sp.diff(FE.mf, FE.rhos[i])
+        # 1. Decompose MF exactly
+        Phi = decompose_mf_by_vij(FE)
 
-        # -------------------------------------------------------------
-        # 2. Define rho1 and rho2 symbols
-        # -------------------------------------------------------------
+        # 2. rho1 / rho2 symbols
         rho1 = [sp.symbols(f"rho_{j}_1") for j in range(N)]
         rho2 = [sp.symbols(f"rho_{j}_2") for j in range(N)]
 
-        # -------------------------------------------------------------
-        # 3. Substitution maps
-        # -------------------------------------------------------------
-        sub_A = {FE.rho[j]: rho1[j] for j in range(N)}
-        sub_A.update({FE.rhos[j]: rho2[j] for j in range(N)})
+        # Output containers
+        rho1_A = [[0]*N for _ in range(N)]
+        rho2_A = [[0]*N for _ in range(N)]
+        rho1_B = [[0]*N for _ in range(N)]
+        rho2_B = [[0]*N for _ in range(N)]
 
-        sub_B = {FE.rhos[j]: rho1[j] for j in range(N)}
-        sub_B.update({FE.rho[j]: rho2[j] for j in range(N)})
+        for j in range(N):
+            for k in range(N):
 
-        termA = sp.expand(dF_dz.subs(sub_A))
-        termB = sp.expand(dF_dzs.subs(sub_B))
+                Phi_jk = Phi[j][k]
+                if Phi_jk == 0:
+                    continue
 
-        # -------------------------------------------------------------
-        # 4. Prepare output containers (N x N arrays)
-        # -------------------------------------------------------------
-        rho1_part_A = [[0]*N for _ in range(N)]
-        rho2_part_A = [[0]*N for _ in range(N)]
-        rho1_part_B = [[0]*N for _ in range(N)]
-        rho2_part_B = [[0]*N for _ in range(N)]
+                # -----------------------------
+                # Part A: d / d rho_i
+                # -----------------------------
+                dA = sp.diff(Phi_jk, FE.rho[i])
+                if dA != 0:
+                    exprA = dA.subs({
+                        **{FE.rho[m]:  rho1[m] if m == i else rho2[m] for m in range(N)},
+                        **{FE.rhos[m]: rho2[m] for m in range(N)}
+                    })
+                    rho1_A[j][k] += exprA
+                    rho2_A[j][k] += exprA
 
-        # -------------------------------------------------------------
-        # 5. Process any additive expression
-        # -------------------------------------------------------------
-        A_terms = termA.args if termA.is_Add else [termA]
-        B_terms = termB.args if termB.is_Add else [termB]
-
-        # -------------------------------------------------------------
-        # 6. Helper: strip v_ij and split rho1/rho2
-        # -------------------------------------------------------------
-        def process_term(t, out_rho1, out_rho2):
-            for j in range(N):
-                for k in range(N):
-                    vij = FE.v[j][k]
-
-                    # Only process terms containing this v_ij
-                    if vij not in t.free_symbols:
-                        continue
-
-                    # Remove v_ij
-                    t_no_vij = sp.simplify(t / vij)
-
-                    # Split into rho1-only and rho2-only
-                    t1, rest = t_no_vij.as_independent(*rho2)
-                    t2, _    = rest.as_independent(*rho1)
-
-                    out_rho1[j][k] += sp.simplify(t1)
-                    out_rho2[j][k] += sp.simplify(t2)
-
-        # -------------------------------------------------------------
-        # 7. Apply splitting to A and B terms
-        # -------------------------------------------------------------
-        for t in A_terms:
-            process_term(t, rho1_part_A, rho2_part_A)
-
-        for t in B_terms:
-            process_term(t, rho1_part_B, rho2_part_B)
-
-        # -------------------------------------------------------------
-        # 8. Return clean separated pieces
-        # -------------------------------------------------------------
+                # -----------------------------
+                # Part B: d / d rho_i^s
+                # -----------------------------
+                dB = sp.diff(Phi_jk, FE.rhos[i])
+                if dB != 0:
+                    exprB = dB.subs({
+                        **{FE.rhos[m]: rho1[m] if m == i else rho2[m] for m in range(N)},
+                        **{FE.rho[m]:  rho2[m] for m in range(N)}
+                    })
+                    rho1_B[j][k] += exprB
+                    rho2_B[j][k] += exprB
+                    
+        print (rho1_A, "\n\n\n",  rho2_A, "\n\n\n", rho1_B, "\n\n\n", rho2_B)
         
-        print ("\n\n", rho1_part_A, "\n\n")
-        
-        print ("\n\n", rho2_part_A, "\n\n")
-        
-        print ("\n\n", rho1_part_B, "\n\n")
-        
-        print ("\n\n", rho2_part_B, "\n\n")
-        
-        
-        
-        exit (0)
-        
-        return rho1_part_A, rho2_part_A, rho1_part_B, rho2_part_B
+        return rho1_A, rho2_A, rho1_B, rho2_B
+
 
 
 
