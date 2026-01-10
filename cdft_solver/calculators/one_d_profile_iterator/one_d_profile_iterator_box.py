@@ -359,6 +359,10 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         
     FE = activate_free_energy_symbolics(symbolic_payload)
     
+    print (FE.mf)
+    
+    exit(0)
+    
     
     
     def build_mf_c1(FE, i):
