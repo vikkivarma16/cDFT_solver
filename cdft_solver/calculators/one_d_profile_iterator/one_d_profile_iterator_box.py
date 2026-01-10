@@ -410,20 +410,27 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                         **{FE.rho[m]:  rho1[m] for m in range(N)},
                         **{FE.rhos[m]: rho2[m] for m in range(N)}
                     })
-                    rho1_A[j][k] += exprA
-                    rho2_A[j][k] += exprA
+                    term_rho1, rest = exprA.as_independent(*rho2)  # factor out rho2 dependence
+                    term_rho2, _    = rest.as_independent(*rho1)   # factor out rho1 dependence
+
+                    rho1_A[j][k] += sp.simplify(term_rho1)
+                    rho2_A[j][k] += sp.simplify(term_rho2)
+
+                
 
                 # -----------------------------
                 # Part B: d / d rho_i^s
                 # -----------------------------
                 dB = sp.diff(Phi_jk, FE.rhos[i])
-                if dB != 0:
-                    exprB = dB.subs({
-                        **{FE.rhos[m]: rho1[m] for m in range(N)},
-                        **{FE.rho[m]:  rho2[m] for m in range(N)}
-                    })
-                    rho1_B[j][k] += exprB
-                    rho2_B[j][k] += exprB
+                exprB = dB.subs({**{FE.rhos[m]: rho1[m] for m in range(N)},
+                                 **{FE.rho[m]:  rho2[m] for m in range(N)}})
+
+                term_rho1_B, rest_B = exprB.as_independent(*rho2)
+                term_rho2_B, _      = rest_B.as_independent(*rho1)
+
+                rho1_B[j][k] += sp.simplify(term_rho1_B)
+                rho2_B[j][k] += sp.simplify(term_rho2_B)
+
                     
         print ("\n\n\n\n\n", rho1_A, "\n\n\n",  rho2_A, "\n\n\n", rho1_B, "\n\n\n", rho2_B, "\n\n\n")
         
