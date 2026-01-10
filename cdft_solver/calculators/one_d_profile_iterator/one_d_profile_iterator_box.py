@@ -432,7 +432,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                 rho2_B[j][k] += sp.simplify(term_rho2_B)
 
                     
-        print ("\n\n\n\n\n", rho1_A, "\n\n\n",  rho2_A, "\n\n\n", rho1_B, "\n\n\n", rho2_B, "\n\n\n")
+        #print ("\n\n\n\n\n", rho1_A, "\n\n\n",  rho2_A, "\n\n\n", rho1_B, "\n\n\n", rho2_B, "\n\n\n")
         
         
         return rho1_A, rho2_A, rho1_B, rho2_B
