@@ -391,7 +391,7 @@ def multi_component_oz_solver_alpha(
     print(f"{'Iter':>6s} | {'Δγ(max)':>12s} | {'α':>6s}")
 
     prev_diff = np.inf
-    alpha = min(0.000001, alpha_rdf_max)
+    alpha = min(0.001, alpha_rdf_max)
 
     # -----------------------------
     # Iteration loop

@@ -41,7 +41,10 @@ def lj(p):
     epsilon = p.get("epsilon", 1.0)
     def V(r):
         r = np.asarray(r)
-        return 4 * epsilon * ((sigma / r) ** 12 - (sigma / r) ** 6)
+        v = np.zeros_like(r)
+        v = 4 * epsilon * ((sigma / r) ** 12 - (sigma / r) ** 6)
+        v[r <= EPS] = 2e9
+        return v
     return V
 
 register_isotropic_pair_potentials = register_isotropic_pair_potential
@@ -75,10 +78,11 @@ def mie(p):
     cutoff = p.get("cutoff", 5.0)
 
     c = (n / (n - m)) * (n / m) ** (m / (n - m))
-
+    
     def V(r):
         r = np.asarray(r)
         v = epsilon * c * ((sigma / r) ** n - (sigma / r) ** m)
+        v[r <= EPS] = 2e9
         v[r > cutoff] = 0.0
         return v
 
