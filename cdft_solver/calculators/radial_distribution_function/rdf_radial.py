@@ -797,9 +797,6 @@ def rdf_radial(
                 "species": species,
                 "densities": list(map(float, densities)),
                 "beta": float(beta),
-                "r_min": float(r_min),
-                "r_max": float(r_max),
-                "n_points": int(n_points),
             },
             "pairs": {}
         }
