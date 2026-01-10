@@ -589,6 +589,7 @@ def rdf_radial(
     
     print (r)
     print ((n_points+1 )*dr)
+    print (len (r))
     
     # -----------------------------
     # Closures (all ON initially)
