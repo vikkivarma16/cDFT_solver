@@ -413,6 +413,8 @@ def multi_component_oz_solver_alpha(
         gamma_new = solve_oz_matrix(c_r, r, densities)
 
         # --- Convergence check
+        
+        print (gamma_new)
         delta_gamma = gamma_new - gamma_r
         diff = np.max(np.abs(delta_gamma))
 
