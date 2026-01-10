@@ -13,7 +13,7 @@ def hnc_closure(r, gamma, u, sigma_ab=None):
     #print("HI I am being accessed")
     
     
-    value = exp(-u + gamma) - gamma - 1.0
+    value = np.exp(-u + gamma) - gamma - 1.0
     
     return value
 
