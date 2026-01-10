@@ -308,7 +308,7 @@ def solve_oz_matrix(c_r, r, densities):
     # Reshape back to 3D
     gamma_r = gamma_r_flat.reshape((N, N, Nr))
     
-    gamma_r = np.clip(gamma_r, -50.0, 30.0)
+    gamma_r = np.clip(gamma_r, -50.0, 50.0)
 
     return gamma_r
 
@@ -415,6 +415,8 @@ def multi_component_oz_solver_alpha(
                 if c_update_flag[i, j]:
                     c_r[i, j, :] = c_trial[i, j, :]
                 # else: keep frozen c_r[i,j,:]
+                
+        c_r = np.clip(c_r, -50.0, 50.0)
 
         # --- Solve OZ
         gamma_new = solve_oz_matrix(c_r, r, densities)
@@ -428,14 +430,14 @@ def multi_component_oz_solver_alpha(
         # --- Adaptive mixing
         gamma_alpha = (1 - alpha) * gamma_r + alpha * gamma_new
         gamma_r = gamma_alpha
-        gamma_r = np.clip(gamma_r, -50.0, 30.0)
+        gamma_r = np.clip(gamma_r, -50.0, 50.0)
 
         if step % 100 == 0 or diff < tol:
         
-            if diff < prev_diff:
-                alpha = min(alpha * 1.05, alpha_rdf_max)
-            else:
-                alpha = max(alpha * 0.5, 1e-8)
+            #if diff < prev_diff:
+            #    alpha = min(alpha * 1.05, alpha_rdf_max)
+            #else:
+            #    alpha = max(alpha * 0.5, 1e-8)
         
             print(f"{step:6d} | {diff:12.3e} | {alpha:6.4f}")
 
