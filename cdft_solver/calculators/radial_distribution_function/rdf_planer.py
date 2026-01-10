@@ -365,6 +365,8 @@ def rdf_planer(
     z_grid = np.sort(np.unique(r_space[:, 0]))
     r_grid = np.sort(np.unique(r_space[:, 1]))
     
+    print (r_grid)
+    
     Nr = len(r_grid)
     Nz = len(z_grid)
     
