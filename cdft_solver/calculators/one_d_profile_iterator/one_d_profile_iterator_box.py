@@ -407,7 +407,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                 dA = sp.diff(Phi_jk, FE.rho[i])
                 if dA != 0:
                     exprA = dA.subs({
-                        **{FE.rho[m]:  rho1[m] if m == i else rho2[m] for m in range(N)},
+                        **{FE.rho[m]:  rho1[m] for m in range(N)},
                         **{FE.rhos[m]: rho2[m] for m in range(N)}
                     })
                     rho1_A[j][k] += exprA
@@ -419,7 +419,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                 dB = sp.diff(Phi_jk, FE.rhos[i])
                 if dB != 0:
                     exprB = dB.subs({
-                        **{FE.rhos[m]: rho1[m] if m == i else rho2[m] for m in range(N)},
+                        **{FE.rhos[m]: rho1[m] for m in range(N)},
                         **{FE.rho[m]:  rho2[m] for m in range(N)}
                     })
                     rho1_B[j][k] += exprB
