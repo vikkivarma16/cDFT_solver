@@ -43,9 +43,8 @@ def free_energy_EMF(ctx=None, hc_data=None, export_json=True, filename="Solution
         factor = 0
         for i in range(n_species):
             if flag[i] == 1 and i != j:
-                avg_p_vol = (0.5 * (sigmai[i] + sigmai[j])) ** 3
-                term = sp.Rational(1, 2) * densities[i] * (sp.pi / 6) * avg_p_vol \
-                       - sp.Rational(3, 8) * (densities[i] * (sp.pi / 6) * avg_p_vol) ** 2
+                avg_p_vol = 0.5 * (sigmai[i]**3 + sigmai[j]**3)
+                term = sp.Rational(1, 2) * densities[i] * (sp.pi / 6) * avg_p_vol - sp.Rational(3, 8) * (densities[i] * (sp.pi / 6) * avg_p_vol) ** 2
                 factor += term
         volume_factors.append(1 - factor)
 

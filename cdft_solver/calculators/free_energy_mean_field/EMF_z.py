@@ -72,7 +72,7 @@ def free_energy_EMF_z(ctx=None, hc_data=None, export_json=True, filename="Soluti
         vf = 1
         for i in range(n_species):
             if flag[i] == 1 and i != j:
-                avg_p_vol = (0.5 * (sigmai[i] + sigmai[j])) ** 3
+                avg_p_vol = 0.5 * (sigmai[i]**3 + sigmai[j]**3)
                 term = (
                     sp.Rational(1, 2) * rho_zs[i] * (sp.pi / 6) * avg_p_vol
                     - sp.Rational(3, 8) * (rho_zs[i] * (sp.pi / 6) * avg_p_vol) ** 2
