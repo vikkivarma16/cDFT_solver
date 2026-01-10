@@ -585,7 +585,7 @@ def rdf_radial(
     n_points = rdf_block.get("n_points", 300)
     r_max  =  rdf_block.get("r_max", 6)
     dr = r_max / (n_points + 1)
-    r = dr * np.arange(1, n_points + 1)
+    r = dr * np.arange(2, n_points + 2)
     
     # -----------------------------
     # Closures (all ON initially)
