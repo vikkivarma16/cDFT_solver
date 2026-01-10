@@ -75,7 +75,7 @@ def r_k_space_spherical(
     # Spherical r-space
     # -------------------------
     Nr = box_points[0]
-    r = np.linspace(0.0, box_length[0], Nr)
+    r = np.linspace(box_length[0]/Nr, box_length[0], Nr)
 
     if dimension >= 2:
         Ntheta = box_points[1]
