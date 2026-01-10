@@ -361,7 +361,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     
     print (FE.mf)
     
-    exit(0)
     
     
     
@@ -459,7 +458,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         
         
         
-        
+        exit (0)
         
         return rho1_part_A, rho2_part_A, rho1_part_B, rho2_part_B
 
