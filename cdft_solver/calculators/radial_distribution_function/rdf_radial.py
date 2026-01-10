@@ -428,6 +428,7 @@ def multi_component_oz_solver_alpha(
         # --- Adaptive mixing
         gamma_alpha = (1 - alpha) * gamma_r + alpha * gamma_new
         gamma_r = gamma_alpha
+        gamma_r = np.clip(gamma_r, -50.0, 30.0)
 
         if step % 100 == 0 or diff < tol:
         
