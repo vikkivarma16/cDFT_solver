@@ -82,7 +82,8 @@ def r_k_space_cylindrical(
     # r-axis
     if dimension == 2:
         Nr = box_points[1]
-        r = np.linspace(0.0, box_length[1], Nr)
+        r_start = box_length[1] / Nr  # start at one grid spacing
+        r = np.linspace(r_start, box_length[1], Nr)
     else:
         r = np.array([0.0])
 
