@@ -100,7 +100,7 @@ def meanfield_potentials(
     for pair in sorted(all_pairs):
 
         # Determine r-grid for the pair
-        r_min = 1e-5
+        r_min = 0
         grid_max = 10.0  # default fallback if nothing else
 
         # Loop over levels to determine maximum range

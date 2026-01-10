@@ -243,7 +243,7 @@ def hard_core_potentials(
             sp_i, sp_j = species[i], species[j]
             s = sigma[i, j]
             cutoff = s * 5.0
-            r_values = np.linspace(1e-5, cutoff, grid_points)
+            r_values = np.linspace(0.0, cutoff, grid_points)
             u_values = np.where(r_values < s, 1e12, 0.0)
             potentials_dict[f"{sp_i}{sp_j}"] = {
                 "r": r_values.tolist(),

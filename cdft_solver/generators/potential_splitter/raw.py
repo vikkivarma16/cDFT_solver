@@ -87,7 +87,7 @@ def raw_potentials(
             for inter in inter_list
         )
 
-        r = np.linspace(1e-5, cutoff, grid_points)
+        r = np.linspace(0.0, cutoff, grid_points)
         u_total = np.zeros_like(r)
 
         for inter in inter_list:
