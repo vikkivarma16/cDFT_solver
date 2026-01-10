@@ -28,7 +28,7 @@ void hankel_forward_dst(int N, const double *r, const double *f_r, double *k, do
 
 void hankel_inverse_dst(int N, const double *r, const double *k, const double *F_k, double *f_r) {
     double dr = r[1] - r[0];
-    double Rmax = (N + 1) * dr;
+    double Rmax = N * dr;
     double dk = M_PI / Rmax;
 
     double *y = fftw_malloc(sizeof(double) * N);
@@ -37,16 +37,15 @@ void hankel_inverse_dst(int N, const double *r, const double *k, const double *F
     fftw_plan plan = fftw_plan_r2r_1d(N, y, y, FFTW_RODFT00, FFTW_ESTIMATE);
     fftw_execute(plan);
 
-    for (int i = 1; i < N; i++)
+    for (int i = 0; i < N; i++)
         f_r[i] = (dk / (4.0 * M_PI * M_PI * r[i])) * y[i];
-    f_r[0] = f_r[1];
 
     fftw_destroy_plan(plan);
     fftw_free(y);
 }
 
 void solve_oz_matrix(int N, int Nr, const double *r, const double *densities, double *c_r, double *gamma_r) {
-    const double eps = 1e-12;
+    const double eps = 1e-8;
     int Nk = Nr;
 
     // allocate on heap

@@ -307,6 +307,9 @@ def solve_oz_matrix(c_r, r, densities):
 
     # Reshape back to 3D
     gamma_r = gamma_r_flat.reshape((N, N, Nr))
+    
+    gamma_r = np.clip(gamma_r, -50.0, 30.0)
+
     return gamma_r
 
 
