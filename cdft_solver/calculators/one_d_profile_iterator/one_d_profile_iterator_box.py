@@ -449,6 +449,14 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         # 8. Return clean separated pieces
         # -------------------------------------------------------------
         
+        print ("\n\n", rho1_part_A, "\n\n")
+        
+        print ("\n\n", rho2_part_A, "\n\n")
+        
+        print ("\n\n", rho1_part_B, "\n\n")
+        
+        print ("\n\n", rho2_part_B, "\n\n")
+        
         
         
         
