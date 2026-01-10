@@ -282,7 +282,7 @@ lib.solve_oz_matrix.argtypes = [
 ]
 
 
-
+'''
 def solve_oz_matrix(c_r, r, densities):
     N, _, Nr = c_r.shape
     gamma_r = np.zeros_like(c_r)
@@ -319,14 +319,14 @@ def solve_oz_matrix(c_r_matrix, r, densities):
     c_k_matrix, k = hankel_transform_matrix_fast(c_r_matrix, r)
 
     # Inverse Hankel
-    #c_r_matrix_new = inverse_hankel_transform_matrix_fast(c_k_matrix, k, r)
+    c_r_matrix_new = inverse_hankel_transform_matrix_fast(c_k_matrix, k, r)
     
     #c_r_matrix_new = inverse_hankel_transform_matrix_fast(c_k_matrix, k, r)
 
     # Check the reconstruction error
     diff_matrix = c_r_matrix_new - c_r_matrix
     total_error = np.max(np.abs(diff_matrix))
-    #print(f"Max absolute difference after forward+inverse Hankel: {total_error:.6e}")
+    print(f"Max absolute difference after forward+inverse Hankel: {total_error:.6e}")
 
     # Solve OZ in k-space
     gamma_k_matrix = np.zeros_like(c_k_matrix)
@@ -343,7 +343,7 @@ def solve_oz_matrix(c_r_matrix, r, densities):
     gamma_r_matrix = inverse_hankel_transform_matrix_fast(gamma_k_matrix, k, r)
 
     return gamma_r_matrix
-'''
+
 
 def multi_component_oz_solver_alpha(
     r,
