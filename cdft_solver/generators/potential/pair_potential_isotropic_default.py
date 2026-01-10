@@ -25,7 +25,7 @@ def hard_core(p):
     def V(r):
         r = np.asarray(r)
         v = np.zeros_like(r)
-        v[r <= sigma] = 2e16
+        v[r <= sigma] = 2e8
         return v
     return V
 
@@ -42,8 +42,9 @@ def lj(p):
     def V(r):
         r = np.asarray(r)
         v = np.zeros_like(r)
-        v = 4 * epsilon * ((sigma / r) ** 12 - (sigma / r) ** 6)
-        v[r <= EPS] = 2e9
+        mask = r > EPS
+        v[mask] = 4 * epsilon * ((sigma / r[mask])**12 - (sigma / r[mask])**6)
+        v[~mask] = 2e8
         return v
     return V
 
@@ -80,9 +81,11 @@ def mie(p):
     c = (n / (n - m)) * (n / m) ** (m / (n - m))
     
     def V(r):
-        r = np.asarray(r)
-        v = epsilon * c * ((sigma / r) ** n - (sigma / r) ** m)
-        v[r <= EPS] = 2e9
+        r = np.asarray(r) 
+        v = np.zeros_like(r)
+        mask = r > EPS
+        v[mask] = epsilon * c * ((sigma / r[mask])**n - (sigma / r[mask])**m)
+        v[r <= EPS] = 2e8
         v[r > cutoff] = 0.0
         return v
 
@@ -142,7 +145,7 @@ def custom_3(p):
         r = np.asarray(r)
         v = np.zeros_like(r)
 
-        v[r <= EPS] = 2e9
+        v[r <= EPS] = 2e8
 
         mask = (r > EPS) & (r < cutoff)
         v[mask] = epsilon * (
