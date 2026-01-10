@@ -197,7 +197,7 @@ def hankel_forward_dst(f_r, r):
     dr = r[1] - r[0]
     Rmax = max(r)
     
-    print (Rmax)
+    #print (Rmax)
     k = np.pi * np.arange(1, N + 1) / Rmax
     x = r * f_r
     X = dst(x, type=1)
