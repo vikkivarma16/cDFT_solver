@@ -399,7 +399,7 @@ def multi_component_oz_solver_alpha(
 
     prev_diff = np.inf
     alpha = min(0.001, alpha_rdf_max)
-    alpha  =  0.001
+    alpha  =  0.0001
     # -----------------------------
     # Iteration loop
     # -----------------------------
@@ -434,10 +434,10 @@ def multi_component_oz_solver_alpha(
 
         if step % 100 == 0 or diff < tol:
         
-            #if diff < prev_diff:
-            #    alpha = min(alpha * 1.05, alpha_rdf_max)
-            #else:
-            #    alpha = max(alpha * 0.5, 1e-8)
+            if diff < prev_diff:
+                alpha = min(alpha * 1.05, alpha_rdf_max)
+            else:
+                alpha = max(alpha * 0.5, 1e-8)
         
             print(f"{step:6d} | {diff:12.3e} | {alpha:6.4f}")
 
