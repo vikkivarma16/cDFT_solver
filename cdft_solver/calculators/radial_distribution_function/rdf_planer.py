@@ -491,6 +491,8 @@ def rdf_planer(
 
             # Vectorized potential evaluation
             u_val = beta * interp_u(R_ijr)
+            
+            print (u_val)
 
             # Explicit cutoff enforcement (optional but robust)
             u_val[R_ijr > R_cut] = 0.0
