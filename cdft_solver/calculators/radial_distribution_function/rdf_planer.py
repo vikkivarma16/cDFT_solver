@@ -365,8 +365,7 @@ def rdf_planer(
     z_grid = np.sort(np.unique(r_space[:, 0]))
     r_grid = np.sort(np.unique(r_space[:, 1]))
     
-    print (r_grid)
-    print (z_grid)
+    
     
     Nr = len(r_grid)
     Nz = len(z_grid)
@@ -480,7 +479,7 @@ def rdf_planer(
             U_tab = np.asarray(pdata["U"], dtype=float)
 
             R_cut = R_tab.max()
-
+            
             interp_u = interp1d(
                 R_tab,
                 U_tab,
@@ -492,7 +491,6 @@ def rdf_planer(
             # Vectorized potential evaluation
             u_val = beta * interp_u(R_ijr)
             
-            print (u_val[0][0])
 
             # Explicit cutoff enforcement (optional but robust)
             u_val[R_ijr > R_cut] = 0.0
