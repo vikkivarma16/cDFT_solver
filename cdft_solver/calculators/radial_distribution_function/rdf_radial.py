@@ -414,7 +414,7 @@ def multi_component_oz_solver_alpha(
 
         # --- Convergence check
         
-        print (gamma_new)
+        #print (gamma_new)
         delta_gamma = gamma_new - gamma_r
         diff = np.max(np.abs(delta_gamma))
 
