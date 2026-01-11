@@ -834,6 +834,8 @@ def boltzmann_inversion(
             densities_s = sdata["densities"]
             g_target = sdata["g_target"]
             fixed_mask = sdata["fixed_mask"]
+            
+            print ("temperature in state ", sname, ":", beta_s)
 
             c_r, gamma_r, g_pred = multi_component_oz_solver_alpha(
                 r=r,
