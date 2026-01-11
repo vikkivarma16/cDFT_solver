@@ -8,7 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 import matplotlib.pyplot as plt
 import re
-from cdft_solver.calculators.radial_distribution_function.closer import closure_update_c_matrix
+from cdft_solver.calculators.radial_distribution_function.closure import closure_update_c_matrix
 from scipy.optimize import minimize_scalar
 
 
