@@ -917,7 +917,7 @@ def boltzmann_inversion(
                         enable_sigma_refinement =  1
 
     sigma_update_every = 10
-    sigma_freeze_after = 500
+    sigma_freeze_after = n_iter_ibi
     
     print ("sigma matrix detected before ibi: ",sigma_matrix)
     
