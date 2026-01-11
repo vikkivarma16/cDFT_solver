@@ -193,15 +193,27 @@ def optimize_sigma_multistate(
     return sigma_new
 
 
+import numpy as np
+from scipy.interpolate import interp1d
 
 def process_supplied_rdf_multistate(supplied_data, species, r_grid):
-    
     """
     Process multistate supplied RDF data.
-    Each state must define:
-      - densities: array-like (N,)
-      - temperature or beta
-      - rdf: dict with pair keys like 'AA', 'AB', ...
+
+    Each state in supplied_data must define:
+      - 'densities': array-like (N,)
+      - 'temperature' or 'beta' (optional, default beta=1.0)
+      - 'rdf': dict with pair keys like 'AA', 'AB', etc.
+
+    Parameters
+    ----------
+    supplied_data : dict
+        Already materialized supplied data (files loaded into x/y arrays)
+    species : list of str
+        List of species names
+    r_grid : ndarray
+        Grid points where RDFs are interpolated
+
     Returns
     -------
     states : dict
@@ -209,14 +221,14 @@ def process_supplied_rdf_multistate(supplied_data, species, r_grid):
             "densities": (N,) ndarray,
             "beta": float,
             "g_target": (N, N, Nr) ndarray,
-            "fixed_mask": (N, N) bool ndarray,
+            "fixed_mask": (N, N) bool ndarray
         }
     """
 
     if supplied_data is None:
         return {}
 
-    # Locate state container
+    # Locate state container (flexible naming)
     state_block = (
         supplied_data.get("states")
         or supplied_data.get("state")
@@ -235,21 +247,24 @@ def process_supplied_rdf_multistate(supplied_data, species, r_grid):
         if "densities" not in state_data:
             raise KeyError(f"State '{state_name}' missing 'densities'")
         densities = np.asarray(state_data["densities"], dtype=float)
-
         if len(densities) != N:
             raise ValueError(
                 f"State '{state_name}' densities size mismatch: "
                 f"expected {N}, got {len(densities)}"
             )
 
+        # Beta / temperature
         if "beta" in state_data:
             beta = float(state_data["beta"])
         elif "temperature" in state_data:
             beta = 1.0 / float(state_data["temperature"])
         else:
-            beta = 1.0  # default
+            beta = 1.0  # default if nothing provided
 
-        rdf_dict = find_key_recursive(state_data, "rdf")
+        # -----------------------------
+        # RDF dictionary
+        # -----------------------------
+        rdf_dict = state_data.get("rdf", {})
         if rdf_dict is None:
             raise KeyError(f"State '{state_name}' has no RDF data")
 
@@ -260,20 +275,28 @@ def process_supplied_rdf_multistate(supplied_data, species, r_grid):
         fixed_mask = np.zeros((N, N), dtype=bool)
 
         # -----------------------------
-        # Read RDF pairs
+        # Process all pairwise RDFs
         # -----------------------------
         for i, si in enumerate(species):
             for j, sj in enumerate(species):
 
-                pair_key = f"{si}{sj}"
-                if pair_key not in rdf_dict:
-                    continue
+                # pair keys may be "AB" or "BA"
+                pair_keys = [f"{si}{sj}", f"{sj}{si}"]
+                entry = None
+                for key in pair_keys:
+                    if key in rdf_dict:
+                        entry = rdf_dict[key]
+                        break
+                if entry is None:
+                    continue  # skip missing pairs
 
-                entry = rdf_dict[pair_key]
+                r_sup = np.asarray(entry.get("x", entry.get("r", [])), dtype=float)
+                g_sup = np.asarray(entry.get("y", entry.get("g", [])), dtype=float)
 
-                r_sup = np.asarray(entry["r"], dtype=float)
-                g_sup = np.asarray(entry["g"], dtype=float)
+                if r_sup.size == 0 or g_sup.size == 0:
+                    continue  # skip empty data
 
+                # Interpolation
                 interp = interp1d(
                     r_sup,
                     g_sup,
@@ -281,10 +304,9 @@ def process_supplied_rdf_multistate(supplied_data, species, r_grid):
                     bounds_error=False,
                     fill_value=(g_sup[0], g_sup[-1]),
                 )
-
                 g_interp = interp(r_grid)
 
-                # Enforce symmetry
+                # Symmetric assignment
                 g_target[i, j, :] = g_target[j, i, :] = g_interp
                 fixed_mask[i, j] = fixed_mask[j, i] = True
 
@@ -296,6 +318,8 @@ def process_supplied_rdf_multistate(supplied_data, species, r_grid):
         }
 
     return states_out
+
+
 
 
 def hankel_forward_dst(f_r, r):
@@ -713,6 +737,10 @@ def boltzmann_inversion(
 
     sigma_update_every = 5
     sigma_freeze_after = 50
+    
+    
+    exit (0)
+    
     # -------------------------------------------------
     # Multistate IBI loop
     # -------------------------------------------------
