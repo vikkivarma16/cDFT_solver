@@ -543,7 +543,7 @@ def multi_component_oz_solver_alpha(
 
         prev_diff = diff
 
-    if (diff>tol)
+    if (diff>tol):
         print(f"\n⚠️ Warning: not converged after {n_iter} iterations.")
 
     # -----------------------------
