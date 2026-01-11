@@ -552,7 +552,7 @@ def find_key_recursive(d, key):
 
 
 
-def detect_sigma_from_gr_strict(r, g, g_tol=1e-8, min_width=3):
+def detect_sigma_from_gr(r, g, g_tol=1e-8, min_width=3):
     """
     Detect hard-core diameter ONLY if g(r) is strictly zero
     over a finite r-interval.
