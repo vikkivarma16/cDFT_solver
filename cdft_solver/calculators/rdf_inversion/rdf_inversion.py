@@ -860,7 +860,7 @@ def boltzmann_inversion(
 
     max_diff_prev = np.inf
 
-
+    simga_old  =  sigma_matrix
     # -------------------------------------------------
     # Multistate IBI loop
     # -------------------------------------------------
@@ -971,7 +971,7 @@ def boltzmann_inversion(
                     sigma_new = optimize_sigma_multistate(
                         r=r,
                         u_matrix=u_matrix,
-                        sigma_matrix=sigma_matrix,
+                        sigma_matrix=sigma_old,
                         pair_closures=pair_closures,
                         states=states,
                         pair_index=(i, j),
