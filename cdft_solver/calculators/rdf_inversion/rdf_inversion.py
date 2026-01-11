@@ -686,7 +686,7 @@ def boltzmann_inversion(
     
     sigma = hc_data["sigma"]
     
-    print ("sigma matrix: ",sigma)
+    print ("sigma matrix before gr: ",sigma)
     
 
     # -----------------------------
@@ -843,6 +843,8 @@ def boltzmann_inversion(
 
     sigma_update_every = 10
     sigma_freeze_after = 500
+    
+    print ("sigma matrix detected before ibi: ",sigma_matrix)
     
     plot_u_matrix( r=r, u_matrix=u_matrix, species=species, outdir=plots, filename="pair_potentials_before_ibi.png",)
     
