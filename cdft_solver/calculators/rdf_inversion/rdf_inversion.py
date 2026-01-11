@@ -1046,7 +1046,7 @@ def boltzmann_inversion(
                     sigma_new = optimize_sigma_multistate(
                         r=r,
                         u_matrix=u_matrix,
-                        sigma_matrix=sigma_ref,
+                        sigma_matrix=sigma_matrix,
                         pair_closures=pair_closures,
                         states=states,
                         pair_index=(i, j),
