@@ -489,16 +489,72 @@ def boltzmann_potential_from_gr(g, beta=1.0, g_min=1e-8):
     return -np.log(g_safe) / beta
 
 
+def plot_u_matrix(r, u_matrix, species, outdir, filename="u_matrix.png"):
+    """
+    Plot and export u_ij(r) for all species pairs.
+
+    Parameters
+    ----------
+    r : (Nr,) ndarray
+        Radial grid (must match u_matrix)
+    u_matrix : (N, N, Nr) ndarray
+        Pair potential matrix
+    species : list[str]
+        Species labels, length N
+    outdir : str or Path
+        Output directory
+    filename : str
+        Output image filename
+    """
+
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    N = len(species)
+
+    fig, axes = plt.subplots(
+        N, N,
+        figsize=(3.2 * N, 3.2 * N),
+        sharex=True,
+        sharey=False,
+    )
+
+    if N == 1:
+        axes = [[axes]]
+
+    for i, si in enumerate(species):
+        for j, sj in enumerate(species):
+            ax = axes[i][j]
+
+            u = u_matrix[i, j]
+
+            ax.plot(r, u, lw=1.8)
+            ax.axhline(0.0, color="k", lw=0.8, alpha=0.4)
+
+            ax.set_title(f"{si}–{sj}", fontsize=10)
+            ax.grid(alpha=0.3)
+
+            if i == N - 1:
+                ax.set_xlabel("r")
+            if j == 0:
+                ax.set_ylabel(r"$u(r)$")
+
+    fig.suptitle("Pair Potentials $u_{ij}(r)$", fontsize=14)
+    fig.tight_layout(rect=[0, 0, 1, 0.96])
+
+    outpath = outdir / filename
+    fig.savefig(outpath, dpi=300)
+    plt.close(fig)
+
+    print(f"✅ u(r) matrix plot saved to: {outpath}")
+
 
 
 
 def boltzmann_inversion(
     ctx,
     rdf_config,
-    grid_dict,
     supplied_data,
-    sigma=None,
-    potential_dict=None,
     export=False,
     filename_prefix="boltzmann",
 ):
@@ -507,81 +563,162 @@ def boltzmann_inversion(
     using OZ + closure.
     """
 
-    # -------------------------------------------------
-    # Parameters
-    # -------------------------------------------------
-    rdf_block = find_key_recursive(rdf_config, "rdf")
-    params = rdf_config["rdf_parameters"]
-
-    species = params["species"]
-    N = len(species)
-
-    tol = rdf_block.get("tolerance", 1e-6)
-    max_iter = rdf_block.get("max_iteration", 200)
-    alpha_ibi = rdf_block.get("alpha_ibi", 0.1)
-
     g_floor = 1e-8
     hard_core_repulsion = 1e6
 
-    # -------------------------------------------------
-    # r grid
-    # -------------------------------------------------
-    r = np.linspace(
-        grid_dict["r_min"],
-        grid_dict["r_max"],
-        grid_dict["n_points"],
-    )
-    Nr = len(r)
+    # -----------------------------
+    # Extract RDF parameters
+    # -----------------------------
+    rdf_block = find_key_recursive(rdf_config, "rdf")
+    if rdf_block is None:
+        raise KeyError("No 'rdf' key found in rdf_config")
 
-    # -------------------------------------------------
-    # Closures
-    # -------------------------------------------------
-    closure_cfg = rdf_block["closure"]
+    #params = rdf_config["rdf_parameters"]
+    species = find_key_recursive(rdf_config, "species")
+    N = len(species)
+
+    beta_ref = rdf_block.get("beta", 1.0)
+    tol = rdf_block.get("tolerance", 1e-6)
+    n_iter = find_key_recursive(rdf_config, "max_iteration")
+    alpha_max = rdf_block.get("alpha_max", 0.05)
+    
+    
+    
+    system = rdf_config
+    hc_data = hard_core_potentials(
+        ctx=ctx,
+        input_data=system,
+        grid_points=5000,
+        file_name_prefix="supplied_data_potential_hc.json",
+        export_files=False
+    )
+
+    mf_data = meanfield_potentials(
+        ctx=ctx,
+        input_data=system,
+        grid_points=5000,
+        file_name_prefix="supplied_data_potential_mf.json",
+        export_files=False
+    )
+
+    total_data = total_potentials(
+        ctx=ctx,
+        hc_source= hc_data,
+        mf_source= mf_data,
+        file_name_prefix="supplied_data_potential_total.json",
+        export_files=False,
+       
+    )
+    
+    sigma = hc_data["sigma"]
+    
+
+    # -----------------------------
+    # Build r grid
+    # -----------------------------
+    
+    n_points = rdf_block.get("n_points", 300)
+    r_max  =  rdf_block.get("r_max", 6)
+    dr = r_max / (n_points + 1)
+    r = dr * np.arange(1, n_points + 1)
+    
+    # -----------------------------
+    # Closures (all ON initially)
+    # -----------------------------
+    closure_cfg = rdf_block.get("closure", {})
     pair_closures = np.empty((N, N), dtype=object)
+
+    n = len(species)
+    pair_closures = np.empty((n, n), dtype=object)
+
     for i, si in enumerate(species):
-        for j, sj in enumerate(species):
-            pair_closures[i, j] = closure_cfg[f"{si}{sj}"]
+        for j in range(i, n):   # <-- j starts from i
+            sj = species[j]
 
-    # -------------------------------------------------
-    # Multistate RDF
-    # -------------------------------------------------
-    states = process_supplied_rdf_multistate(
-        supplied_data, species, r
-    )
-    if not states:
-        raise ValueError("No multistate RDF data provided")
+            key_ij = f"{si}{sj}"
+            key_ji = f"{sj}{si}"
 
-    state_names = list(states.keys())
-    beta_ref = states[state_names[0]]["beta"]
-
-    # Uniform state weights (can be changed later)
-    w_state = {s: 1.0 / len(states) for s in states}
-
-    # -------------------------------------------------
-    # Initialize σ and u
-    # -------------------------------------------------
-    sigma_matrix = np.zeros((N, N)) if sigma is None else sigma.copy()
-    u_matrix = np.zeros((N, N, Nr))
-    invert_mask = np.zeros((N, N), dtype=bool)
-    
-    if potential_dict is not None:
-        for i, si in enumerate(species):
-            for j, sj in enumerate(species):
-                key = (si, sj)
-                rkey = (sj, si)
-
-                pdata = potential_dict.get(key, potential_dict.get(rkey))
-                if pdata is None:
-                    raise KeyError(f"Missing potential for pair {si}-{sj}")
-
-                interp_u = interp1d(
-                    pdata["r"], pdata["u"],
-                    bounds_error=False,
-                    fill_value=0.0
+            if key_ij in closure_cfg:
+                closure = closure_cfg[key_ij]
+            elif key_ji in closure_cfg:
+                closure = closure_cfg[key_ji]
+            else:
+                raise KeyError(
+                    f"Missing closure for pair '{key_ij}' or '{key_ji}'"
                 )
-                u_matrix[i, j, :] = beta_ref*interp_u(r)
 
+            # assign symmetrically
+            pair_closures[i, j] = closure
+            pair_closures[j, i] = closure
+
+
+    # -----------------------------
+    # Potentials
+    # -----------------------------
     
+    potential_dict = total_data["total_potentials"]
+    u_matrix = np.zeros((N, N, len(r)))
+    print (pair_closures)
+    n = len(species)
+    u_matrix = np.zeros((n, n, len(r)))
+
+    for i, si in enumerate(species):
+        for j in range(i, n):   # <-- only j >= i
+            sj = species[j]
+
+            key_ij = si + sj
+            key_ji = sj + si
+
+            pdata = (
+                potential_dict.get(key_ij)
+                or potential_dict.get(key_ji)
+            )
+
+            if pdata is None:
+                continue
+
+            # interpolate once
+            interp_u = interp1d(
+                pdata["r"],
+                pdata["U"],
+                bounds_error=False,
+                fill_value=0.0,
+                assume_sorted=True,
+            )
+
+            u_val = beta_ref * interp_u(r)
+
+            # symmetric assignment
+            u_matrix[i, j, :] = u_val
+            u_matrix[j, i, :] = u_val
+            
+    plots = Path(ctx.plots_dir)      
+    plot_u_matrix( r=r, u_matrix=u_matrix, species=species, outdir=plots, filename="pair_potentials.png",)
+
+  
+
+    # u_matrix: (N, N, Nr), r: (Nr,)
+    u_strength = np.zeros((N, N))
+
+    for i in range(N):
+        for j in range(N):
+            u = u_matrix[i, j, :]
+            integrand = r**2 * u
+            u_strength[i, j] = 4.0 * np.pi * np.trapz(integrand, r)
+
+    #print("Integrated potential strength (trapezoidal) for each pair:")
+    #print(u_strength)
+
+
+
+    # -----------------------------
+    # Sigma matrix
+    # -----------------------------
+    sigma_matrix = np.zeros((N, N)) if sigma is None else np.array (sigma)
+    
+
+
+    exit(0)
 
     # Initialize from first state RDF
     s0 = state_names[0]
