@@ -847,17 +847,26 @@ def boltzmann_inversion(
     plot_u_matrix( r=r, u_matrix=u_matrix, species=species, outdir=plots, filename="pair_potentials_before_ibi.png",)
     
     
+    # -------------------------------------------------
+    # Adaptive IBI parameters
+    # -------------------------------------------------
     alpha_ibi = 0.01
-    
+
+    alpha_min_ibi = 1e-4
+    alpha_max_ibi = alpha_max_ibi   # keep your existing max
+    alpha_power = 0.5               # controls adaptation strength
+
+    max_diff_prev = np.inf
+
+
     # -------------------------------------------------
     # Multistate IBI loop
     # -------------------------------------------------
-    for it in range(1, n_iter_ibi  + 1):
+    for it in range(1, n_iter_ibi + 1):
 
         delta_u_accum = np.zeros_like(u_matrix)
         max_diff = 0.0
 
-        # Store per-state OZ results if sigma refinement is enabled
         # -----------------------------
         # State loop
         # -----------------------------
@@ -867,28 +876,22 @@ def boltzmann_inversion(
             densities_s = sdata["densities"]
             g_target = sdata["g_target"]
             fixed_mask = sdata["fixed_mask"]
-            
-            print ("\ntemperature in state ", sname, ":", beta_s)
+
+            print("\ntemperature in state", sname, ":", beta_s)
 
             c_r, gamma_r, g_pred = multi_component_oz_solver_alpha(
                 r=r,
                 pair_closures=pair_closures,
                 densities=densities_s,
-                u_matrix=beta_s*u_matrix/beta_ref,
+                u_matrix=beta_s * u_matrix / beta_ref,
                 sigma_matrix=sigma_matrix,
                 n_iter=n_iter,
                 tol=tolerance,
                 alpha_rdf_max=alpha_max,
             )
-        
-            
-
 
             g_pred_safe = np.maximum(g_pred, g_floor)
             g_target_safe = np.maximum(g_target, g_floor)
-
-            # Cache results for sigma optimization
-           
 
             for i in range(N):
                 for j in range(N):
@@ -896,12 +899,12 @@ def boltzmann_inversion(
                     if not fixed_mask[i, j]:
                         continue
 
-
-
                     mask_r = g_target_safe[i, j] > 1e-4
                     delta_s = np.zeros_like(r)
+
                     delta_s[mask_r] = (beta_ref / beta_s) * np.log(
-                        g_pred_safe[i, j, mask_r] / g_target_safe[i, j, mask_r]
+                        g_pred_safe[i, j, mask_r] /
+                        g_target_safe[i, j, mask_r]
                     )
 
                     delta_u_accum[i, j] += w_state[sname] * delta_s
@@ -911,9 +914,21 @@ def boltzmann_inversion(
                         np.max(np.abs(g_pred[i, j] - g_target[i, j]))
                     )
 
-        # -----------------------------
+        # -------------------------------------------------
+        # Adaptive alpha IBI update
+        # -------------------------------------------------
+        if it > 1 and max_diff > 0.0:
+            ratio = max_diff_prev / max_diff
+            ratio = np.clip(ratio, 0.2, 5.0)
+
+            alpha_ibi *= ratio ** alpha_power
+            alpha_ibi = np.clip(alpha_ibi, alpha_min_ibi, alpha_max_ibi)
+
+        max_diff_prev = max_diff
+
+        # -------------------------------------------------
         # Apply combined potential update
-        # -----------------------------
+        # -------------------------------------------------
         for i in range(N):
             for j in range(N):
 
@@ -922,22 +937,29 @@ def boltzmann_inversion(
 
                 u_matrix[i, j] += alpha_ibi * delta_u_accum[i, j]
 
+                # Enforce hard core if present
                 if sigma_matrix[i, j] > 0:
                     core = r < sigma_matrix[i, j]
                     u_matrix[i, j, core] = u_matrix[j, i, core] = hard_core_repulsion
 
-        # -----------------------------
-        # Sigma refinement (ONCE per iteration)
-        # -----------------------------
-        # -----------------------------
-        # Sigma refinement (ONCE per iteration)
-        # -----------------------------
-        print ("\n\n\n\n\n\n\n")
+        # -------------------------------------------------
+        # Logging
+        # -------------------------------------------------
         if it % 1 == 0 or max_diff < ibi_tolerance:
-            print(f"ibi iteration {it:6d} | {max_diff:12.3e} | {alpha_ibi:6.4f}")
-            
-            
-        if (enable_sigma_refinement and it % sigma_update_every == 0 and it < sigma_freeze_after):
+            print(
+                f"IBI iter {it:6d} | "
+                f"max|Δg| = {max_diff:12.3e} | "
+                f"α = {alpha_ibi:7.4f}"
+            )
+
+        # -------------------------------------------------
+        # Sigma refinement (ONCE per iteration)
+        # -------------------------------------------------
+        if (
+            enable_sigma_refinement
+            and it % sigma_update_every == 0
+            and it < sigma_freeze_after
+        ):
             for i in range(N):
                 for j in range(i, N):
 
@@ -953,23 +975,20 @@ def boltzmann_inversion(
                         pair_index=(i, j),
                         w_state=w_state,
                         beta_ref=beta_ref,
-                        oz_n_iter = n_iter,
-                        oz_tol = tolerance,
-                        alpha_rdf_max=alpha_max
+                        oz_n_iter=n_iter,
+                        oz_tol=tolerance,
+                        alpha_rdf_max=alpha_max,
                     )
 
                     sigma_matrix[i, j] = sigma_matrix[j, i] = sigma_new
-                    
-                    print ("\n\n\n", sigma_new, "\n\n\n")
+                    print("\nUpdated sigma:", sigma_new)
 
-        
-            
-            
+        # -------------------------------------------------
+        # Convergence check
+        # -------------------------------------------------
         if max_diff < ibi_tolerance:
             print(f"\n✅ Multistate IBI converged in {it} iterations.")
             break
-            
-        
 
     else:
         print("\n⚠️ Multistate IBI did not converge.")
