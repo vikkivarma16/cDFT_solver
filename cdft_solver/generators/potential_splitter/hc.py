@@ -219,7 +219,8 @@ def hard_core_potentials(
                     found = True
                     break
             if not found:
-                raise ValueError(f"Cannot determine σ({species[i]},{species[j]})")
+                print(f"Could not find σ({species[i]},{species[j]})")
+
             
                         
         for i in range(n):
@@ -229,7 +230,7 @@ def hard_core_potentials(
                     sigma[i, j] = sigma[j, i] = 0.5 * (sigma[i, i] + sigma[j, j])
                     explicit[i, j] = explicit[j, i] = True
                 else:
-                    raise ValueError(f"Cannot determine σ({species[i]},{species[j]})")
+                    print(f"Could not find σ({species[i]},{species[j]})")
 
 
     
