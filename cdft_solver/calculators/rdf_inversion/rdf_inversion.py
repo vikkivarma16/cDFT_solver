@@ -246,7 +246,7 @@ def process_supplied_rdf_multistate(supplied_data, species, r_grid):
         # -----------------------------
         if "densities" not in state_data:
             raise KeyError(f"State '{state_name}' missing 'densities'")
-        densities = np.asarray(state_data["densities"], dtype=float)
+        densities = np.atleast_1d(state_data["densities"], dtype=float)
         print (densities)
         if len(densities) != N:
             raise ValueError(
