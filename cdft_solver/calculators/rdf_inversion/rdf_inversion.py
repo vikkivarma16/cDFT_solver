@@ -514,7 +514,7 @@ def multi_component_oz_solver_alpha(
 
         gamma_r = (1 - alpha) * gamma_r + alpha * gamma_new
 
-        if step % 10 == 0 or diff < tol:
+        if step % 100 == 0 or diff < tol:
             print(f"{step:6d} | {diff:12.3e} | {alpha:6.4f}")
 
         if diff < tol:
@@ -903,10 +903,15 @@ def boltzmann_inversion(
 
                     sigma_matrix[i, j] = sigma_matrix[j, i] = sigma_new
 
-
+        if it % 100 == 0 or max_diff < ibi_tolerance:
+            print(f"{it:6d} | {max_diff:12.3e} | {alpha_ibi:6.4f}")
+            
+            
         if max_diff < ibi_tolerance:
             print(f"\n✅ Multistate IBI converged in {it} iterations.")
             break
+            
+        
 
     else:
         print("\n⚠️ Multistate IBI did not converge.")
