@@ -188,15 +188,20 @@ def optimize_sigma_single_pair(
     mask = r <= r_max
 
     def loss(sigma_trial):
-        sigma_tmp = sigma_matrix.copy()
+        sigma_tmp = sigma_trial
         sigma_tmp[i, j] = sigma_trial
         sigma_tmp[j, i] = sigma_trial  # enforce symmetry
+        
+        u_trial  =  u_matrix.copy() 
+        if sigma_matrix[i, j] > 0:
+            core = r < sigma_matrix[i, j]
+            u_trial[i, j, core] = u_trial[j, i, core] = hard_core_repulsion
 
         _, _, g_pred = multi_component_oz_solver_alpha(
             r=r,
             pair_closures=pair_closures,
             densities=densities,
-            u_matrix=u_matrix,
+            u_matrix=u_trial,
             sigma_matrix=sigma_tmp,
             n_iter=oz_n_iter,
             tol=oz_tol,
