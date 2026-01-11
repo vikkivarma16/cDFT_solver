@@ -244,9 +244,12 @@ def process_supplied_rdf_multistate(supplied_data, species, r_grid):
         # -----------------------------
         # Required metadata
         # -----------------------------
-        if "densities" not in state_data:
+        densities_raw = state_data.get("densities", None)
+        if densities_raw is None:
             raise KeyError(f"State '{state_name}' missing 'densities'")
-        densities = np.atleast_1d(state_data["densities"], dtype=float)
+
+        # Convert to ndarray, handle single scalar
+        densities = np.atleast_1d(np.asarray(densities_raw, dtype=float))
         print (densities)
         if len(densities) != N:
             raise ValueError(
