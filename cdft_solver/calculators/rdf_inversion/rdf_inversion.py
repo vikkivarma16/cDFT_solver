@@ -144,8 +144,9 @@ def optimize_sigma_single_pair(
     sigma_bounds=(0.8, 1.2),
     fit_r_factor=1.3,
     sigma_relax=0.3,
-    oz_n_iter=300,
-    oz_tol=1e-6,
+    oz_n_iter = 500,
+    oz_tol = 0.001,
+    alpha_rdf_max  = 0.1,
 ):
     """
     Optimize sigma_ij by minimizing ||g_pred - g_target||^2
@@ -175,7 +176,7 @@ def optimize_sigma_single_pair(
             sigma_matrix=sigma_tmp,
             n_iter=oz_n_iter,
             tol=oz_tol,
-            alpha_rdf_max=0.05,
+            alpha_rdf_max = alpha_rdf_max,
         )
 
         diff = g_pred[i, j, mask] - g_target_ij[mask]
@@ -206,6 +207,9 @@ def optimize_sigma_multistate(
     w_state,
     beta_ref,
     sigma_bounds=(0.8, 1.2),
+    oz_n_iter = 500,
+    oz_tol = 0.001,
+    alpha_rdf_max  = 0.1,
 ):
     """
     Multistate sigma optimization by aggregating
@@ -242,6 +246,9 @@ def optimize_sigma_multistate(
             beta=beta_eff,
             pair_index=(i, j),
             sigma_bounds=sigma_bounds,
+            oz_n_iter = n_iter,
+            oz_tol = tolerance,
+            alpha_rdf_max  = 0.1,
         )
 
         sigma_proposals.append(sigma_s)
@@ -259,33 +266,6 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 def process_supplied_rdf_multistate(supplied_data, species, r_grid):
-    """
-    Process multistate supplied RDF data.
-
-    Each state in supplied_data must define:
-      - 'densities': array-like (N,)
-      - 'temperature' or 'beta' (optional, default beta=1.0)
-      - 'rdf': dict with pair keys like 'AA', 'AB', etc.
-
-    Parameters
-    ----------
-    supplied_data : dict
-        Already materialized supplied data (files loaded into x/y arrays)
-    species : list of str
-        List of species names
-    r_grid : ndarray
-        Grid points where RDFs are interpolated
-
-    Returns
-    -------
-    states : dict
-        states[state_name] = {
-            "densities": (N,) ndarray,
-            "beta": float,
-            "g_target": (N, N, Nr) ndarray,
-            "fixed_mask": (N, N) bool ndarray
-        }
-    """
 
     if supplied_data is None:
         return {}
@@ -842,7 +822,7 @@ def boltzmann_inversion(
                 sigma_matrix=sigma_matrix,
                 n_iter=n_iter,
                 tol=tolerance,
-                alpha_rdf_max=0.1,
+                alpha_rdf_max=alpha_max,
             )
         
             
@@ -912,6 +892,9 @@ def boltzmann_inversion(
                         pair_index=(i, j),
                         w_state=w_state,
                         beta_ref=beta_ref,
+                        oz_n_iter = n_iter,
+                        oz_tol = tolerance,
+                        alpha_rdf_max=alpha_max
                     )
 
                     sigma_matrix[i, j] = sigma_matrix[j, i] = sigma_new
