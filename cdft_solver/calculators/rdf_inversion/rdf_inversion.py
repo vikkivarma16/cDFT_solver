@@ -217,7 +217,7 @@ def optimize_sigma_single_pair(
         + sigma_relax * res.x
     )
 
-    return res.x
+    return sigma_new
 
 
 
@@ -230,7 +230,7 @@ def optimize_sigma_multistate(
     pair_index,
     w_state,
     beta_ref,
-    sigma_bounds=(0.8, 1.2),
+    sigma_bounds=(0.9, 1.5),
     oz_n_iter = 500,
     oz_tol = 0.001,
     alpha_rdf_max  = 0.1,
