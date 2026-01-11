@@ -550,17 +550,31 @@ def find_key_recursive(d, key):
 
 
 
-def detect_sigma_from_gr(r, g, g_tol=1e-6):
+
+
+def detect_sigma_from_gr_strict(r, g, g_tol=1e-8, min_width=3):
     """
-    Detect hard-core diameter from g(r).
-    Returns sigma or 0.0 if no hard core detected.
+    Detect hard-core diameter ONLY if g(r) is strictly zero
+    over a finite r-interval.
+    Returns sigma or None.
     """
-    idx = np.where(g > g_tol)[0]
+    zero_mask = np.abs(g) < g_tol
+
+    if not np.any(zero_mask):
+        return 0.0
+
+    # Find first non-zero region
+    idx = np.where(~zero_mask)[0]
     if len(idx) == 0:
         return 0.0
-    return r[idx[0]]
-    
 
+    i0 = idx[0]
+
+    # Require at least `min_width` zero points before σ
+    if i0 < min_width:
+        return 0.0
+
+    return r[i0]
 
 
 
@@ -767,7 +781,7 @@ def boltzmann_inversion(
     #print(u_strength)
 
 
-
+    plot_u_matrix( r=r, u_matrix=u_matrix, species=species, outdir=plots, filename="pair_potentials_before inversion.png",)
     # -----------------------------
     # Sigma matrix
     # -----------------------------
@@ -797,7 +811,7 @@ def boltzmann_inversion(
     sigma_update_every = 10
     sigma_freeze_after = 500
     
-    plot_u_matrix( r=r, u_matrix=u_matrix, species=species, outdir=plots, filename="pair_potentials.png",)
+    plot_u_matrix( r=r, u_matrix=u_matrix, species=species, outdir=plots, filename="pair_potentials_before_ibi.png",)
     
     
     alpha_ibi = 0.01
