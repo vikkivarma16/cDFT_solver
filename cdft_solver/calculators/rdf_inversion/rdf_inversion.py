@@ -880,6 +880,11 @@ def boltzmann_inversion(
         # -----------------------------
         # Sigma refinement (ONCE per iteration)
         # -----------------------------
+        
+        if it % 5 == 0 or max_diff < ibi_tolerance:
+            print(f"ibi iteration {it:6d} | {max_diff:12.3e} | {alpha_ibi:6.4f}")
+            
+            
         if (enable_sigma_refinement and it % sigma_update_every == 0 and it < sigma_freeze_after):
             for i in range(N):
                 for j in range(i, N):
@@ -903,8 +908,7 @@ def boltzmann_inversion(
 
                     sigma_matrix[i, j] = sigma_matrix[j, i] = sigma_new
 
-        if it % 100 == 0 or max_diff < ibi_tolerance:
-            print(f"{it:6d} | {max_diff:12.3e} | {alpha_ibi:6.4f}")
+        
             
             
         if max_diff < ibi_tolerance:
