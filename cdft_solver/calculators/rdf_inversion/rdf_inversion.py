@@ -983,7 +983,7 @@ def boltzmann_inversion(
                     )
 
                     sigma_matrix[i, j] = sigma_matrix[j, i] = sigma_new
-                    print("\nUpdated sigma:", sigma_new)
+                    print("\nUpdated sigma: ------------------>>>>>>>>>>>>>>>>>>>>", sigma_new)
 
         # -------------------------------------------------
         # Convergence check
