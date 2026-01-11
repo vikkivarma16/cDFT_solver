@@ -39,6 +39,7 @@ def meanfield_potentials(
         return None
 
     species = find_key_recursive(input_data, "species")
+    n =  len(species)
     interactions = find_key_recursive(input_data, "interactions")
 
     if species is None :
@@ -219,8 +220,8 @@ def meanfield_potentials(
         potentials = {}
         converted = {}
         converted["primary"] = {}
-        for i in range(N):
-            for j in range(i, N):
+        for i in range(n):
+            for j in range(i, n):
                 pair = f"{species[i]}{species[j]}"
                 potentials[pair] = {
                         "r": r.tolist(),
