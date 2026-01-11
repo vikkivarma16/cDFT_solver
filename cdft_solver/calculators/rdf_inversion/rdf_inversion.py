@@ -853,7 +853,7 @@ def boltzmann_inversion(
     alpha_ibi = 0.01
 
     alpha_min_ibi = 1e-4
-    alpha_max_ibi = alpha_max_ibi   # keep your existing max
+    alpha_max_ibi = alpha_ibi_max   # keep your existing max
     alpha_power = 0.5               # controls adaptation strength
 
     max_diff_prev = np.inf
