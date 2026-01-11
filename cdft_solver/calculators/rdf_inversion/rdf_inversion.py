@@ -405,7 +405,7 @@ def hankel_inverse_dst(k, Fk, r):
     """Inverse 3D Hankel transform using IDST-I mapping."""
     N = len(r)
     dr = r[1] - r[0]
-    Rmax = (N + 1) * dr
+    Rmax = max(r)
     dk = np.pi / Rmax
 
     Y = k * Fk
