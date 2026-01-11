@@ -27,7 +27,7 @@ def py_closure(r, gamma, u, sigma_ab=None):
     """
     c_r = np.zeros_like(r)
 
-    if sigma_ab is None or sigam_ab ==0:
+    if sigma_ab is None or sigma_ab ==0:
         # No hard-core, just standard PY closure
         c_r = (1.0 + gamma) * (safe_exp(-u) - 1.0)
     else:
