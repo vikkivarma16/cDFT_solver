@@ -36,7 +36,7 @@ def py_closure(r, gamma, u, sigma_ab=None):
         mask_out = ~mask_hc      # r >= sigma
 
         # Inside hard-core: g=0 -> gamma=-1 -> c=-1? But PY sets gamma=-1
-        c_r[mask_hc] = -1.0
+        c_r[mask_hc] = -(1.0 + gamma[mask_hc])
 
         # Outside hard-core: usual PY formula
         c_r[mask_out] = (1.0 + gamma[mask_out]) * (safe_exp(-u[mask_out]) - 1.0)
