@@ -258,12 +258,12 @@ def optimize_sigma_multistate(
         beta_s = sdata["beta"]
 
         # Map state beta → reference beta
-        beta_eff = beta_ref
+        beta_eff = beta_s/beta_ref
 
         sigma_s = optimize_sigma_single_pair(
             r=r,
             g_target_ij=g_target,
-            u_matrix=u_matrix,
+            u_matrix=beta_eff*u_matrix,
             sigma_matrix=sigma_matrix,
             pair_closures=pair_closures,
             densities=densities,
@@ -979,7 +979,7 @@ def boltzmann_inversion(
                     sigma_new = optimize_sigma_multistate(
                         r=r,
                         u_matrix=u_matrix,
-                        sigma_matrix=sigma_ref,
+                        sigma_matrix=sigma_matrix,
                         pair_closures=pair_closures,
                         states=states,
                         pair_index=(i, j),
