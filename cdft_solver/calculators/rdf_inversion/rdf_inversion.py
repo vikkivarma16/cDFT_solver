@@ -290,14 +290,44 @@ def process_supplied_rdf_multistate(supplied_data, species, r_grid):
         if densities_raw is None:
             raise KeyError(f"State '{state_name}' missing 'densities'")
 
-        # Convert to ndarray, handle single scalar
-        densities = np.atleast_1d(np.asarray(densities_raw, dtype=float))
-        print (densities)
-        if len(densities) != N:
-            raise ValueError(
-                f"State '{state_name}' densities size mismatch: "
-                f"expected {N}, got {len(densities)}"
-            )
+        # ---------------------------------------
+        # Case 1: dict keyed by species name
+        # ---------------------------------------
+        if isinstance(densities_raw, dict):
+            densities = np.zeros(N, dtype=float)
+
+            for i, s in enumerate(species):
+                if s in densities_raw:
+                    densities[i] = float(densities_raw[s])
+                else:
+                    densities[i] = 0.0   # default for missing species
+
+        # ---------------------------------------
+        # Case 2: scalar density → broadcast
+        # ---------------------------------------
+        elif np.isscalar(densities_raw):
+            densities = np.full(N, float(densities_raw))
+
+        # ---------------------------------------
+        # Case 3: array-like
+        # ---------------------------------------
+        else:
+            densities = np.asarray(densities_raw, dtype=float)
+
+            if densities.ndim != 1:
+                raise ValueError(
+                    f"State '{state_name}' densities must be 1D array, scalar, or dict"
+                )
+
+            if len(densities) == 1:
+                densities = np.full(N, densities[0])
+
+            if len(densities) != N:
+                raise ValueError(
+                    f"State '{state_name}' densities size mismatch: "
+                    f"expected {N}, got {len(densities)}"
+                )
+
 
         # Beta / temperature
         if "beta" in state_data:
@@ -656,7 +686,7 @@ def boltzmann_inversion(
     
     sigma = hc_data["sigma"]
     
-    print (sigma)
+    print ("sigma matrix: ",sigma)
     
 
     # -----------------------------
@@ -704,7 +734,7 @@ def boltzmann_inversion(
     
     potential_dict = total_data["total_potentials"]
     u_matrix = np.zeros((N, N, len(r)))
-    print (pair_closures)
+    print ("closures applied: ", pair_closures)
     N = len(species)
     n = len (species)
     
@@ -717,6 +747,9 @@ def boltzmann_inversion(
 
     state_names = list(states.keys())
     beta_ref = states[state_names[0]]["beta"]
+    
+    
+    print ("reference beta: ", beta_ref)
 
     # Uniform state weights (can be changed later)
     w_state = {s: 1.0 / len(states) for s in states}
@@ -835,7 +868,7 @@ def boltzmann_inversion(
             g_target = sdata["g_target"]
             fixed_mask = sdata["fixed_mask"]
             
-            print ("temperature in state ", sname, ":", beta_s)
+            print ("\ntemperature in state ", sname, ":", beta_s)
 
             c_r, gamma_r, g_pred = multi_component_oz_solver_alpha(
                 r=r,
