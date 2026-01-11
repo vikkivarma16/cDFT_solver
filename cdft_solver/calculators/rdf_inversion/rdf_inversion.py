@@ -209,7 +209,7 @@ def optimize_sigma_single_pair(
         )
 
         diff = g_pred[i, j] - g_target_ij
-        return np.sum(diff * diff)
+        return np.mean(diff * diff)
 
     res = minimize_scalar(
         loss,
