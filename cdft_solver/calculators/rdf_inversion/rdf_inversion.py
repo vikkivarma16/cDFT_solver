@@ -8,13 +8,9 @@ from collections import defaultdict
 from pathlib import Path
 import matplotlib.pyplot as plt
 import re
-from cdft_solver.calculators.radial_distribution_function.closure import closure_update_c_matrix
+from .closer import closure_update_c_matrix
 from scipy.optimize import minimize_scalar
 
-from collections.abc import Mapping
-from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
-from cdft_solver.generators.potential_splitter.mf import meanfield_potentials 
-from cdft_solver.generators.potential_splitter.total import total_potentials
 
 
 
@@ -493,68 +489,12 @@ def boltzmann_potential_from_gr(g, beta=1.0, g_min=1e-8):
     return -np.log(g_safe) / beta
 
 
-def plot_u_matrix(r, u_matrix, species, outdir, filename="u_matrix.png"):
-    """
-    Plot and export u_ij(r) for all species pairs.
-
-    Parameters
-    ----------
-    r : (Nr,) ndarray
-        Radial grid (must match u_matrix)
-    u_matrix : (N, N, Nr) ndarray
-        Pair potential matrix
-    species : list[str]
-        Species labels, length N
-    outdir : str or Path
-        Output directory
-    filename : str
-        Output image filename
-    """
-
-    outdir = Path(outdir)
-    outdir.mkdir(parents=True, exist_ok=True)
-
-    N = len(species)
-
-    fig, axes = plt.subplots(
-        N, N,
-        figsize=(3.2 * N, 3.2 * N),
-        sharex=True,
-        sharey=False,
-    )
-
-    if N == 1:
-        axes = [[axes]]
-
-    for i, si in enumerate(species):
-        for j, sj in enumerate(species):
-            ax = axes[i][j]
-
-            u = u_matrix[i, j]
-
-            ax.plot(r, u, lw=1.8)
-            ax.axhline(0.0, color="k", lw=0.8, alpha=0.4)
-
-            ax.set_title(f"{si}–{sj}", fontsize=10)
-            ax.grid(alpha=0.3)
-
-            if i == N - 1:
-                ax.set_xlabel("r")
-            if j == 0:
-                ax.set_ylabel(r"$u(r)$")
-
-    fig.suptitle("Pair Potentials $u_{ij}(r)$", fontsize=14)
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
-
-    outpath = outdir / filename
-    fig.savefig(outpath, dpi=300)
-    plt.close(fig)
-
-    print(f"✅ u(r) matrix plot saved to: {outpath}")
 
 
-
-
+    
+    
+    
+    
 def boltzmann_inversion(
     ctx,
     rdf_config,
@@ -582,6 +522,7 @@ def boltzmann_inversion(
     N = len(species)
 
     beta_ref = rdf_block.get("beta", 1.0)
+    beta = beta_ref
     tol = rdf_block.get("tolerance", 1e-6)
     n_iter = find_key_recursive(rdf_config, "max_iteration")
     alpha_max = rdf_block.get("alpha_max", 0.05)
@@ -663,11 +604,30 @@ def boltzmann_inversion(
     potential_dict = total_data["total_potentials"]
     u_matrix = np.zeros((N, N, len(r)))
     print (pair_closures)
-    n = len(species)
-    u_matrix = np.zeros((n, n, len(r)))
+    N = len(species)
+    n = len (species)
+    
+    
+    states = process_supplied_rdf_multistate(
+        supplied_data, species, r
+    )
+    if not states:
+        raise ValueError("No multistate RDF data provided")
+
+    state_names = list(states.keys())
+    beta_ref = states[state_names[0]]["beta"]
+
+    # Uniform state weights (can be changed later)
+    w_state = {s: 1.0 / len(states) for s in states}
+
+    # -------------------------------------------------
+    # Initialize σ and u
+    # -------------------------------------------------
+    sigma_matrix = np.zeros((N, N)) if sigma is None else sigma.copy()
+    invert_mask = np.ones((N, N), dtype=bool)
 
     for i, si in enumerate(species):
-        for j in range(i, n):   # <-- only j >= i
+        for j in range(i, N):   # fixed N
             sj = species[j]
 
             key_ij = si + sj
@@ -692,9 +652,15 @@ def boltzmann_inversion(
 
             u_val = beta_ref * interp_u(r)
 
+            # Correct non-zero detection
+            if np.any(np.abs(u_val) > 1e-6):
+                invert_mask[i, j] = invert_mask[j, i] = False
+
             # symmetric assignment
             u_matrix[i, j, :] = u_val
             u_matrix[j, i, :] = u_val
+
+                
             
     plots = Path(ctx.plots_dir)      
     plot_u_matrix( r=r, u_matrix=u_matrix, species=species, outdir=plots, filename="pair_potentials.png",)
@@ -720,9 +686,8 @@ def boltzmann_inversion(
     # -----------------------------
     sigma_matrix = np.zeros((N, N)) if sigma is None else np.array (sigma)
     
-
-
-    exit(0)
+    
+    
 
     # Initialize from first state RDF
     s0 = state_names[0]
