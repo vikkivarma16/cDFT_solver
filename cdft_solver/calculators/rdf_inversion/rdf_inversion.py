@@ -880,8 +880,8 @@ def boltzmann_inversion(
         # -----------------------------
         # Sigma refinement (ONCE per iteration)
         # -----------------------------
-        
-        if it % 5 == 0 or max_diff < ibi_tolerance:
+        print (it , "\n\n\n\n\n\n\n")
+        if it % 1 == 0 or max_diff < ibi_tolerance:
             print(f"ibi iteration {it:6d} | {max_diff:12.3e} | {alpha_ibi:6.4f}")
             
             
