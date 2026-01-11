@@ -620,6 +620,7 @@ def boltzmann_inversion(
     tol = rdf_block.get("tolerance", 1e-6)
     n_iter = find_key_recursive(rdf_config, "max_iteration")
     alpha_max = rdf_block.get("alpha_max", 0.05)
+    alpha_ibi_max = rdf_block.get("alpha_ibi_max", 0.05)
     
     
     
@@ -805,7 +806,7 @@ def boltzmann_inversion(
     sigma_freeze_after = 50
     
     
-    
+    alpha_ibi = 0.01
     
     # -------------------------------------------------
     # Multistate IBI loop
