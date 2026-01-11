@@ -447,7 +447,7 @@ def inverse_hankel_transform_matrix_fast(f_k_matrix, k, r):
 # -----------------------------
 # Closures and OZ solver
 # -----------------------------
-
+'''
 def solve_oz_matrix(c_r_matrix, r, densities):
     N = c_r_matrix.shape[0]
     c_k_matrix, k = hankel_transform_matrix_fast(c_r_matrix, r)
@@ -464,6 +464,81 @@ def solve_oz_matrix(c_r_matrix, r, densities):
 
     gamma_r_matrix = inverse_hankel_transform_matrix_fast(gamma_k_matrix, k, r)
     return gamma_r_matrix
+ '''   
+    
+    
+import os
+import sys
+import ctypes
+from ctypes import c_double, c_int, POINTER
+
+# -------------------------------
+# Locate shared library reliably
+# -------------------------------
+_here = os.path.dirname(__file__)
+
+if sys.platform == "darwin":
+    _libname = "liboz_radial.dylib"
+elif sys.platform == "win32":
+    _libname = "liboz_radial.dll"
+else:
+    _libname = "liboz_radial.so"
+
+_lib_path = os.path.join(_here, _libname)
+
+if not os.path.exists(_lib_path):
+    raise FileNotFoundError(f"Shared library not found: {_lib_path}")
+
+# Load shared library
+lib = ctypes.CDLL(_lib_path)
+
+
+
+# --------------------------------------------------
+# Define function signature
+# --------------------------------------------------
+
+lib.solve_oz_matrix.argtypes = [
+    c_int,                  # N
+    c_int,                  # Nr
+    POINTER(c_double),      # r
+    POINTER(c_double),      # densities
+    POINTER(c_double),      # c_r
+    POINTER(c_double),      # gamma_r
+]
+
+
+
+def solve_oz_matrix(c_r, r, densities):
+    N, _, Nr = c_r.shape
+    gamma_r = np.zeros_like(c_r)
+
+    # Flatten arrays for C
+    c_r_flat = c_r.ravel()
+    gamma_r_flat = gamma_r.ravel()
+    
+    #print("Flatten check:",
+    #  c_r[1,1,3],
+    #  c_r_flat[1*Nr*N + 1*Nr + 3])
+    
+
+    lib.solve_oz_matrix(
+        c_int(N),
+        c_int(Nr),
+        r.ctypes.data_as(POINTER(c_double)),
+        densities.ctypes.data_as(POINTER(c_double)),
+        c_r_flat.ctypes.data_as(POINTER(c_double)),
+        gamma_r_flat.ctypes.data_as(POINTER(c_double)),
+    )
+
+    # Reshape back to 3D
+    gamma_r = gamma_r_flat.reshape((N, N, Nr))
+    
+    gamma_r = np.clip(gamma_r, -50.0, 50.0)
+
+    return gamma_r
+
+    
 
 
 def multi_component_oz_solver_alpha(
@@ -884,7 +959,7 @@ def boltzmann_inversion(
             c_r, gamma_r, g_pred = multi_component_oz_solver_alpha(
                 r=r,
                 pair_closures=pair_closures,
-                densities=densities_s,
+                densities=np.asarray(densities_s, float),
                 u_matrix=beta_s * u_matrix / beta_ref,
                 sigma_matrix=sigma_matrix,
                 n_iter=n_iter,
