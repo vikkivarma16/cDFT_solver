@@ -17,6 +17,30 @@ from cdft_solver.generators.potential_splitter.total import total_potentials
 
 from cdft_solver.calculators.radial_distribution_function.closure import closure_update_c_matrix
 
+import os
+import sys
+import ctypes
+from ctypes import c_double, c_int, POINTER
+
+# -------------------------------
+# Locate shared library reliably
+# -------------------------------
+_here = os.path.dirname(__file__)
+
+if sys.platform == "darwin":
+    _libname = "liboz_radial.dylib"
+elif sys.platform == "win32":
+    _libname = "liboz_radial.dll"
+else:
+    _libname = "liboz_radial.so"
+
+_lib_path = os.path.join(_here, _libname)
+
+if not os.path.exists(_lib_path):
+    raise FileNotFoundError(f"Shared library not found: {_lib_path}")
+
+# Load shared library
+lib = ctypes.CDLL(_lib_path)
 
 # -----------------------------
 # DST-based Hankel forward/inverse transforms
@@ -179,8 +203,8 @@ def optimize_sigma_single_pair(
             alpha_rdf_max = alpha_rdf_max,
         )
 
-        diff = g_pred[i, j, mask] - g_target_ij[mask]
-        return np.mean(diff * diff)
+        diff = g_pred[i, j] - g_target_ij
+        return np.sum(diff * diff)
 
     res = minimize_scalar(
         loss,
@@ -398,99 +422,8 @@ def process_supplied_rdf_multistate(supplied_data, species, r_grid):
 
 
 
-def hankel_forward_dst(f_r, r):
-    """Forward 3D Hankel transform using DST-I mapping."""
-    N = len(r)
-    dr = r[1] - r[0]
-    Rmax = (N + 1) * dr
-    k = np.pi * np.arange(1, N + 1) / Rmax
 
-    x = r * f_r
-    X = dst(x, type=1)
-    Fk = (2.0 * np.pi * dr / k) * X
-    return k, Fk
-
-
-def hankel_inverse_dst(k, Fk, r):
-    """Inverse 3D Hankel transform using IDST-I mapping."""
-    N = len(r)
-    dr = r[1] - r[0]
-    Rmax = max(r)
-    dk = np.pi / Rmax
-
-    Y = k * Fk
-    y = idst(Y, type=1)
-    f_r = (dk / (4.0 * np.pi**2 * r)) * y
-    return f_r
-
-
-def hankel_transform_matrix_fast(f_r_matrix, r):
-    N = f_r_matrix.shape[0]
-    f_k_matrix = np.zeros_like(f_r_matrix)
-    k = None
-    for a in range(N):
-        for b in range(N):
-            k, Fk = hankel_forward_dst(f_r_matrix[a, b, :], r)
-            f_k_matrix[a, b, :] = Fk
-    return f_k_matrix, k
-
-
-def inverse_hankel_transform_matrix_fast(f_k_matrix, k, r):
-    N = f_k_matrix.shape[0]
-    f_r_matrix = np.zeros_like(f_k_matrix)
-    for a in range(N):
-        for b in range(N):
-            f_r_matrix[a, b, :] = hankel_inverse_dst(k, f_k_matrix[a, b, :], r)
-    return f_r_matrix
-
-
-# -----------------------------
-# Closures and OZ solver
-# -----------------------------
-'''
-def solve_oz_matrix(c_r_matrix, r, densities):
-    N = c_r_matrix.shape[0]
-    c_k_matrix, k = hankel_transform_matrix_fast(c_r_matrix, r)
-    gamma_k_matrix = np.zeros_like(c_k_matrix)
-    rho_matrix = np.diag(densities)
-    I = np.identity(N)
-    eps_reg = 1e-12
-
-    for ik in range(len(k)):
-        Ck = c_k_matrix[:, :, ik]
-        num = Ck @ rho_matrix @ Ck
-        A = I - Ck @ rho_matrix + eps_reg * I
-        gamma_k_matrix[:, :, ik] = np.linalg.solve(A, num)
-
-    gamma_r_matrix = inverse_hankel_transform_matrix_fast(gamma_k_matrix, k, r)
-    return gamma_r_matrix
- '''   
     
-    
-import os
-import sys
-import ctypes
-from ctypes import c_double, c_int, POINTER
-
-# -------------------------------
-# Locate shared library reliably
-# -------------------------------
-_here = os.path.dirname(__file__)
-
-if sys.platform == "darwin":
-    _libname = "liboz_radial.dylib"
-elif sys.platform == "win32":
-    _libname = "liboz_radial.dll"
-else:
-    _libname = "liboz_radial.so"
-
-_lib_path = os.path.join(_here, _libname)
-
-if not os.path.exists(_lib_path):
-    raise FileNotFoundError(f"Shared library not found: {_lib_path}")
-
-# Load shared library
-lib = ctypes.CDLL(_lib_path)
 
 
 
