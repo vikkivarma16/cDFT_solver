@@ -935,7 +935,7 @@ def boltzmann_inversion(
 
     max_diff_prev = np.inf
 
-    sigma_ref  =  sigma_matrix
+    sigma_ref  =  sigma_matrix.copy()
     # -------------------------------------------------
     # Multistate IBI loop
     # -------------------------------------------------
