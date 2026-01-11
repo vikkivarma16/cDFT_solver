@@ -579,8 +579,9 @@ def boltzmann_inversion(
     ctx,
     rdf_config,
     supplied_data,
-    export=False,
-    filename_prefix="boltzmann",
+    filename_prefix="multistate",
+    export_plot=True,
+    export_json=True
 ):
     """
     Multistate Isotropic Boltzmann / IBI inversion
@@ -926,7 +927,9 @@ def boltzmann_inversion(
     # -------------------------------------------------
     # Export
     # -------------------------------------------------
-    if export:
+        
+        
+    if export_json:
         out = Path(ctx.scratch_dir)
         out.mkdir(parents=True, exist_ok=True)
 
@@ -939,10 +942,31 @@ def boltzmann_inversion(
                     "sigma": float(sigma_matrix[i, j]),
                 }
 
-        with open(out / f"{filename_prefix}_potential.json", "w") as f:
+        json_file = out / f"{filename_prefix}_potential.json"
+        with open(json_file, "w") as f:
             json.dump(data, f, indent=4)
+        print(f"✅ Multistate inverted potential exported: {json_file}")
 
-        print("✅ Multistate inverted potential exported.")
+    # Plot export
+    if export_plot:
+        plots_dir = getattr(ctx, "plots_dir", ctx.scratch_dir)
+        plots_dir = Path(plots_dir)
+        plots_dir.mkdir(parents=True, exist_ok=True)
+
+        for i, si in enumerate(species):
+            for j, sj in enumerate(species):
+                plt.figure()
+                plt.plot(r, u_matrix[i, j] / beta_ref, label=f"{si}{sj}")
+                plt.axvline(sigma_matrix[i, j], color="r", linestyle="--", label="σ")
+                plt.xlabel("r")
+                plt.ylabel("u(r) / β")
+                plt.title(f"Inverted Potential: {si}{sj}")
+                plt.legend()
+                plt.tight_layout()
+                plt.savefig(plots_dir / f"{filename_prefix}_{si}{sj}.png")
+                plt.close()
+
+        print(f"✅ Plots exported to: {plots_dir}")
 
     return u_matrix / beta_ref, sigma_matrix
 
