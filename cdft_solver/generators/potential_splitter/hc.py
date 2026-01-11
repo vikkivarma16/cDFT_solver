@@ -91,6 +91,7 @@ def hard_core_potentials(
 
     levels = ["primary", "secondary", "tertiary"]
     n = len(species)
+    
     idx = {sp: i for i, sp in enumerate(species)}
 
     sigma = np.zeros((n, n), dtype=float)
