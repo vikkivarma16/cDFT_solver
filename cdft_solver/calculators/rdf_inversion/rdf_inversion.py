@@ -504,6 +504,8 @@ def multi_component_oz_solver_alpha(
     # -----------------------------
     # Iteration loop
     # -----------------------------
+    
+    print ()
     for step in range(n_iter):
 
         # --- Closure update (ONLY where allowed)
@@ -541,7 +543,7 @@ def multi_component_oz_solver_alpha(
 
         prev_diff = diff
 
-    else:
+    if (diff>tol)
         print(f"\n⚠️ Warning: not converged after {n_iter} iterations.")
 
     # -----------------------------
@@ -617,10 +619,13 @@ def boltzmann_inversion(
 
     beta_ref = rdf_block.get("beta", 1.0)
     beta = beta_ref
-    tol = rdf_block.get("tolerance", 1e-6)
+    tolerance = rdf_block.get("tolerance", 1e-6)
+    ibi_tolerance = rdf_block.get("ibi_tolerance", 1e-6)                 
     n_iter = find_key_recursive(rdf_config, "max_iteration")
     alpha_max = rdf_block.get("alpha_max", 0.05)
     alpha_ibi_max = rdf_block.get("alpha_ibi_max", 0.05)
+    
+    n_iter_ibi = rdf_block.get("max_iteration_ibi", 500)
     
     
     
@@ -811,7 +816,7 @@ def boltzmann_inversion(
     # -------------------------------------------------
     # Multistate IBI loop
     # -------------------------------------------------
-    for it in range(1, n_iter + 1):
+    for it in range(1, n_iter_ibi  + 1):
 
         delta_u_accum = np.zeros_like(u_matrix)
         max_diff = 0.0
@@ -833,8 +838,8 @@ def boltzmann_inversion(
                 densities=densities_s,
                 u_matrix=beta_s*u_matrix/beta_ref,
                 sigma_matrix=sigma_matrix,
-                n_iter=1500,
-                tol=tol,
+                n_iter=n_iter,
+                tol=tolerance,
                 alpha_rdf_max=0.1,
             )
         
@@ -910,7 +915,7 @@ def boltzmann_inversion(
                     sigma_matrix[i, j] = sigma_matrix[j, i] = sigma_new
 
 
-        if max_diff < tol:
+        if max_diff < ibi_tolerance:
             print(f"\n✅ Multistate IBI converged in {it} iterations.")
             break
 
