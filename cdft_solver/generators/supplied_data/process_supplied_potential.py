@@ -3,12 +3,9 @@ from scipy.interpolate import interp1d
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-from cdft_solver.generators.potential.pair_potential_isotropic_registry import (
-    register_isotropic_pair_potential
-)
-from cdft_solver.generators.potential_splitter.mf_potential_registry import (
-    register_potential_converter
-)
+from cdft_solver.generators.potential.pair_potential_isotropic_registry import  register_isotropic_pair_potential
+from cdft_solver.generators.potential_splitter.mf_registry import convert_potential_via_registry as register_potential_converter
+
 
 
 # -------------------- Potential factories --------------------
