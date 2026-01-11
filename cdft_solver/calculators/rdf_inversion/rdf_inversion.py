@@ -805,10 +805,7 @@ def boltzmann_inversion(
     sigma_freeze_after = 50
     
     
-    print (states)
     
-    
-    exit (0)
     
     # -------------------------------------------------
     # Multistate IBI loop
