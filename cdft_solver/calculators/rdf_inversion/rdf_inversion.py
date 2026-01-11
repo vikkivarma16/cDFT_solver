@@ -641,7 +641,7 @@ def boltzmann_inversion(
     """
 
     g_floor = 1e-8
-    hard_core_repulsion = 1e6
+    hard_core_repulsion = 1e8
 
     # -----------------------------
     # Extract RDF parameters
@@ -1033,20 +1033,83 @@ def boltzmann_inversion(
         plots_dir = Path(plots_dir)
         plots_dir.mkdir(parents=True, exist_ok=True)
 
+        # -------------------------------------------------
+        # 1. Potential plots
+        # -------------------------------------------------
         for i, si in enumerate(species):
             for j, sj in enumerate(species):
+
                 plt.figure()
                 plt.plot(r, u_matrix[i, j] / beta_ref, label=f"{si}{sj}")
-                plt.axvline(sigma_matrix[i, j], color="r", linestyle="--", label="σ")
+
+                if sigma_matrix[i, j] > 0:
+                    plt.axvline(
+                        sigma_matrix[i, j],
+                        color="r",
+                        linestyle="--",
+                        label="σ"
+                    )
+
                 plt.xlabel("r")
-                plt.ylabel("u(r) / β")
+                plt.ylabel("u(r)")
                 plt.title(f"Inverted Potential: {si}{sj}")
                 plt.legend()
                 plt.tight_layout()
-                plt.savefig(plots_dir / f"{filename_prefix}_{si}{sj}.png")
+                plt.savefig(plots_dir / f"{filename_prefix}_potential_{si}{sj}.png")
                 plt.close()
 
-        print(f"✅ Plots exported to: {plots_dir}")
+        # -------------------------------------------------
+        # 2. RDF comparison plots (target vs predicted)
+        # -------------------------------------------------
+        for sname, sdata in states.items():
 
+            g_target = sdata["g_target"]
+            fixed_mask = sdata["fixed_mask"]
+
+            # Use last computed g_pred from OZ
+            # (assumed to be from final iteration)
+            g_pred_safe = np.maximum(g_pred, g_floor)
+            g_target_safe = np.maximum(g_target, g_floor)
+
+            for i, si in enumerate(species):
+                for j, sj in enumerate(species):
+
+                    if not fixed_mask[i, j]:
+                        continue
+
+                    plt.figure()
+
+                    plt.plot(
+                        r,
+                        g_target_safe[i, j],
+                        "k--",
+                        lw=2,
+                        label="target g(r)",
+                    )
+
+                    plt.plot(
+                        r,
+                        g_pred_safe[i, j],
+                        "b-",
+                        lw=2,
+                        label="predicted g(r)",
+                    )
+
+                    plt.xlabel("r")
+                    plt.ylabel("g(r)")
+                    plt.title(f"RDF ({sname}): {si}{sj}")
+                    plt.legend()
+                    plt.tight_layout()
+
+                    plt.savefig(
+                        plots_dir / f"{filename_prefix}_rdf_{sname}_{si}{sj}.png"
+                    )
+                    plt.close()
+
+        print(f"✅ Potential and RDF plots exported to: {plots_dir}")
+
+    
+    
+    
     return u_matrix / beta_ref, sigma_matrix
 
