@@ -949,7 +949,7 @@ def boltzmann_inversion(
         # -------------------------------------------------
         if it % 1 == 0 or max_diff < ibi_tolerance:
             print(
-                f"IBI :-------------------->>>>>>>>>  iter {it:6d} | "
+                f"IBI :-------------------------------------------------------------------------------->>>>>>>>>  iter {it:6d} | "
                 f"max|Δg| = {max_diff:12.3e} | "
                 f"α = {alpha_ibi:7.4f}"
             )
@@ -983,7 +983,7 @@ def boltzmann_inversion(
                     )
 
                     sigma_matrix[i, j] = sigma_matrix[j, i] = sigma_new
-                    print("\nUpdated sigma: ------------------>>>>>>>>>>>>>>>>>>>>", sigma_new)
+                    print("\nUpdated sigma:----------------------------------------------------->>>>>>>>>>>>>>>>>>>>", sigma_new)
 
         # -------------------------------------------------
         # Convergence check
