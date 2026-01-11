@@ -642,6 +642,8 @@ def boltzmann_inversion(
     
     sigma = hc_data["sigma"]
     
+    print (sigma)
+    
 
     # -----------------------------
     # Build r grid
