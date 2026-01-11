@@ -763,7 +763,7 @@ def boltzmann_inversion(
                 
             
     plots = Path(ctx.plots_dir)      
-    plot_u_matrix( r=r, u_matrix=u_matrix, species=species, outdir=plots, filename="pair_potentials.png",)
+   
 
   
 
@@ -809,6 +809,8 @@ def boltzmann_inversion(
 
     sigma_update_every = 5
     sigma_freeze_after = 50
+    
+    plot_u_matrix( r=r, u_matrix=u_matrix, species=species, outdir=plots, filename="pair_potentials.png",)
     
     
     alpha_ibi = 0.01
