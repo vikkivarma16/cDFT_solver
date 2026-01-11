@@ -22,6 +22,8 @@ import sys
 import ctypes
 from ctypes import c_double, c_int, POINTER
 
+hard_core_repulsion = 1e8
+
 # -------------------------------
 # Locate shared library reliably
 # -------------------------------
