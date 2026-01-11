@@ -948,9 +948,9 @@ def boltzmann_inversion(
                 u_matrix[i, j] += alpha_ibi * delta_u_accum[i, j]
 
                 # Enforce hard core if present
-                if sigma_matrix[i, j] > 0:
-                    core = r < sigma_matrix[i, j]
-                    u_matrix[i, j, core] = u_matrix[j, i, core] = hard_core_repulsion
+                #if sigma_matrix[i, j] > 0:
+                #    core = r < sigma_matrix[i, j]
+                #    u_matrix[i, j, core] = u_matrix[j, i, core] = hard_core_repulsion
 
         # -------------------------------------------------
         # Logging
