@@ -916,7 +916,7 @@ def boltzmann_inversion(
                     if (sigma_matrix[i, j] > 0.0):
                         enable_sigma_refinement =  1
 
-    sigma_update_every = 10
+    sigma_update_every = 100
     sigma_freeze_after = n_iter_ibi
     
     print ("sigma matrix detected before ibi: ",sigma_matrix)
@@ -994,7 +994,7 @@ def boltzmann_inversion(
         # -------------------------------------------------
         # Adaptive alpha IBI update
         # -------------------------------------------------
-        if it > 1 and max_diff > 0.0:
+        if it % 10 == 0 and it > 1 and max_diff > 0.0:
             ratio = max_diff_prev / max_diff
             ratio = np.clip(ratio, 0.2, 5.0)
 
@@ -1046,7 +1046,7 @@ def boltzmann_inversion(
                     sigma_new = optimize_sigma_multistate(
                         r=r,
                         u_matrix=u_matrix,
-                        sigma_matrix=sigma_matrix,
+                        sigma_matrix=sigma_ref,
                         pair_closures=pair_closures,
                         states=states,
                         pair_index=(i, j),
