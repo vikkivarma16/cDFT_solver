@@ -810,7 +810,7 @@ def boltzmann_inversion(
     # -------------------------------------------------
     # Multistate IBI loop
     # -------------------------------------------------
-    for it in range(1, max_iter + 1):
+    for it in range(1, n_iter + 1):
 
         delta_u_accum = np.zeros_like(u_matrix)
         max_diff = 0.0
