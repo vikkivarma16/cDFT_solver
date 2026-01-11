@@ -11,6 +11,10 @@ import re
 from cdft_solver.calculators.radial_distribution_function.closure import closure_update_c_matrix
 from scipy.optimize import minimize_scalar
 
+from collections.abc import Mapping
+from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
+from cdft_solver.generators.potential_splitter.mf import meanfield_potentials 
+from cdft_solver.generators.potential_splitter.total import total_potentials
 
 
 
