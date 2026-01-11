@@ -156,6 +156,8 @@ def plot_u_matrix(r, u_matrix, species, outdir, filename="u_matrix.png"):
     print(f"✅ u(r) matrix plot saved to: {outpath}")
 
 
+
+
 def optimize_sigma_single_pair(
     r,
     g_target_ij,
@@ -168,9 +170,9 @@ def optimize_sigma_single_pair(
     sigma_bounds=(0.5, 1.5),
     fit_r_factor=1.5,
     sigma_relax=0.5,
-    oz_n_iter = 500,
-    oz_tol = 0.001,
-    alpha_rdf_max  = 0.1,
+    oz_n_iter=500,
+    oz_tol=1e-3,
+    alpha_rdf_max=0.1,
 ):
     """
     Optimize sigma_ij by minimizing ||g_pred - g_target||^2
@@ -183,20 +185,31 @@ def optimize_sigma_single_pair(
     if sigma_old <= 0:
         return sigma_old
 
-    # Only fit close to contact
+    # -----------------------------------------
+    # Fit region near contact
+    # -----------------------------------------
     r_max = fit_r_factor * sigma_old
     mask = r <= r_max
 
+    # -----------------------------------------
+    # Loss function
+    # -----------------------------------------
     def loss(sigma_trial):
-        sigma_tmp = sigma_trial
-        sigma_tmp[i, j] = sigma_trial
-        sigma_tmp[j, i] = sigma_trial  # enforce symmetry
-        
-        u_trial  =  u_matrix.copy() 
-        if sigma_matrix[i, j] > 0:
-            core = r < sigma_matrix[i, j]
-            u_trial[i, j, core] = u_trial[j, i, core] = hard_core_repulsion
 
+        # --- copy sigma matrix ---
+        sigma_tmp = sigma_matrix.copy()
+        sigma_tmp[i, j] = sigma_tmp[j, i] = sigma_trial
+
+        # --- copy potential ---
+        u_trial = u_matrix.copy()
+
+        # --- enforce hard core with TRIAL sigma ---
+        if sigma_trial > 0:
+            core = r < sigma_trial
+            u_trial[i, j, core] = hard_core_repulsion
+            u_trial[j, i, core] = hard_core_repulsion
+
+        # --- OZ solve ---
         _, _, g_pred = multi_component_oz_solver_alpha(
             r=r,
             pair_closures=pair_closures,
@@ -205,24 +218,39 @@ def optimize_sigma_single_pair(
             sigma_matrix=sigma_tmp,
             n_iter=oz_n_iter,
             tol=oz_tol,
-            alpha_rdf_max = alpha_rdf_max,
+            alpha_rdf_max=alpha_rdf_max,
         )
 
-        diff = g_pred[i, j] - g_target_ij
+        # --- masked error ---
+        diff = g_pred[i, j, mask] - g_target_ij[mask]
         return np.mean(diff * diff)
 
+    # -----------------------------------------
+    # Scalar minimization
+    # -----------------------------------------
     res = minimize_scalar(
         loss,
-        bounds=(sigma_bounds[0] * sigma_old, sigma_bounds[1] * sigma_old),
+        bounds=(sigma_bounds[0] * sigma_old,
+                sigma_bounds[1] * sigma_old),
         method="bounded",
     )
 
+    # -----------------------------------------
+    # Safety: fallback if optimizer fails
+    # -----------------------------------------
+    if not res.success:
+        return sigma_old
+
+    # -----------------------------------------
+    # Relaxed update
+    # -----------------------------------------
     sigma_new = (
         (1.0 - sigma_relax) * sigma_old
         + sigma_relax * res.x
     )
 
     return sigma_new
+
 
 
 
