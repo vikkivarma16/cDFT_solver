@@ -246,8 +246,8 @@ def optimize_sigma_multistate(
             beta=beta_eff,
             pair_index=(i, j),
             sigma_bounds=sigma_bounds,
-            oz_n_iter = n_iter,
-            oz_tol = tolerance,
+            oz_n_iter =  oz_n_iter,
+            oz_tol = oz_tol,
             alpha_rdf_max  = 0.1,
         )
 
@@ -546,6 +546,10 @@ def find_key_recursive(d, key):
                 return out
     return None
 
+
+
+
+
 def detect_sigma_from_gr(r, g, g_tol=1e-6):
     """
     Detect hard-core diameter from g(r).
@@ -556,7 +560,10 @@ def detect_sigma_from_gr(r, g, g_tol=1e-6):
         return 0.0
     return r[idx[0]]
     
-    
+
+
+
+
 def boltzmann_potential_from_gr(g, beta=1.0, g_min=1e-8):
     """
     u(r) = -ln g(r) with numerical protection
@@ -565,9 +572,6 @@ def boltzmann_potential_from_gr(g, beta=1.0, g_min=1e-8):
     return -np.log(g_safe) / beta
 
 
-
-
-    
     
     
     
