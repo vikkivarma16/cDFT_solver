@@ -217,7 +217,7 @@ def optimize_sigma_single_pair(
         + sigma_relax * res.x
     )
 
-    return sigma_new
+    return res.x
 
 
 
