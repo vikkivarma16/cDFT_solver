@@ -69,6 +69,7 @@ def _mie_to_ma(pot):
 
 register_potential_converter("hc", _hc_to_zero)
 register_potential_converter("ghc", _hc_to_zero)
+register_potential_converter("hard_core", _hc_to_zero)
 register_potential_converter("lj", _lj_to_salj)
 register_potential_converter("mie", _mie_to_ma)
 

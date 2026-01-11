@@ -62,43 +62,59 @@ def raw_potentials(
     species = find_key_recursive(input_data, "species")
     interactions = find_key_recursive(input_data, "interactions")
 
-    if not interactions:
-        raise KeyError("Could not locate 'interactions' in input dictionary.")
+    if not species:
+        raise KeyError("Could not locate 'species' in input dictionary.")
 
-    levels = ["primary", "secondary", "tertiary"]
 
-    # ---------------------------------------------------------
-    # Collect interactions per pair
-    # ---------------------------------------------------------
-    pair_dict = {}
-    for level in levels:
-        for pair, inter in interactions.get(level, {}).items():
-            pair_dict.setdefault(pair, []).append(inter)
-
-    # ---------------------------------------------------------
-    # Compute raw potentials
-    # ---------------------------------------------------------
     result = {"species": species, "potentials": {}}
+    
+    if interactions is not None :
+        levels = ["primary", "secondary", "tertiary"]
 
-    for pair, inter_list in pair_dict.items():
+        # ---------------------------------------------------------
+        # Collect interactions per pair
+        # ---------------------------------------------------------
+        pair_dict = {}
+        for level in levels:
+            for pair, inter in interactions.get(level, {}).items():
+                pair_dict.setdefault(pair, []).append(inter)
 
-        cutoff = max(
-            inter.get("cutoff", inter.get("sigma", 1.0) * 5.0)
-            for inter in inter_list
-        )
+        # ---------------------------------------------------------
+        # Compute raw potentials
+        # ---------------------------------------------------------
+        
 
-        r = np.linspace(0.0, cutoff, grid_points)
+        for pair, inter_list in pair_dict.items():
+
+            cutoff = max(
+                inter.get("cutoff", inter.get("sigma", 1.0) * 5.0)
+                for inter in inter_list
+            )
+
+            r = np.linspace(0.0, cutoff, grid_points)
+            u_total = np.zeros_like(r)
+
+            for inter in inter_list:
+                V = ppi(inter)
+                u_total += V(r)
+
+            # Store as JSON-safe lists
+            result["potentials"][pair] = {
+                "r": r.tolist(),
+                "U": u_total.tolist()
+            }
+    else :
+        r = np.linspace(r_min, grid_max, grid_points)
         u_total = np.zeros_like(r)
-
-        for inter in inter_list:
-            V = ppi(inter)
-            u_total += V(r)
-
-        # Store as JSON-safe lists
-        result["potentials"][pair] = {
-            "r": r.tolist(),
-            "U": u_total.tolist()
-        }
+        potentials = {}
+        for i in range(N):
+            for j in range(i, N):
+                pair = f"{species[i]}{species[j]}"
+                result["potentials"][pair] = {
+                        "r": r.tolist(),
+                        "U": u_total.tolist()
+                    }
+        
 
     # ---------------------------------------------------------
     # Export JSON if requested

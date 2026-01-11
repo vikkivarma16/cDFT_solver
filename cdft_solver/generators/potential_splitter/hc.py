@@ -86,8 +86,8 @@ def hard_core_potentials(
   
     species = find_key_recursive(input_data, "species")
     interactions = find_key_recursive(input_data, "interactions")
-    if species is None or interactions is None:
-        raise KeyError("Could not find 'species' or 'interactions' in the provided dictionary.")
+    if species is None:
+        raise KeyError("Could not find 'species' in the provided dictionary.")
 
     levels = ["primary", "secondary", "tertiary"]
     n = len(species)
@@ -103,87 +103,87 @@ def hard_core_potentials(
     # -------------------------
     # Detect explicit hard cores
     # -------------------------
-   
-    for level in levels:
-        for key, inter in interactions.get(level, {}).items():
-            sp_i, sp_j = key[0], key[1]
-            i, j = idx[sp_i], idx[sp_j]
+    if interactions is not None:
+        for level in levels:
+            for key, inter in interactions.get(level, {}).items():
+                sp_i, sp_j = key[0], key[1]
+                i, j = idx[sp_i], idx[sp_j]
 
-            # Handle missing "type" safely
-            ptype = inter.get("type", "").lower()
+                # Handle missing "type" safely
+                ptype = inter.get("type", "").lower()
 
-            # -------------------------------------------------
-            # CASE 1: interaction defined by type
-            # -------------------------------------------------
-            if ptype:
+                # -------------------------------------------------
+                # CASE 1: interaction defined by type
+                # -------------------------------------------------
+                if ptype:
 
-                # ----- Direct hard-core with exact sigma -----
-                if ptype in {"hc", "ghc", "hardcore"}:
-                    s = inter.get("sigma", 0.0)
-                    sigma[i, j] = sigma[j, i] = s
+                    # ----- Direct hard-core with exact sigma -----
+                    if ptype in {"hc", "ghc", "hardcore"}:
+                        s = inter.get("sigma", 0.0)
+                        sigma[i, j] = sigma[j, i] = s
 
-                    if ptype in {"hc", "hardcore"}:
-                        flag[i, j] = flag[j, i] = 1
+                        if ptype in {"hc", "hardcore"}:
+                            flag[i, j] = flag[j, i] = 1
 
-                    explicit[i, j] = explicit[j, i] = True
+                        explicit[i, j] = explicit[j, i] = True
+                        continue
+
+                    # ----- Analytic potential (soft or hard) -----
+                    pot = ppi(inter.copy())
+
+                    r_max = inter.get("sigma", 1.0)
+                    r = np.linspace(1e-5, r_max, grid_points)
+                    u = np.clip(pot(r), -1e3, 1e7)
+
+                # -------------------------------------------------
+                # CASE 2: interaction defined by tabulated file
+                # -------------------------------------------------
+                elif "filename" in inter:
+                    # Load tabulated potential
+                    pot = load_tabulated_potential(inter["filename"])
+
+                    # Start integration near zero
+                    r_min = 1e-5
+
+                    # Evaluate potential at tabulated points
+                    r_tab = pot.x
+                    u_tab = pot(r_tab)
+
+                    # Find the first index where potential crosses zero
+                    idx_zero = np.where(u_tab <= 0)[0]
+
+                    if len(idx_zero) > 0:
+                        # Take the first r where potential becomes zero
+                        r_max = r_tab[idx_zero[0]]
+                    else:
+                        # fallback if potential never crosses zero
+                        r_max = r_tab.max()
+
+                    # Build a fine uniform grid for integration
+                    r = np.linspace(r_min, r_max, grid_points)
+                    u = np.clip(pot(r), -1e3, 1e7)
+
+
+                # -------------------------------------------------
+                # CASE 3: nothing defined
+                # -------------------------------------------------
+                else:
                     continue
 
-                # ----- Analytic potential (soft or hard) -----
-                pot = ppi(inter.copy())
+                # -------------------------------------------------
+                # Common Barker–Henderson hard-core detection
+                # -------------------------------------------------
+                # Probe the short-range part robustly
+                n_probe = max(5, grid_points // 20)
 
-                r_max = inter.get("sigma", 1.0)
-                r = np.linspace(1e-5, r_max, grid_points)
-                u = np.clip(pot(r), -1e3, 1e7)
+                if np.any(u[:n_probe] > 1e5):
+                    s = barker_henderson_diameter(r, u)
 
-            # -------------------------------------------------
-            # CASE 2: interaction defined by tabulated file
-            # -------------------------------------------------
-            elif "filename" in inter:
-                # Load tabulated potential
-                pot = load_tabulated_potential(inter["filename"])
+                    if i == j:
+                        flag[i, j] = flag[j, i] = 1
 
-                # Start integration near zero
-                r_min = 1e-5
-
-                # Evaluate potential at tabulated points
-                r_tab = pot.x
-                u_tab = pot(r_tab)
-
-                # Find the first index where potential crosses zero
-                idx_zero = np.where(u_tab <= 0)[0]
-
-                if len(idx_zero) > 0:
-                    # Take the first r where potential becomes zero
-                    r_max = r_tab[idx_zero[0]]
-                else:
-                    # fallback if potential never crosses zero
-                    r_max = r_tab.max()
-
-                # Build a fine uniform grid for integration
-                r = np.linspace(r_min, r_max, grid_points)
-                u = np.clip(pot(r), -1e3, 1e7)
-
-
-            # -------------------------------------------------
-            # CASE 3: nothing defined
-            # -------------------------------------------------
-            else:
-                continue
-
-            # -------------------------------------------------
-            # Common Barker–Henderson hard-core detection
-            # -------------------------------------------------
-            # Probe the short-range part robustly
-            n_probe = max(5, grid_points // 20)
-
-            if np.any(u[:n_probe] > 1e5):
-                s = barker_henderson_diameter(r, u)
-
-                if i == j:
-                    flag[i, j] = flag[j, i] = 1
-
-                sigma[i, j] = sigma[j, i] = s
-                explicit[i, j] = explicit[j, i] = True
+                    sigma[i, j] = sigma[j, i] = s
+                    explicit[i, j] = explicit[j, i] = True
 
    
    

@@ -41,175 +41,196 @@ def meanfield_potentials(
     species = find_key_recursive(input_data, "species")
     interactions = find_key_recursive(input_data, "interactions")
 
-    if species is None or interactions is None:
+    if species is None :
         raise KeyError(
-            "Could not locate 'species' or 'interactions' in input dictionary."
+            "Could not locate 'species' in input dictionary."
         )
-
-    # ---------------------------------------------------------
-    # Mean-field conversion via REGISTRY
-    # ---------------------------------------------------------
-    levels = ["primary", "secondary", "tertiary"]
-    converted = {}
-
-    for level in levels:
-        if level not in interactions:
-            continue
-
-        converted[level] = {}
-        for pair, pot in interactions[level].items():
-            converted[level][pair] = convert_potential_via_registry(pot)
-
-    # ---------------------------------------------------------
-    # Collect all unique pairs
-    # ---------------------------------------------------------
-    all_pairs = set()
-    for lvl in converted.values():
-        all_pairs.update(lvl.keys())
-
-    # ---------------------------------------------------------
-    # Compute TOTAL mean-field potentials
-    # ---------------------------------------------------------
-
     
+    r_min = 0
+    grid_max = 10.0  # default fallback if nothing else
     
-    def wca_split(r, U):
-        """Split a potential into repulsive (soft) and attractive parts (WCA)."""
-        idx_min = np.argmin(U)
-        r_min = r[idx_min]
-        U_min = U[idx_min]
+    if interactions is not None :
+        # ---------------------------------------------------------
+        # Mean-field conversion via REGISTRY
+        # ---------------------------------------------------------
+        levels = ["primary", "secondary", "tertiary"]
+        converted = {}
 
-        U_rep = np.zeros_like(U)
-        U_att = np.zeros_like(U)
-
-        for i, ri in enumerate(r):
-            if ri <= r_min:
-                U_rep[i] = U[i] - U_min
-                U_att[i] = U_min
-            else:
-                U_rep[i] = 0.0
-                U_att[i] = U[i]
-
-        return U_rep, U_att
-
-    # ------------------------------
-    # Compute mean-field potentials
-    # ------------------------------
-    potentials = {}
-
-    for pair in sorted(all_pairs):
-
-        # Determine r-grid for the pair
-        r_min = 0
-        grid_max = 10.0  # default fallback if nothing else
-
-        # Loop over levels to determine maximum range
-        for lvl in converted:
-            if pair not in converted[lvl]:
+        for level in levels:
+            if level not in interactions:
                 continue
-            inter = converted[lvl][pair]
 
-            # Analytic potentials use sigma or cutoff if available
-            if "type" in inter:
-                sigma = inter.get("sigma", None)
-                cutoff_val = inter.get("cutoff", None)
+            converted[level] = {}
+            for pair, pot in interactions[level].items():
+                converted[level][pair] = convert_potential_via_registry(pot)
 
-                if cutoff_val is not None:
-                    grid_max = max(grid_max, cutoff_val)
-                elif sigma is not None:
-                    grid_max = max(grid_max, sigma * 5.0)
+        # ---------------------------------------------------------
+        # Collect all unique pairs
+        # ---------------------------------------------------------
+        all_pairs = set()
+        for lvl in converted.values():
+            all_pairs.update(lvl.keys())
+
+        # ---------------------------------------------------------
+        # Compute TOTAL mean-field potentials
+        # ---------------------------------------------------------
+
+        
+        
+        def wca_split(r, U):
+            """Split a potential into repulsive (soft) and attractive parts (WCA)."""
+            idx_min = np.argmin(U)
+            r_min = r[idx_min]
+            U_min = U[idx_min]
+
+            U_rep = np.zeros_like(U)
+            U_att = np.zeros_like(U)
+
+            for i, ri in enumerate(r):
+                if ri <= r_min:
+                    U_rep[i] = U[i] - U_min
+                    U_att[i] = U_min
                 else:
-                    grid_max = max(grid_max, 10.0)  # fallback
+                    U_rep[i] = 0.0
+                    U_att[i] = U[i]
 
-            # File-based potentials determine grid from the file itself
-            elif "filename" in inter:
-                filepath = os.path.join(os.getcwd(), inter["filename"])
-                if not os.path.isfile(filepath):
-                    raise FileNotFoundError(f"Potential file not found: {filepath}")
+            return U_rep, U_att
 
-                data = np.loadtxt(filepath)
-                if data.shape[1] < 2:
-                    raise ValueError("Tabulated potential must have at least two columns: r U")
+        # ------------------------------
+        # Compute mean-field potentials
+        # ------------------------------
+        potentials = {}
 
-                r_tab = data[:, 0]
-                u_tab = data[:, 1]
+        for pair in sorted(all_pairs):
 
-                # Set grid_max to the **full extent of the file**
-                r_file_max = r_tab.max()
+            # Determine r-grid for the pair
+            
 
-                # Update overall grid_max
-                grid_max = max(grid_max, r_file_max)
+            # Loop over levels to determine maximum range
+            for lvl in converted:
+                if pair not in converted[lvl]:
+                    continue
+                inter = converted[lvl][pair]
+
+                # Analytic potentials use sigma or cutoff if available
+                if "type" in inter:
+                    sigma = inter.get("sigma", None)
+                    cutoff_val = inter.get("cutoff", None)
+
+                    if cutoff_val is not None:
+                        grid_max = max(grid_max, cutoff_val)
+                    elif sigma is not None:
+                        grid_max = max(grid_max, sigma * 5.0)
+                    else:
+                        grid_max = max(grid_max, 10.0)  # fallback
+
+                # File-based potentials determine grid from the file itself
+                elif "filename" in inter:
+                    filepath = os.path.join(os.getcwd(), inter["filename"])
+                    if not os.path.isfile(filepath):
+                        raise FileNotFoundError(f"Potential file not found: {filepath}")
+
+                    data = np.loadtxt(filepath)
+                    if data.shape[1] < 2:
+                        raise ValueError("Tabulated potential must have at least two columns: r U")
+
+                    r_tab = data[:, 0]
+                    u_tab = data[:, 1]
+
+                    # Set grid_max to the **full extent of the file**
+                    r_file_max = r_tab.max()
+
+                    # Update overall grid_max
+                    grid_max = max(grid_max, r_file_max)
 
 
-        # Build uniform grid for integration
+            # Build uniform grid for integration
+            r = np.linspace(r_min, grid_max, grid_points)
+            u_total = np.zeros_like(r)
+
+            for lvl in converted:
+                if pair not in converted[lvl]:
+                    continue
+
+                inter = converted[lvl][pair]
+
+                # Skip zero potential
+                if inter.get("type") == "zero_potential":
+                    continue
+
+                # -------------------------------
+                # Analytic potential
+                # -------------------------------
+                if "type" in inter:
+                    V = ppi(inter)
+                    u_raw = V(r)
+
+                # -------------------------------
+                # Tabulated potential
+                # -------------------------------
+                elif "filename" in inter:
+                    filepath = os.path.join(os.getcwd(), inter["filename"])
+                    if not os.path.isfile(filepath):
+                        raise FileNotFoundError(f"Potential file not found: {filepath}")
+
+                    data = np.loadtxt(filepath)
+                    if data.shape[1] < 2:
+                        raise ValueError("Tabulated potential must have at least two columns: r U")
+
+                    r_tab = data[:, 0]
+                    u_tab = data[:, 1]
+
+                    V_interp = interp1d(
+                        r_tab,
+                        u_tab,
+                        kind="linear",
+                        bounds_error=False,
+                        fill_value=(u_tab[0], 0.0)
+                    )
+                    u_raw = V_interp(r)
+
+                else:
+                    continue
+
+                # -------------------------------
+                # Check for hard-core
+                # -------------------------------
+                # We consider hard-core if potential diverges near r ~ 0
+                short_range = u_raw[r < (r.min() + 0.05 * (r.max() - r.min()))]
+                has_hc = np.any(short_range > 1e5)
+
+                # -------------------------------
+                # WCA splitting only if hard-core exists
+                # -------------------------------
+                if has_hc:
+                    u_soft, _ = wca_split(r, u_raw)
+                    u_total += u_soft
+                else:
+                    u_total += u_raw
+
+            # Store final mean-field potential
+            potentials[pair] = {
+                "r": r.tolist(),
+                "U": u_total.tolist()
+            }
+    else:
         r = np.linspace(r_min, grid_max, grid_points)
         u_total = np.zeros_like(r)
+        potentials = {}
+        converted = {}
+        converted["primary"] = {}
+        for i in range(N):
+            for j in range(i, N):
+                pair = f"{species[i]}{species[j]}"
+                potentials[pair] = {
+                        "r": r.tolist(),
+                        "U": u_total.tolist()
+                    }
+                converted["primary"][pair] =  {"type": "zero_potential", "sigma" : 0.0, "cutoff": 5, "epsilon" : 0.0}
+                
+                
+            
 
-        for lvl in converted:
-            if pair not in converted[lvl]:
-                continue
-
-            inter = converted[lvl][pair]
-
-            # Skip zero potential
-            if inter.get("type") == "zero_potential":
-                continue
-
-            # -------------------------------
-            # Analytic potential
-            # -------------------------------
-            if "type" in inter:
-                V = ppi(inter)
-                u_raw = V(r)
-
-            # -------------------------------
-            # Tabulated potential
-            # -------------------------------
-            elif "filename" in inter:
-                filepath = os.path.join(os.getcwd(), inter["filename"])
-                if not os.path.isfile(filepath):
-                    raise FileNotFoundError(f"Potential file not found: {filepath}")
-
-                data = np.loadtxt(filepath)
-                if data.shape[1] < 2:
-                    raise ValueError("Tabulated potential must have at least two columns: r U")
-
-                r_tab = data[:, 0]
-                u_tab = data[:, 1]
-
-                V_interp = interp1d(
-                    r_tab,
-                    u_tab,
-                    kind="linear",
-                    bounds_error=False,
-                    fill_value=(u_tab[0], 0.0)
-                )
-                u_raw = V_interp(r)
-
-            else:
-                continue
-
-            # -------------------------------
-            # Check for hard-core
-            # -------------------------------
-            # We consider hard-core if potential diverges near r ~ 0
-            short_range = u_raw[r < (r.min() + 0.05 * (r.max() - r.min()))]
-            has_hc = np.any(short_range > 1e5)
-
-            # -------------------------------
-            # WCA splitting only if hard-core exists
-            # -------------------------------
-            if has_hc:
-                u_soft, _ = wca_split(r, u_raw)
-                u_total += u_soft
-            else:
-                u_total += u_raw
-
-        # Store final mean-field potential
-        potentials[pair] = {
-            "r": r.tolist(),
-            "U": u_total.tolist()
-        }
 
     
     
