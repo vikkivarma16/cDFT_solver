@@ -791,8 +791,8 @@ def boltzmann_inversion(
                     if (sigma_matrix[i, j] > 0.0):
                         enable_sigma_refinement =  1
 
-    sigma_update_every = 5
-    sigma_freeze_after = 50
+    sigma_update_every = 10
+    sigma_freeze_after = 500
     
     plot_u_matrix( r=r, u_matrix=u_matrix, species=species, outdir=plots, filename="pair_potentials.png",)
     
@@ -907,6 +907,8 @@ def boltzmann_inversion(
                     )
 
                     sigma_matrix[i, j] = sigma_matrix[j, i] = sigma_new
+                    
+                    print ("\n\n\n", sigma_new, "\n\n\n")
 
         
             
