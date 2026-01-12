@@ -1090,6 +1090,7 @@ def boltzmann_inversion(
                 plt.title(f"Inverted Potential: {si}{sj}")
                 plt.legend()
                 plt.tight_layout()
+                plt.ylim (-10, 10)
                 plt.savefig(plots_dir / f"{filename_prefix}_potential_{si}{sj}.png")
                 plt.close()
 

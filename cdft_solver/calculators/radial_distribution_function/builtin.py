@@ -41,7 +41,7 @@ def py_closure(r, gamma, u, sigma_ab=None):
         # Outside hard-core: usual PY formula
         c_r[mask_out] = (1.0 + gamma[mask_out]) * (safe_exp(-u[mask_out]) - 1.0)
         
-    c_r = (1.0 + gamma) * (safe_exp(-u) - 1.0)
+    #c_r = (1.0 + gamma) * (safe_exp(-u) - 1.0)
 
     return c_r
 
