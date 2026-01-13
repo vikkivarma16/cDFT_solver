@@ -22,7 +22,7 @@ import sys
 import ctypes
 from ctypes import c_double, c_int, POINTER
 
-hard_core_repulsion = 1e8
+hard_core_repulsion = 1e4
 
 # -------------------------------
 # Locate shared library reliably
@@ -893,7 +893,7 @@ def boltzmann_inversion(
     
     
     # -------------------------------------------------
-    # Adaptive IBI parameters
+    # Adaptive IBI-parameters
     # -------------------------------------------------
     alpha_ibi = 0.01
 
@@ -905,7 +905,7 @@ def boltzmann_inversion(
 
     sigma_ref  =  sigma_matrix.copy()
     # -------------------------------------------------
-    # Multistate IBI loop
+    # Multi-state IBI loop
     # -------------------------------------------------
     for it in range(1, n_iter_ibi + 1):
 
