@@ -944,7 +944,7 @@ def boltzmann_inversion(
                     if not fixed_mask[i, j]:
                         continue
 
-                    mask_r = g_target_safe[i, j] > 1e-4
+                    mask_r = g_target_safe[i, j] > 1e-12
                     delta_s = np.zeros_like(r)
 
                     delta_s[mask_r] = (beta_ref / beta_s) * np.log(
