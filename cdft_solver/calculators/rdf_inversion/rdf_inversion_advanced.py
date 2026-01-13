@@ -1120,8 +1120,7 @@ def boltzmann_inversion_advanced(
                 plt.legend()
                 plt.tight_layout()
                 plt.savefig(
-                        plots_dir / f"{filename_prefix}_sigma_{sname}_{si}{sj}.png"
-                    )
+                        plots_dir / f"{filename_prefix}_sigma_{sname}_{si}{sj}.png", dpi  =  600 )
                 plt.close()
         
 
