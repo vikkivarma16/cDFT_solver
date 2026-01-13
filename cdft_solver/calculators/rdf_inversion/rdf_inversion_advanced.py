@@ -22,9 +22,6 @@ import ctypes
 from ctypes import c_double, c_int, POINTER
 
 
-
-
-
 hard_core_repulsion = 1e8
 
 # -------------------------------
@@ -111,7 +108,6 @@ lib.solve_oz_matrix.argtypes = [
 ]
 
 
-
 def solve_oz_matrix(c_r, r, densities):
     N, _, Nr = c_r.shape
     gamma_r = np.zeros_like(c_r)
@@ -140,8 +136,6 @@ def solve_oz_matrix(c_r, r, densities):
     gamma_r = np.clip(gamma_r, -50.0, 50.0)
 
     return gamma_r
-
-    
 
 
 def multi_component_oz_solver_alpha(
@@ -243,9 +237,6 @@ def multi_component_oz_solver_alpha(
     return c_r, gamma_r, g_r
 
 
-
-
-
 def wca_split(r, u):
     """
     Returns repulsive part of u(r) using WCA splitting.
@@ -256,11 +247,10 @@ def wca_split(r, u):
 
     u_rep = np.zeros_like(u)
     mask = r <= r_min
-    u_rep[mask] = u[mask] #- u_min
+    u_rep[mask] = u[mask] - u_min
     u_rep[~mask] = 0.0
 
     return u_rep
-
 
 
 def detect_sigma_from_gr(r, g, g_tol=1e-3, min_width=3):
@@ -288,30 +278,12 @@ def detect_sigma_from_gr(r, g, g_tol=1e-3, min_width=3):
     return r[i0]
 
 
-
 def boltzmann_potential_from_gr(g, beta=1.0, g_min=1e-8):
     """
     u(r) = -ln g(r) with numerical protection
     """
     g_safe = np.maximum(g, g_min)
     return -np.log(g_safe) / beta
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def process_supplied_rdf_multistate(supplied_data, species, r_grid):
@@ -445,8 +417,6 @@ def process_supplied_rdf_multistate(supplied_data, species, r_grid):
     return states_out
 
 
-
-
 def find_key_recursive(d, key):
     if key in d:
         return d[key]
@@ -456,8 +426,6 @@ def find_key_recursive(d, key):
             if out is not None:
                 return out
     return None
-
-
 
 
 def plot_u_matrix(r, u_matrix, species, outdir, filename="u_matrix.png"):
@@ -565,8 +533,6 @@ def boltzmann_inversion_advanced(
     
     n_iter_ibi = rdf_block.get("max_iteration_ibi", 500)
     
-    
-    
     system = rdf_config
     hc_data = hard_core_potentials(
         ctx=ctx,
@@ -594,7 +560,6 @@ def boltzmann_inversion_advanced(
     )
     
     sigma = hc_data["sigma"]
-    
     print ("sigma matrix before gr: ",sigma)
     
 
@@ -706,10 +671,6 @@ def boltzmann_inversion_advanced(
                 
             
     plots = Path(ctx.plots_dir)      
-   
-
-  
-
     # u_matrix: (N, N, Nr), r: (Nr,)
     u_strength = np.zeros((N, N))
 
@@ -728,9 +689,6 @@ def boltzmann_inversion_advanced(
     # Sigma matrix
     # -----------------------------
     sigma_matrix = np.zeros((N, N)) if sigma is None else np.array (sigma)
-    
-    
-    
 
     # Initialize from first state RDF
     s0 = state_names[0]
@@ -768,7 +726,6 @@ def boltzmann_inversion_advanced(
     alpha_power = 0.5               # controls adaptation strength
 
     max_diff_prev = np.inf
-
     sigma_ref  =  sigma_matrix.copy()
     # -------------------------------------------------
     # Multistate IBI loop
@@ -780,7 +737,6 @@ def boltzmann_inversion_advanced(
     # Storage for final OZ results (used later for sigma)
     # -------------------------------------------------
     final_oz_results = {}
-
     for it in range(1, n_iter_ibi + 1):
 
         delta_u_accum = np.zeros_like(u_matrix)
