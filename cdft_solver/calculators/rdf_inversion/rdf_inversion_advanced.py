@@ -1090,7 +1090,9 @@ def boltzmann_inversion_advanced(
             
 
         for sname, sdata in states.items():
-
+        
+            g_ij = final_oz_results[sname]["g_pred"]
+            g_target = g_ij.copy()
             g_target = sdata["g_target"]
             g_ref_state = g_ref[sname]
             g_trial_state = g_trial_opt[sname]
