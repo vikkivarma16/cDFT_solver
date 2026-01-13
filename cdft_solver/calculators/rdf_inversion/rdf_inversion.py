@@ -995,7 +995,7 @@ def boltzmann_inversion(
                 f"IBI :-------------------------------------------------------------------------------->>>>>>>>>  iter {it:6d} | "
                 f"max|Δg| = {max_diff:12.3e} | "
                 f"α = {alpha_ibi:7.4f}   |" 
-                f"delta u accumulated {delta_u_accum[i, j]:10.8f}"
+                f"delta u accumulated {delta_u_accum[i, j][85]:10.8f}"
                 
             )
 
