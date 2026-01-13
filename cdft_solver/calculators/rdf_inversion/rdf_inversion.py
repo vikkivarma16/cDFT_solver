@@ -953,6 +953,8 @@ def boltzmann_inversion(
                     )
 
                     delta_u_accum[i, j] += w_state[sname] * delta_s
+                    
+                    print (delta_u_accum[i, j], "\n\n\n")
 
                     max_diff = max(
                         max_diff,
