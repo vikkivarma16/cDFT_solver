@@ -256,7 +256,7 @@ def wca_split(r, u):
 
     u_rep = np.zeros_like(u)
     mask = r <= r_min
-    u_rep[mask] = u[mask] - u_min
+    u_rep[mask] = u[mask] #- u_min
     u_rep[~mask] = 0.0
 
     return u_rep
@@ -1091,7 +1091,6 @@ def boltzmann_inversion_advanced(
             
         for sname, sdata in states.items():
             fixed_mask = sdata["fixed_mask"]
-        
             g_ij = final_oz_results[sname]["g_pred"]
             g_target = g_ij.copy()
             for i in range (len(species)):
