@@ -1122,7 +1122,7 @@ def boltzmann_inversion_advanced(
                 plt.savefig(
                         plots_dir / f"{filename_prefix}_rdf_{sname}_{si}{sj}.png"
                     )
-                    plt.close()
+                plt.close()
         
 
     else:
