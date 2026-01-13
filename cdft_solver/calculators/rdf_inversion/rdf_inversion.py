@@ -232,9 +232,8 @@ def optimize_sigma_single_pair(
     # -----------------------------------------
     res = minimize_scalar(
         loss,
-        bounds=(sigma_bounds[0] * sigma_old,
-                sigma_bounds[1] * sigma_old),
-        method="bounded",
+        bounds = (sigma_bounds[0] * sigma_old, sigma_bounds[1] * sigma_old),
+        method = "bounded",
     )
 
     # -----------------------------------------
@@ -305,9 +304,9 @@ def optimize_sigma_multistate(
             beta=beta_eff,
             pair_index=(i, j),
             sigma_bounds=sigma_bounds,
-            oz_n_iter =  oz_n_iter,
+            oz_n_iter = oz_n_iter,
             oz_tol = oz_tol,
-            alpha_rdf_max  = 0.1,
+            alpha_rdf_max = 0.1,
         )
 
         sigma_proposals.append(sigma_s)
@@ -762,9 +761,7 @@ def boltzmann_inversion(
             elif key_ji in closure_cfg:
                 closure = closure_cfg[key_ji]
             else:
-                raise KeyError(
-                    f"Missing closure for pair '{key_ij}' or '{key_ji}'"
-                )
+                raise KeyError(f"Missing closure for pair '{key_ij}' or '{key_ji}'")
 
             # assign symmetrically
             pair_closures[i, j] = closure
@@ -886,9 +883,7 @@ def boltzmann_inversion(
 
     sigma_update_every = 100
     sigma_freeze_after = n_iter_ibi
-    
     print ("sigma matrix detected before ibi: ",sigma_matrix)
-    
     plot_u_matrix( r=r, u_matrix=u_matrix, species=species, outdir=plots, filename="pair_potentials_before_ibi.png",)
     
     
@@ -896,14 +891,13 @@ def boltzmann_inversion(
     # Adaptive IBI-parameters
     # -------------------------------------------------
     alpha_ibi = 0.01
-
     alpha_min_ibi = 1e-4
     alpha_max_ibi = alpha_ibi_max   # keep your existing max
     alpha_power = 0.5               # controls adaptation strength
-
     max_diff_prev = np.inf
-
     sigma_ref  =  sigma_matrix.copy()
+    
+    
     # -------------------------------------------------
     # Multi-state IBI loop
     # -------------------------------------------------
@@ -911,7 +905,6 @@ def boltzmann_inversion(
 
         delta_u_accum = np.zeros_like(u_matrix)
         max_diff = 0.0
-
         # -----------------------------
         # State loop
         # -----------------------------
@@ -925,14 +918,14 @@ def boltzmann_inversion(
             print("\ntemperature in state", sname, ":", beta_s)
 
             c_r, gamma_r, g_pred = multi_component_oz_solver_alpha(
-                r=r,
-                pair_closures=pair_closures,
-                densities=np.asarray(densities_s, float),
-                u_matrix=beta_s * u_matrix / beta_ref,
-                sigma_matrix=sigma_matrix,
-                n_iter=n_iter,
-                tol=tolerance,
-                alpha_rdf_max=alpha_max,
+                r = r,
+                pair_closures = pair_closures,
+                densities = np.asarray(densities_s, float),
+                u_matrix = beta_s * u_matrix / beta_ref,
+                sigma_matrix = sigma_matrix,
+                n_iter = n_iter,
+                tol = tolerance,
+                alpha_rdf_max = alpha_max,
             )
 
             g_pred_safe = np.maximum(g_pred, g_floor)
@@ -973,9 +966,9 @@ def boltzmann_inversion(
 
         max_diff_prev = max_diff
 
-        # -------------------------------------------------
+        # ---------------------------------------------------------
         # Apply combined potential update
-        # -------------------------------------------------
+        # ---------------------------------------------------------
         for i in range(N):
             for j in range(N):
 
@@ -989,16 +982,14 @@ def boltzmann_inversion(
                     core = r < sigma_matrix[i, j]
                     u_matrix[i, j, core] = u_matrix[j, i, core] = hard_core_repulsion
 
-        # -------------------------------------------------
+        # ---------------------------------------------------------
         # Logging
-        # -------------------------------------------------
+        # ---------------------------------------------------------
         if it % 1 == 0 or max_diff < ibi_tolerance:
             print(
                 f"IBI :-------------------------------------------------------------------------------->>>>>>>>>  iter {it:6d} | "
                 f"max|Δg| = {max_diff:12.3e} | "
-                f"α = {alpha_ibi:7.4f}   |" 
-                f"delta u accumulated {delta_u_accum[0, 1][85]:10.8f}"
-                
+                f"α = {alpha_ibi:7.4f}   | " 
             )
 
         # -------------------------------------------------
