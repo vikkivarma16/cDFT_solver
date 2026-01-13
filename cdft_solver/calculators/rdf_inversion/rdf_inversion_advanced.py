@@ -1065,7 +1065,13 @@ def boltzmann_inversion_advanced(
         for (i, j) in hard_core_pairs:
             print(f"σ[{i},{j}] = {sigma_opt[i, j]:.4f}")
             
-            
+        
+        
+        plots_dir = getattr(ctx, "plots_dir", ctx.scratch_dir)
+        plots_dir = Path(plots_dir)
+        plots_dir.mkdir(parents=True, exist_ok=True)
+        
+        
         u_trial_opt = build_hard_core_u_from_sigma(sigma_opt)
         
         g_trial_opt = {}
@@ -1113,9 +1119,10 @@ def boltzmann_inversion_advanced(
 
                 plt.legend()
                 plt.tight_layout()
-                plt.show()
-
-        
+                plt.savefig(
+                        plots_dir / f"{filename_prefix}_rdf_{sname}_{si}{sj}.png"
+                    )
+                    plt.close()
         
 
     else:
