@@ -9,6 +9,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import re
 from scipy.optimize import minimize_scalar
+from scipy.optimize import minimize
 from collections.abc import Mapping
 from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
 from cdft_solver.generators.potential_splitter.mf import meanfield_potentials 
@@ -643,7 +644,7 @@ def boltzmann_inversion_advanced(
     potential_dict = total_data["total_potentials"]
     u_matrix = np.zeros((N, N, len(r)))
     print ("closures applied: ", pair_closures)
-    N = len(species)
+    N = len (species)
     n = len (species)
     
     
@@ -1041,8 +1042,8 @@ def boltzmann_inversion_advanced(
         sigma_init_vec = np.array([sigma_guess[i, j] for (i, j) in hard_core_pairs])
 
         print("\nOptimizing sigma collectively across all states and pairs...")
-
-        from scipy.optimize import minimize
+        
+        
 
         result = minimize(
             sigma_objective,
@@ -1088,12 +1089,15 @@ def boltzmann_inversion_advanced(
 
             g_trial_opt[sname] = g_trial_state
             
-
         for sname, sdata in states.items():
+            fixed_mask = sdata["fixed_mask"]
         
             g_ij = final_oz_results[sname]["g_pred"]
             g_target = g_ij.copy()
-            g_target = sdata["g_target"]
+            for i in range (len(species)):
+                for j in range (len(species)):
+                    if (fixed_mask[i, j]):
+                        g_target[i, j] = sdata["g_target"][i, j]
             g_ref_state = g_ref[sname]
             g_trial_state = g_trial_opt[sname]
 
