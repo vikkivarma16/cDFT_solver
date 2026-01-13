@@ -1064,6 +1064,59 @@ def boltzmann_inversion_advanced(
         print("\n✅ Final optimized sigma matrix:")
         for (i, j) in hard_core_pairs:
             print(f"σ[{i},{j}] = {sigma_opt[i, j]:.4f}")
+            
+            
+        u_trial_opt = build_hard_core_u_from_sigma(sigma_opt)
+        
+        g_trial_opt = {}
+
+        for sname, sdata in states.items():
+
+            beta_s = sdata["beta"]
+            rho_s = sdata["densities"]
+
+            print(f"\nComputing optimized trial RDF for state {sname}")
+
+            _, _, g_trial_state = multi_component_oz_solver_alpha(
+                r=r,
+                pair_closures=pair_closures,
+                densities=np.asarray(rho_s, float),
+                u_matrix=beta_s * u_trial_opt / beta_ref,
+                sigma_matrix=np.zeros((N, N)),
+                n_iter=n_iter,
+                tol=tolerance,
+                alpha_rdf_max=alpha_max,
+            )
+
+            g_trial_opt[sname] = g_trial_state
+            
+
+        for sname, sdata in states.items():
+
+            g_target = sdata["g_target"]
+            g_ref_state = g_ref[sname]
+            g_trial_state = g_trial_opt[sname]
+
+            for (i, j) in hard_core_pairs:
+
+                plt.figure(figsize=(6, 4))
+
+                plt.plot(r, g_target[i, j], label="g_target", lw=2)
+                plt.plot(r, g_ref_state[i, j], "--", label="g_ref (WCA repulsive)", lw=2)
+                plt.plot(r, g_trial_state[i, j], ":", label="g_trial (hard core σ)", lw=2)
+
+                plt.xlabel("r")
+                plt.ylabel(f"g$_{{{i}{j}}}$(r)")
+                plt.title(
+                    f"State: {sname} | Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}"
+                )
+
+                plt.legend()
+                plt.tight_layout()
+                plt.show()
+
+        
+        
 
     else:
         print("\nNo hard-core pairs detected — sigma calibration skipped.")
