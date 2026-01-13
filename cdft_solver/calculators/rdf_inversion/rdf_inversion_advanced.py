@@ -1120,7 +1120,7 @@ def boltzmann_inversion_advanced(
                 plt.legend()
                 plt.tight_layout()
                 plt.savefig(
-                        plots_dir / f"{filename_prefix}_sigma_{sname}_{si}{sj}.png", dpi  =  600 )
+                        plots_dir / f"{filename_prefix}_sigma_{sname}_{i}{j}.png", dpi  =  600 )
                 plt.close()
         
 
@@ -1182,7 +1182,7 @@ def boltzmann_inversion_advanced(
                 plt.legend()
                 plt.tight_layout()
                 plt.ylim (-10, 10)
-                plt.savefig(plots_dir / f"{filename_prefix}_potential_{si}{sj}.png")
+                plt.savefig(plots_dir / f"{filename_prefix}_potential_{si}{sj}.png", dpi  = 600)
                 plt.close()
 
         # -------------------------------------------------
@@ -1229,7 +1229,7 @@ def boltzmann_inversion_advanced(
                     plt.tight_layout()
 
                     plt.savefig(
-                        plots_dir / f"{filename_prefix}_rdf_{sname}_{si}{sj}.png"
+                        plots_dir / f"{filename_prefix}_rdf_{sname}_{si}{sj}.png", dpi  = 600
                     )
                     plt.close()
 
