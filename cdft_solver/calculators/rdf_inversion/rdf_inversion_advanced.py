@@ -1070,31 +1070,7 @@ def boltzmann_inversion_advanced(
 
             
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+    
         
         
         
