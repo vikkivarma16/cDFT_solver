@@ -1165,7 +1165,7 @@ def boltzmann_inversion_advanced(
         for i, si in enumerate(species):
             for j, sj in enumerate(species):
 
-                plt.figure()
+                plt.figure(figsize=(6, 4))
                 plt.plot(r, u_matrix[i, j] / beta_ref, label=f"{si}{sj}")
 
                 if sigma_matrix[i, j] > 0:
@@ -1204,7 +1204,7 @@ def boltzmann_inversion_advanced(
                     if not fixed_mask[i, j]:
                         continue
 
-                    plt.figure()
+                    plt.figure(figsize=(6, 4))
 
                     plt.plot(
                         r,
