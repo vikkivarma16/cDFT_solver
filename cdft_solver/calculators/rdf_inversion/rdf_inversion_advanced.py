@@ -249,7 +249,7 @@ def wca_split(r, u):
     mask = r <= r_min
     u_rep[mask] = u[mask] - u_min
     u_rep[~mask] = 0.0
-
+    
     return u_rep
 
 
