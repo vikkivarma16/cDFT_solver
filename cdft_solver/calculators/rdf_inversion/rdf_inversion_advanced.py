@@ -513,7 +513,7 @@ def plot_u_matrix(r, u_matrix, species, outdir, filename="u_matrix.png"):
     fig.tight_layout(rect=[0, 0, 1, 0.96])
 
     outpath = outdir / filename
-    fig.savefig(outpath, dpi=300)
+    fig.savefig(outpath, dpi=600)
     plt.close(fig)
 
     print(f"✅ u(r) matrix plot saved to: {outpath}")
@@ -904,11 +904,6 @@ def boltzmann_inversion_advanced(
     # Export
     # -------------------------------------------------
     
-    
-    
-    
-    
-    
     # -------------------------------------------------
     # PHASE A: Detect hard-core pairs from g(r)
     # -------------------------------------------------
@@ -993,9 +988,6 @@ def boltzmann_inversion_advanced(
                 sigma_mat[i, j] = sigma_mat[j, i] = sigma_vec[k]
                 k += 1
             return sigma_mat
-
-
-
 
         def hard_core_potential(r, sigma, U0=1e6):
                 u = np.zeros_like(r)
@@ -1126,12 +1118,6 @@ def boltzmann_inversion_advanced(
 
     else:
         print("\nNo hard-core pairs detected — sigma calibration skipped.")
-
-            
-        
-    
-        
-        
         
         
         
