@@ -262,7 +262,7 @@ def wca_split(r, u):
 
 
 
-def detect_sigma_from_gr(r, g, g_tol=1e-5, min_width=3):
+def detect_sigma_from_gr(r, g, g_tol=1e-3, min_width=3):
     """
     Detect hard-core diameter ONLY if g(r) is strictly zero
     over a finite r-interval.
