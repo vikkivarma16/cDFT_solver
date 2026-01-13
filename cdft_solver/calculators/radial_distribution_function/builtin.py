@@ -8,7 +8,6 @@ from .utils import safe_exp
 def py_closure(r, gamma, u, sigma_ab=None):
     """
     Percus-Yevick (PY) closure.
-    
     Parameters
     ----------
     r : ndarray
@@ -25,8 +24,12 @@ def py_closure(r, gamma, u, sigma_ab=None):
     c_r : ndarray
         Direct correlation function c(r) via PY closure
     """
+    
+    
+    
     c_r = np.zeros_like(r)
-
+    
+    '''
     if sigma_ab is None or sigma_ab ==0:
         # No hard-core, just standard PY closure
         c_r = (1.0 + gamma) * (safe_exp(-u) - 1.0)
@@ -40,9 +43,10 @@ def py_closure(r, gamma, u, sigma_ab=None):
 
         # Outside hard-core: usual PY formula
         c_r[mask_out] = (1.0 + gamma[mask_out]) * (safe_exp(-u[mask_out]) - 1.0)
-        
+    '''
+    
     c_r = (1.0 + gamma) * (safe_exp(-u) - 1.0)
-
+    
     return c_r
 
 

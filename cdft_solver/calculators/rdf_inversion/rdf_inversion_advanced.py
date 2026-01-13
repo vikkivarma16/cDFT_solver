@@ -9,18 +9,20 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import re
 from scipy.optimize import minimize_scalar
-
 from collections.abc import Mapping
 from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
 from cdft_solver.generators.potential_splitter.mf import meanfield_potentials 
 from cdft_solver.generators.potential_splitter.total import total_potentials
-
 from cdft_solver.calculators.radial_distribution_function.closure import closure_update_c_matrix
-
+from scipy.interpolate import interp1d
 import os
 import sys
 import ctypes
 from ctypes import c_double, c_int, POINTER
+
+
+
+
 
 hard_core_repulsion = 1e8
 
@@ -94,374 +96,6 @@ def solve_oz_kspace(h_k, densities, eps=1e-12):
 
     return c_k
     
-  
-  
-  
-  
-def plot_u_matrix(r, u_matrix, species, outdir, filename="u_matrix.png"):
-    """
-    Plot and export u_ij(r) for all species pairs.
-
-    Parameters
-    ----------
-    r : (Nr,) ndarray
-        Radial grid (must match u_matrix)
-    u_matrix : (N, N, Nr) ndarray
-        Pair potential matrix
-    species : list[str]
-        Species labels, length N
-    outdir : str or Path
-        Output directory
-    filename : str
-        Output image filename
-    """
-
-    outdir = Path(outdir)
-    outdir.mkdir(parents=True, exist_ok=True)
-
-    N = len(species)
-
-    fig, axes = plt.subplots(
-        N, N,
-        figsize=(3.2 * N, 3.2 * N),
-        sharex=True,
-        sharey=False,
-    )
-
-    if N == 1:
-        axes = [[axes]]
-
-    for i, si in enumerate(species):
-        for j, sj in enumerate(species):
-            ax = axes[i][j]
-
-            u = u_matrix[i, j]
-
-            ax.plot(r, u, lw=1.8)
-            ax.axhline(0.0, color="k", lw=0.8, alpha=0.4)
-
-            ax.set_title(f"{si}–{sj}", fontsize=10)
-            ax.grid(alpha=0.3)
-
-            if i == N - 1:
-                ax.set_xlabel("r")
-            if j == 0:
-                ax.set_ylabel(r"$u(r)$")
-
-    fig.suptitle("Pair Potentials $u_{ij}(r)$", fontsize=14)
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
-
-    outpath = outdir / filename
-    fig.savefig(outpath, dpi=300)
-    plt.close(fig)
-
-    print(f"✅ u(r) matrix plot saved to: {outpath}")
-
-
-
-
-def optimize_sigma_single_pair(
-    r,
-    g_target_ij,
-    u_matrix,
-    sigma_matrix,
-    pair_closures,
-    densities,
-    beta,
-    pair_index,
-    sigma_bounds=(0.5, 1.5),
-    fit_r_factor=1.5,
-    sigma_relax=0.5,
-    oz_n_iter=500,
-    oz_tol=1e-3,
-    alpha_rdf_max=0.1,
-):
-    """
-    Optimize sigma_ij by minimizing ||g_pred - g_target||^2
-    near contact using the FULL multicomponent OZ solver.
-    """
-
-    i, j = pair_index
-
-    sigma_old = sigma_matrix[i, j]
-    if sigma_old <= 0:
-        return sigma_old
-
-    # -----------------------------------------
-    # Fit region near contact
-    # -----------------------------------------
-    r_max = fit_r_factor * sigma_old
-    mask = r <= r_max
-
-    # -----------------------------------------
-    # Loss function
-    # -----------------------------------------
-    def loss(sigma_trial):
-
-        # --- copy sigma matrix ---
-        sigma_tmp = sigma_matrix.copy()
-        sigma_tmp[i, j] = sigma_tmp[j, i] = sigma_trial
-
-        # --- copy potential ---
-        u_trial = u_matrix.copy()
-
-        # --- enforce hard core with TRIAL sigma ---
-        if sigma_trial > 0:
-            core = r < sigma_trial
-            u_trial[i, j, core] = hard_core_repulsion
-            u_trial[j, i, core] = hard_core_repulsion
-
-        # --- OZ solve ---
-        _, _, g_pred = multi_component_oz_solver_alpha(
-            r=r,
-            pair_closures=pair_closures,
-            densities=densities,
-            u_matrix=u_trial,
-            sigma_matrix=sigma_tmp,
-            n_iter=oz_n_iter,
-            tol=oz_tol,
-            alpha_rdf_max=alpha_rdf_max,
-        )
-
-        # --- masked error ---
-        diff = g_pred[i, j, mask] - g_target_ij[mask]
-        return np.mean(diff * diff)
-
-    # -----------------------------------------
-    # Scalar minimization
-    # -----------------------------------------
-    res = minimize_scalar(
-        loss,
-        bounds=(sigma_bounds[0] * sigma_old,
-                sigma_bounds[1] * sigma_old),
-        method="bounded",
-    )
-
-    # -----------------------------------------
-    # Safety: fallback if optimizer fails
-    # -----------------------------------------
-    if not res.success:
-        return sigma_old
-
-    # -----------------------------------------
-    # Relaxed update
-    # -----------------------------------------
-    sigma_new = (
-        (1.0 - sigma_relax) * sigma_old
-        + sigma_relax * res.x
-    )
-
-    return sigma_new
-
-
-
-
-def optimize_sigma_multistate(
-    r,
-    u_matrix,
-    sigma_matrix,
-    pair_closures,
-    states,
-    pair_index,
-    w_state,
-    beta_ref,
-    sigma_bounds=(0.9, 1.5),
-    oz_n_iter = 500,
-    oz_tol = 0.001,
-    alpha_rdf_max  = 0.1,
-):
-    """
-    Multistate sigma optimization by aggregating
-    single-state sigma optimizations.
-    """
-
-    i, j = pair_index
-
-    
-
-    sigma_old = sigma_matrix[i, j]
-    if sigma_old <= 0:
-        return sigma_old
-
-    sigma_proposals = []
-    weights = []
-
-    for sname, sdata in states.items():
-
-        g_target = sdata["g_target"][i, j]
-        densities = sdata["densities"]
-        beta_s = sdata["beta"]
-
-        # Map state beta → reference beta
-        beta_eff = beta_s/beta_ref
-
-        sigma_s = optimize_sigma_single_pair(
-            r=r,
-            g_target_ij=g_target,
-            u_matrix=beta_eff*u_matrix,
-            sigma_matrix=sigma_matrix,
-            pair_closures=pair_closures,
-            densities=densities,
-            beta=beta_eff,
-            pair_index=(i, j),
-            sigma_bounds=sigma_bounds,
-            oz_n_iter =  oz_n_iter,
-            oz_tol = oz_tol,
-            alpha_rdf_max  = 0.1,
-        )
-
-        sigma_proposals.append(sigma_s)
-        weights.append(w_state[sname])
-
-    # Weighted average of sigma proposals
-    sigma_new = np.sum(
-        w * s for w, s in zip(weights, sigma_proposals)
-    ) / np.sum(weights)
-
-    return sigma_new
-
-
-import numpy as np
-from scipy.interpolate import interp1d
-
-def process_supplied_rdf_multistate(supplied_data, species, r_grid):
-
-    if supplied_data is None:
-        return {}
-
-    # Locate state container (flexible naming)
-    state_block = (
-        supplied_data.get("states")
-        or supplied_data.get("state")
-        or supplied_data
-    )
-
-    states_out = {}
-    N = len(species)
-    Nr = len(r_grid)
-
-    for state_name, state_data in state_block.items():
-
-        # -----------------------------
-        # Required metadata
-        # -----------------------------
-        densities_raw = state_data.get("densities", None)
-        if densities_raw is None:
-            raise KeyError(f"State '{state_name}' missing 'densities'")
-
-        # ---------------------------------------
-        # Case 1: dict keyed by species name
-        # ---------------------------------------
-        if isinstance(densities_raw, dict):
-            densities = np.zeros(N, dtype=float)
-
-            for i, s in enumerate(species):
-                if s in densities_raw:
-                    densities[i] = float(densities_raw[s])
-                else:
-                    densities[i] = 0.0   # default for missing species
-
-        # ---------------------------------------
-        # Case 2: scalar density → broadcast
-        # ---------------------------------------
-        elif np.isscalar(densities_raw):
-            densities = np.full(N, float(densities_raw))
-
-        # ---------------------------------------
-        # Case 3: array-like
-        # ---------------------------------------
-        else:
-            densities = np.asarray(densities_raw, dtype=float)
-
-            if densities.ndim != 1:
-                raise ValueError(
-                    f"State '{state_name}' densities must be 1D array, scalar, or dict"
-                )
-
-            if len(densities) == 1:
-                densities = np.full(N, densities[0])
-
-            if len(densities) != N:
-                raise ValueError(
-                    f"State '{state_name}' densities size mismatch: "
-                    f"expected {N}, got {len(densities)}"
-                )
-
-
-        # Beta / temperature
-        if "beta" in state_data:
-            beta = float(state_data["beta"])
-        elif "temperature" in state_data:
-            beta = 1.0 / float(state_data["temperature"])
-        else:
-            beta = 1.0  # default if nothing provided
-
-        # -----------------------------
-        # RDF dictionary
-        # -----------------------------
-        rdf_dict = state_data.get("rdf", {})
-        if rdf_dict is None:
-            raise KeyError(f"State '{state_name}' has no RDF data")
-
-        # -----------------------------
-        # Allocate arrays
-        # -----------------------------
-        g_target = np.zeros((N, N, Nr))
-        fixed_mask = np.zeros((N, N), dtype=bool)
-
-        # -----------------------------
-        # Process all pairwise RDFs
-        # -----------------------------
-        for i, si in enumerate(species):
-            for j, sj in enumerate(species):
-
-                # pair keys may be "AB" or "BA"
-                pair_keys = [f"{si}{sj}", f"{sj}{si}"]
-                entry = None
-                for key in pair_keys:
-                    if key in rdf_dict:
-                        entry = rdf_dict[key]
-                        break
-                if entry is None:
-                    continue  # skip missing pairs
-
-                r_sup = np.asarray(entry.get("x", entry.get("r", [])), dtype=float)
-                g_sup = np.asarray(entry.get("y", entry.get("g", [])), dtype=float)
-
-                if r_sup.size == 0 or g_sup.size == 0:
-                    continue  # skip empty data
-
-                # Interpolation
-                interp = interp1d(
-                    r_sup,
-                    g_sup,
-                    kind="linear",
-                    bounds_error=False,
-                    fill_value=(g_sup[0], g_sup[-1]),
-                )
-                g_interp = interp(r_grid)
-
-                # Symmetric assignment
-                g_target[i, j, :] = g_target[j, i, :] = g_interp
-                fixed_mask[i, j] = fixed_mask[j, i] = True
-
-        states_out[state_name] = {
-            "densities": densities,
-            "beta": beta,
-            "g_target": g_target,
-            "fixed_mask": fixed_mask,
-        }
-
-    return states_out
-
-
-
-
-
-    
-
-
-
 # --------------------------------------------------
 # Define function signature
 # --------------------------------------------------
@@ -609,19 +243,22 @@ def multi_component_oz_solver_alpha(
 
 
 
-def find_key_recursive(d, key):
-    if key in d:
-        return d[key]
-    for v in d.values():
-        if isinstance(v, dict):
-            out = find_key_recursive(v, key)
-            if out is not None:
-                return out
-    return None
 
 
+def wca_split(r, u):
+    """
+    Returns repulsive part of u(r) using WCA splitting.
+    """
+    idx_min = np.argmin(u)
+    r_min = r[idx_min]
+    u_min = u[idx_min]
 
+    u_rep = np.zeros_like(u)
+    mask = r <= r_min
+    u_rep[mask] = u[mask] - u_min
+    u_rep[~mask] = 0.0
 
+    return u_rep
 
 
 
@@ -657,6 +294,234 @@ def boltzmann_potential_from_gr(g, beta=1.0, g_min=1e-8):
     """
     g_safe = np.maximum(g, g_min)
     return -np.log(g_safe) / beta
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def process_supplied_rdf_multistate(supplied_data, species, r_grid):
+
+    if supplied_data is None:
+        return {}
+
+    # Locate state container (flexible naming)
+    state_block = (
+        supplied_data.get("states")
+        or supplied_data.get("state")
+        or supplied_data
+    )
+
+    states_out = {}
+    N = len(species)
+    Nr = len(r_grid)
+
+    for state_name, state_data in state_block.items():
+
+        # -----------------------------
+        # Required metadata
+        # -----------------------------
+        densities_raw = state_data.get("densities", None)
+        if densities_raw is None:
+            raise KeyError(f"State '{state_name}' missing 'densities'")
+
+        # ---------------------------------------
+        # Case 1: dict keyed by species name
+        # ---------------------------------------
+        if isinstance(densities_raw, dict):
+            densities = np.zeros(N, dtype=float)
+
+            for i, s in enumerate(species):
+                if s in densities_raw:
+                    densities[i] = float(densities_raw[s])
+                else:
+                    densities[i] = 0.0   # default for missing species
+
+        # ---------------------------------------
+        # Case 2: scalar density → broadcast
+        # ---------------------------------------
+        elif np.isscalar(densities_raw):
+            densities = np.full(N, float(densities_raw))
+
+        # ---------------------------------------
+        # Case 3: array-like
+        # ---------------------------------------
+        else:
+            densities = np.asarray(densities_raw, dtype=float)
+
+            if densities.ndim != 1:
+                raise ValueError(
+                    f"State '{state_name}' densities must be 1D array, scalar, or dict"
+                )
+
+            if len(densities) == 1:
+                densities = np.full(N, densities[0])
+
+            if len(densities) != N:
+                raise ValueError(
+                    f"State '{state_name}' densities size mismatch: "
+                    f"expected {N}, got {len(densities)}"
+                )
+
+
+        # Beta / temperature
+        if "beta" in state_data:
+            beta = float(state_data["beta"])
+        elif "temperature" in state_data:
+            beta = 1.0 / float(state_data["temperature"])
+        else:
+            beta = 1.0  # default if nothing provided
+
+        # -----------------------------
+        # RDF dictionary
+        # -----------------------------
+        rdf_dict = state_data.get("rdf", {})
+        if rdf_dict is None:
+            raise KeyError(f"State '{state_name}' has no RDF data")
+
+        # -----------------------------
+        # Allocate arrays
+        # -----------------------------
+        g_target = np.zeros((N, N, Nr))
+        fixed_mask = np.zeros((N, N), dtype=bool)
+
+        # -----------------------------
+        # Process all pairwise RDFs
+        # -----------------------------
+        for i, si in enumerate(species):
+            for j, sj in enumerate(species):
+
+                # pair keys may be "AB" or "BA"
+                pair_keys = [f"{si}{sj}", f"{sj}{si}"]
+                entry = None
+                for key in pair_keys:
+                    if key in rdf_dict:
+                        entry = rdf_dict[key]
+                        break
+                if entry is None:
+                    continue  # skip missing pairs
+
+                r_sup = np.asarray(entry.get("x", entry.get("r", [])), dtype=float)
+                g_sup = np.asarray(entry.get("y", entry.get("g", [])), dtype=float)
+
+                if r_sup.size == 0 or g_sup.size == 0:
+                    continue  # skip empty data
+
+                # Interpolation
+                interp = interp1d(
+                    r_sup,
+                    g_sup,
+                    kind="linear",
+                    bounds_error=False,
+                    fill_value=(g_sup[0], g_sup[-1]),
+                )
+                g_interp = interp(r_grid)
+
+                # Symmetric assignment
+                g_target[i, j, :] = g_target[j, i, :] = g_interp
+                fixed_mask[i, j] = fixed_mask[j, i] = True
+
+        states_out[state_name] = {
+            "densities": densities,
+            "beta": beta,
+            "g_target": g_target,
+            "fixed_mask": fixed_mask,
+        }
+
+    return states_out
+
+
+
+
+def find_key_recursive(d, key):
+    if key in d:
+        return d[key]
+    for v in d.values():
+        if isinstance(v, dict):
+            out = find_key_recursive(v, key)
+            if out is not None:
+                return out
+    return None
+
+
+
+
+def plot_u_matrix(r, u_matrix, species, outdir, filename="u_matrix.png"):
+    """
+    Plot and export u_ij(r) for all species pairs.
+
+    Parameters
+    ----------
+    r : (Nr,) ndarray
+        Radial grid (must match u_matrix)
+    u_matrix : (N, N, Nr) ndarray
+        Pair potential matrix
+    species : list[str]
+        Species labels, length N
+    outdir : str or Path
+        Output directory
+    filename : str
+        Output image filename
+    """
+
+    outdir = Path(outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    N = len(species)
+
+    fig, axes = plt.subplots(
+        N, N,
+        figsize=(3.2 * N, 3.2 * N),
+        sharex=True,
+        sharey=False,
+    )
+
+    if N == 1:
+        axes = [[axes]]
+
+    for i, si in enumerate(species):
+        for j, sj in enumerate(species):
+            ax = axes[i][j]
+
+            u = u_matrix[i, j]
+
+            ax.plot(r, u, lw=1.8)
+            ax.axhline(0.0, color="k", lw=0.8, alpha=0.4)
+
+            ax.set_title(f"{si}–{sj}", fontsize=10)
+            ax.grid(alpha=0.3)
+
+            if i == N - 1:
+                ax.set_xlabel("r")
+            if j == 0:
+                ax.set_ylabel(r"$u(r)$")
+
+    fig.suptitle("Pair Potentials $u_{ij}(r)$", fontsize=14)
+    fig.tight_layout(rect=[0, 0, 1, 0.96])
+
+    outpath = outdir / filename
+    fig.savefig(outpath, dpi=300)
+    plt.close(fig)
+
+    print(f"✅ u(r) matrix plot saved to: {outpath}")
+
+
+
+
+
 
 
     
@@ -907,6 +772,14 @@ def boltzmann_inversion_advanced(
     # -------------------------------------------------
     # Multistate IBI loop
     # -------------------------------------------------
+    
+    storage_flag = False
+
+    # -------------------------------------------------
+    # Storage for final OZ results (used later for sigma)
+    # -------------------------------------------------
+    final_oz_results = {}
+
     for it in range(1, n_iter_ibi + 1):
 
         delta_u_accum = np.zeros_like(u_matrix)
@@ -976,72 +849,222 @@ def boltzmann_inversion_advanced(
         # -------------------------------------------------
         for i in range(N):
             for j in range(N):
-
-                if not invert_mask[i, j]:
-                    continue
-
-                u_matrix[i, j] += alpha_ibi * delta_u_accum[i, j]
-
-                # Enforce hard core if present
-                # if sigma_matrix[i, j] > 0:
-                #    core = r < sigma_matrix[i, j]
-                #    u_matrix[i, j, core] = u_matrix[j, i, core] = hard_core_repulsion
+                if invert_mask[i, j]:
+                    u_matrix[i, j] += alpha_ibi * delta_u_accum[i, j]
 
         # -------------------------------------------------
         # Logging
         # -------------------------------------------------
-        if it % 1 == 0 or max_diff < ibi_tolerance:
-            print(
-                f"IBI :-------------------------------------------------------------------------------->>>>>>>>>  iter {it:6d} | "
-                f"max|Δg| = {max_diff:12.3e} | "
-                f"α = {alpha_ibi:7.4f}"
-            )
-
-        # -------------------------------------------------
-        # Sigma refinement (ONCE per iteration)
-        # -------------------------------------------------
-        if (
-            enable_sigma_refinement
-            and it % sigma_update_every == 0
-            and it < sigma_freeze_after
-        ):
-            for i in range(N):
-                for j in range(i, N):
-
-                    if not invert_mask[i, j]:
-                        continue
-
-                    sigma_new = optimize_sigma_multistate(
-                        r=r,
-                        u_matrix=u_matrix,
-                        sigma_matrix=sigma_matrix,
-                        pair_closures=pair_closures,
-                        states=states,
-                        pair_index=(i, j),
-                        w_state=w_state,
-                        beta_ref=beta_ref,
-                        oz_n_iter=n_iter,
-                        oz_tol=tolerance,
-                        alpha_rdf_max=alpha_max,
-                    )
-
-                    sigma_matrix[i, j] = sigma_matrix[j, i] = sigma_new
-                    print("\nUpdated sigma:----------------------------------------------------->>>>>>>>>>>>>>>>>>>>", sigma_new)
+        print(
+            f"IBI iter {it:6d} | max|Δg| = {max_diff:12.3e} | α = {alpha_ibi:7.4f}"
+        )
 
         # -------------------------------------------------
         # Convergence check
         # -------------------------------------------------
         if max_diff < ibi_tolerance:
             print(f"\n✅ Multistate IBI converged in {it} iterations.")
+            storage_flag = True
+
+        # -------------------------------------------------
+        # FINAL STORAGE PASS (one extra OZ solve)
+        # -------------------------------------------------
+        if storage_flag:
+            print("\n📦 Storing final OZ results for sigma analysis...")
+
+            final_oz_results.clear()
+
+            for sname, sdata in states.items():
+                beta_s = sdata["beta"]
+                densities_s = sdata["densities"]
+
+                _, _, g_pred = multi_component_oz_solver_alpha(
+                    r=r,
+                    pair_closures=pair_closures,
+                    densities=np.asarray(densities_s, float),
+                    u_matrix=beta_s * u_matrix / beta_ref,
+                    sigma_matrix=sigma_matrix,
+                    n_iter=n_iter,
+                    tol=tolerance,
+                    alpha_rdf_max=alpha_max,
+                )
+
+                final_oz_results[sname] = {
+                    "beta": beta_s,
+                    "densities": np.asarray(densities_s, float),
+                    "g_pred": g_pred.copy(),
+                }
+
             break
 
     else:
         print("\n⚠️ Multistate IBI did not converge.")
-
-
+        
     # -------------------------------------------------
     # Export
     # -------------------------------------------------
+    
+    
+
+    
+
+    # -------------------------------------------------
+    # PHASE A: Detect hard-core pairs from g(r)
+    # -------------------------------------------------
+
+    sigma_guess = np.zeros((N, N))
+    has_core = np.zeros((N, N), dtype=bool)
+
+    for i in range(N):
+        for j in range(i, N):
+
+            sigma_candidates = []
+
+            for sname, res in final_oz_results.items():
+                g_ij = res["g_pred"][i, j]
+                sigma_s = detect_sigma_from_gr(r, g_ij)
+
+                if sigma_s > 0.0:
+                    sigma_candidates.append(sigma_s)
+
+            if sigma_candidates:
+                sigma_ij = max(sigma_candidates)  # conservative
+                sigma_guess[i, j] = sigma_guess[j, i] = sigma_ij
+                has_core[i, j] = has_core[j, i] = True
+
+                print(f"Detected hard core for pair ({i},{j}) : σ ≈ {sigma_ij:.4f}")
+    
+    
+    
+    hard_core_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] ]
+    if hard_core_pairs:
+        
+        print("\n🔧 Starting sigma calibration stage...")
+        u_ref = np.zeros_like(u_matrix)
+        for i in range(N):
+            for j in range(N):
+
+                if has_core[i, j]:
+                    # Use only repulsive WCA part
+                    u_ref[i, j] = wca_split(r, u = u_matrix[i, j])
+                else:
+                    # No detected core → keep full potential
+                    u_ref[i, j] = u_matrix[i, j]
+
+    
+    
+        g_ref = {}
+        for sname, sdata in states.items():
+
+            beta_s = sdata["beta"]
+            rho_s = sdata["densities"]
+
+            print(f"\nComputing reference RDF for state {sname}")
+
+            _, _, g_ref_state = multi_component_oz_solver_alpha(
+                r=r,
+                pair_closures=pair_closures,
+                densities=np.asarray(rho_s, float),
+                u_matrix=beta_s * u_ref / beta_ref,
+                sigma_matrix=None,
+                n_iter=n_iter,
+                tol=tolerance,
+                alpha_rdf_max=alpha_max,
+            )
+
+            g_ref[sname] = g_ref_state
+
+    # -------------------------------------------------
+    # PHASE D: Collective sigma optimization
+    # -------------------------------------------------
+
+   
+
+    def unpack_sigma_vector(sigma_vec):
+        sigma_mat = np.zeros((N, N))
+        k = 0
+        for (i, j) in hard_core_pairs:
+            sigma_mat[i, j] = sigma_mat[j, i] = sigma_vec[k]
+            k += 1
+        return sigma_mat
+        
+    def hard_core_potential(r, sigma, U0=1e6):
+        u = np.zeros_like(r)
+        u[r < sigma] = U0
+        return u
+
+    def build_hard_core_u_from_sigma(sigma_mat):
+        u = np.zeros_like(u_matrix)
+        for i in range(N):
+            for j in range(N):
+                if has_core[i, j]:
+                    u[i, j] = hard_core_potential(r, sigma_mat[i, j])
+                else:
+                    u[i, j] = u_matrix[i, j]
+        return u
+
+    def sigma_objective(sigma_vec):
+
+        sigma_mat = unpack_sigma_vector(sigma_vec)
+        u_hc = build_hard_core_u_from_sigma(sigma_mat)
+
+        loss = 0.0
+
+        for sname, sdata in states.items():
+
+            beta_s = sdata["beta"]
+            rho_s = sdata["densities"]
+
+            _, _, g_trial = multi_component_oz_solver_alpha(
+                r=r,
+                pair_closures=pair_closures,
+                densities=np.asarray(rho_s, float),
+                u_matrix=beta_s * u_hc / beta_ref,
+                sigma_matrix=None,
+                n_iter=n_iter,
+                tol=tolerance,
+                alpha_rdf_max=alpha_max,
+            )
+
+            for (i, j) in hard_core_pairs:
+                diff = g_trial[i, j] - g_ref[sname][i, j]
+                loss += np.sum(diff * diff)
+
+        return loss
+
+    # -------------------------------------------------
+    # Run optimizer
+    # -------------------------------------------------
+
+    if hard_core_pairs:
+
+        sigma_init_vec = np.array(
+            [sigma_guess[i, j] for (i, j) in hard_core_pairs]
+        )
+
+        print("\nOptimizing sigma collectively across all states and pairs...")
+
+        from scipy.optimize import minimize
+
+        result = minimize(
+            sigma_objective,
+            sigma_init_vec,
+            method="Powell",
+            options={"xtol": 1e-4, "ftol": 1e-6, "disp": True},
+        )
+
+        sigma_opt = unpack_sigma_vector(result.x)
+
+        print("\n✅ Final optimized sigma matrix:")
+        for (i, j) in hard_core_pairs:
+            print(f"σ[{i},{j}] = {sigma_opt[i, j]:.4f}")
+
+    else:
+        print("\nNo hard-core pairs detected — sigma calibration skipped.")
+
+    
+    
+    
         
         
     if export_json:
