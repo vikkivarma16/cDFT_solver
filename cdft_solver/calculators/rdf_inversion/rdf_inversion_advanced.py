@@ -905,9 +905,10 @@ def boltzmann_inversion_advanced(
     # -------------------------------------------------
     
     
-
     
-
+    
+    
+    
     # -------------------------------------------------
     # PHASE A: Detect hard-core pairs from g(r)
     # -------------------------------------------------
@@ -933,27 +934,34 @@ def boltzmann_inversion_advanced(
                 has_core[i, j] = has_core[j, i] = True
 
                 print(f"Detected hard core for pair ({i},{j}) : σ ≈ {sigma_ij:.4f}")
-    
-    
-    
-    hard_core_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] ]
+
+
+    hard_core_pairs = [(i, j) for i in range(N) for j in range(i, N) if has_core[i, j]]
+
     if hard_core_pairs:
-        
+
         print("\n🔧 Starting sigma calibration stage...")
+
+        # -------------------------------------------------
+        # PHASE B: Build WCA-repulsive reference potential
+        # -------------------------------------------------
+
         u_ref = np.zeros_like(u_matrix)
+
         for i in range(N):
             for j in range(N):
 
                 if has_core[i, j]:
-                    # Use only repulsive WCA part
-                    u_ref[i, j] = wca_split(r, u = u_matrix[i, j])
+                    u_ref[i, j] = wca_split(r, u_matrix[i, j])
                 else:
-                    # No detected core → keep full potential
                     u_ref[i, j] = u_matrix[i, j]
 
-    
-    
+        # -------------------------------------------------
+        # PHASE C: Compute reference RDFs for ALL states
+        # -------------------------------------------------
+
         g_ref = {}
+
         for sname, sdata in states.items():
 
             beta_s = sdata["beta"]
@@ -966,7 +974,7 @@ def boltzmann_inversion_advanced(
                 pair_closures=pair_closures,
                 densities=np.asarray(rho_s, float),
                 u_matrix=beta_s * u_ref / beta_ref,
-                sigma_matrix=None,
+                sigma_matrix=np.zeros((N, N)),
                 n_iter=n_iter,
                 tol=tolerance,
                 alpha_rdf_max=alpha_max,
@@ -974,73 +982,71 @@ def boltzmann_inversion_advanced(
 
             g_ref[sname] = g_ref_state
 
-    # -------------------------------------------------
-    # PHASE D: Collective sigma optimization
-    # -------------------------------------------------
+        # -------------------------------------------------
+        # PHASE D: Collective sigma optimization
+        # -------------------------------------------------
 
-   
-
-    def unpack_sigma_vector(sigma_vec):
-        sigma_mat = np.zeros((N, N))
-        k = 0
-        for (i, j) in hard_core_pairs:
-            sigma_mat[i, j] = sigma_mat[j, i] = sigma_vec[k]
-            k += 1
-        return sigma_mat
-        
-    def hard_core_potential(r, sigma, U0=1e6):
-        u = np.zeros_like(r)
-        u[r < sigma] = U0
-        return u
-
-    def build_hard_core_u_from_sigma(sigma_mat):
-        u = np.zeros_like(u_matrix)
-        for i in range(N):
-            for j in range(N):
-                if has_core[i, j]:
-                    u[i, j] = hard_core_potential(r, sigma_mat[i, j])
-                else:
-                    u[i, j] = u_matrix[i, j]
-        return u
-
-    def sigma_objective(sigma_vec):
-
-        sigma_mat = unpack_sigma_vector(sigma_vec)
-        u_hc = build_hard_core_u_from_sigma(sigma_mat)
-
-        loss = 0.0
-
-        for sname, sdata in states.items():
-
-            beta_s = sdata["beta"]
-            rho_s = sdata["densities"]
-
-            _, _, g_trial = multi_component_oz_solver_alpha(
-                r=r,
-                pair_closures=pair_closures,
-                densities=np.asarray(rho_s, float),
-                u_matrix=beta_s * u_hc / beta_ref,
-                sigma_matrix=None,
-                n_iter=n_iter,
-                tol=tolerance,
-                alpha_rdf_max=alpha_max,
-            )
-
+        def unpack_sigma_vector(sigma_vec):
+            sigma_mat = np.zeros((N, N))
+            k = 0
             for (i, j) in hard_core_pairs:
-                diff = g_trial[i, j] - g_ref[sname][i, j]
-                loss += np.sum(diff * diff)
+                sigma_mat[i, j] = sigma_mat[j, i] = sigma_vec[k]
+                k += 1
+            return sigma_mat
 
-        return loss
 
-    # -------------------------------------------------
-    # Run optimizer
-    # -------------------------------------------------
 
-    if hard_core_pairs:
 
-        sigma_init_vec = np.array(
-            [sigma_guess[i, j] for (i, j) in hard_core_pairs]
-        )
+        def hard_core_potential(r, sigma, U0=1e6):
+                u = np.zeros_like(r)
+                u[r < sigma] = U0
+                return u
+
+        def build_hard_core_u_from_sigma(sigma_mat):
+            u = np.zeros_like(u_matrix)
+            for i in range(N):
+                for j in range(N):
+                    if has_core[i, j]:
+                        u[i, j] = hard_core_potential(r, sigma_mat[i, j])
+                    else:
+                        u[i, j] = u_matrix[i, j]
+            return u
+
+
+        def sigma_objective(sigma_vec):
+
+            sigma_mat = unpack_sigma_vector(sigma_vec)
+            u_trial = build_hard_core_u_from_sigma(sigma_mat)
+
+            loss = 0.0
+
+            for sname, sdata in states.items():
+
+                beta_s = sdata["beta"]
+                rho_s = sdata["densities"]
+
+                _, _, g_trial = multi_component_oz_solver_alpha(
+                    r=r,
+                    pair_closures=pair_closures,
+                    densities=np.asarray(rho_s, float),
+                    u_matrix=beta_s * u_trial / beta_ref,
+                    sigma_matrix=np.zeros((N, N)),
+                    n_iter=n_iter,
+                    tol=tolerance,
+                    alpha_rdf_max=alpha_max,
+                )
+
+                for (i, j) in hard_core_pairs:
+                    diff = g_trial[i, j] - g_ref[sname][i, j]
+                    loss += np.sum(diff * diff)
+
+            return loss
+
+        # -------------------------------------------------
+        # Run optimizer
+        # -------------------------------------------------
+
+        sigma_init_vec = np.array([sigma_guess[i, j] for (i, j) in hard_core_pairs])
 
         print("\nOptimizing sigma collectively across all states and pairs...")
 
@@ -1062,9 +1068,36 @@ def boltzmann_inversion_advanced(
     else:
         print("\nNo hard-core pairs detected — sigma calibration skipped.")
 
-    
-    
-    
+            
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         
         
     if export_json:
