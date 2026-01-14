@@ -1107,12 +1107,11 @@ def boltzmann_inversion_advanced(
         #    u_attractive[j, i] = u_attractive[i, j]
 
         # IBI for attractive potentials
-        n_iter_attr = 50
-        alpha_attr = 0.001
+        alpha_attr = 0.01
 
         u_attr_trial = u_attractive.copy()
 
-        for it in range(1, n_iter_attr + 1):
+        for it in range(1, n_iter_ibi + 1):
 
             max_diff = 0.0
             delta_u_accum = np.zeros_like(u_attr_trial)
@@ -1162,7 +1161,7 @@ def boltzmann_inversion_advanced(
                 u_attr_trial[i, j] += alpha_attr * delta_u_accum[i, j]
                 u_attr_trial[j, i] = u_attr_trial[i, j]
                 
-                print ( u_attr_trial[j, i])
+                #print ( u_attr_trial[j, i])
 
             print(f"Attractive IBI iter {it:3d} | max|Δg| = {max_diff:12.3e}")
 
