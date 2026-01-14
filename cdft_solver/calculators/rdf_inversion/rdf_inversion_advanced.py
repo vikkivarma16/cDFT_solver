@@ -1134,7 +1134,7 @@ def boltzmann_inversion_advanced(
 
                 # Compute updates only for attractive pairs
                 for (i, j) in attractive_pairs:
-                    mask_r = g_trial[i, j] > 1e-8  # avoid div by zero
+                    mask_r = r > sigma_opt[i, j]  # avoid div by zero
                     delta = np.zeros_like(r)
                     
                     delta[mask_r] = np.log(g_trial[i, j, mask_r] / final_oz_results["sname"]["g_pred"][i, j] )
