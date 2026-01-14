@@ -1161,7 +1161,7 @@ def boltzmann_inversion_advanced(
                 u_attr_trial[i, j] += alpha_attr * delta_u_accum[i, j]
                 u_attr_trial[j, i] = u_attr_trial[i, j]
                 
-                #print ( u_attr_trial[j, i])
+                print ( u_attr_trial[j, i])
 
             print(f"Attractive IBI iter {it:3d} | max|Δg| = {max_diff:12.3e}")
 
