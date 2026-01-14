@@ -1108,7 +1108,7 @@ def boltzmann_inversion_advanced(
 
         # IBI for attractive potentials
         n_iter_attr = 50
-        alpha_attr = 0.1
+        alpha_attr = 0.001
 
         u_attr_trial = u_attractive.copy()
 
@@ -1159,7 +1159,7 @@ def boltzmann_inversion_advanced(
 
             # Apply combined update
             for (i, j) in attractive_pairs:
-                u_attr_trial[i, j] -= alpha_attr * delta_u_accum[i, j]
+                u_attr_trial[i, j] += alpha_attr * delta_u_accum[i, j]
                 u_attr_trial[j, i] = u_attr_trial[i, j]
                 
                 print ( u_attr_trial[j, i])
