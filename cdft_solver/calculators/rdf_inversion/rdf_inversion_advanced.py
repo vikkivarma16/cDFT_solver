@@ -1089,7 +1089,7 @@ def boltzmann_inversion_advanced(
     # -------------------------------------------------
     # Select all sigma-fixed (hard-core) pairs explicitly
     # -------------------------------------------------
-    attractive_pairs = [(i, j) for i in range(N) for j in range(i+1, N) if  has_core[i, j]]
+    attractive_pairs = [(i, j) for i in range(N) for j in range(i, N) if  has_core[i, j]]
 
     if not attractive_pairs:
         print("No hard-core pairs → no attractive calibration needed.")
