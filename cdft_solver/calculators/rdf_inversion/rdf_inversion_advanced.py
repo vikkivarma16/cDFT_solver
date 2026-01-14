@@ -1107,7 +1107,7 @@ def boltzmann_inversion_advanced(
         #    u_attractive[j, i] = u_attractive[i, j]
 
         # IBI for attractive potentials
-        alpha_attr = 0.01
+        alpha_attr = 0.1
 
         u_attr_trial = u_attractive.copy()
 
