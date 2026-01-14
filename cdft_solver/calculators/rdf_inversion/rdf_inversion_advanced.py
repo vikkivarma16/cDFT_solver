@@ -1082,6 +1082,115 @@ def boltzmann_inversion_advanced(
         
         
         
+    # -------------------------------------------------
+    # PHASE E: Calibrate attractive part on fixed sigma
+    # -------------------------------------------------
+
+    # Only for pairs with finite sigma
+    attractive_pairs = hard_core_pairs.copy()
+    if not attractive_pairs:
+        print("No hard-core pairs → no attractive calibration needed.")
+    else:
+
+        print("\n🔧 Starting attractive part calibration for sigma-fixed pairs...")
+
+        # Build the initial repulsive + attractive split
+        u_repulsive = build_hard_core_u_from_sigma(sigma_opt)  # hard-core only
+        u_attractive = np.zeros_like(u_matrix)  # initialize attractive
+
+        for (i, j) in attractive_pairs:
+            # Attractive = total - repulsive (sigma-fixed)
+            u_attractive[i, j] = u_matrix[i, j] - u_repulsive[i, j]
+            u_attractive[j, i] = u_attractive[i, j]
+
+        # IBI for attractive potentials
+        n_iter_attr = 50
+        alpha_attr = 0.1
+
+        u_attr_trial = u_attractive.copy()
+
+        for it in range(1, n_iter_attr + 1):
+
+            max_diff = 0.0
+
+            delta_u_accum = np.zeros_like(u_attr_trial)
+
+            for sname, sdata in states.items():
+                beta_s = sdata["beta"]
+                rho_s = sdata["densities"]
+                fixed_mask = sdata["fixed_mask"]
+
+                # Compute RDF for current trial attractive potential + fixed sigma
+                _, _, g_trial = multi_component_oz_solver_alpha(
+                    r=r,
+                    pair_closures=pair_closures,
+                    densities=np.asarray(rho_s, float),
+                    u_matrix=beta_s * (u_repulsive + u_attr_trial) / beta_ref,
+                    sigma_matrix=np.zeros((N, N)),
+                    n_iter=n_iter,
+                    tol=tolerance,
+                    alpha_rdf_max=alpha_max,
+                )
+
+                # Compute updates only for attractive pairs
+                for (i, j) in attractive_pairs:
+
+                    mask_r = g_trial[i, j] > 1e-8  # avoid div by zero
+                    delta = np.zeros_like(r)
+                    delta[mask_r] = np.log(g_trial[i, j, mask_r] / sdata["g_target"][i, j, mask_r])
+                    delta_u_accum[i, j] += delta
+                    delta_u_accum[j, i] = delta_u_accum[i, j]
+
+                    max_diff = max(max_diff, np.max(np.abs(g_trial[i, j] - sdata["g_target"][i, j])))
+
+            # Apply combined update for attractive potentials only
+            for (i, j) in attractive_pairs:
+                u_attr_trial[i, j] -= alpha_attr * delta_u_accum[i, j]
+                u_attr_trial[j, i] = u_attr_trial[i, j]
+
+            print(f"Attractive IBI iter {it:3d} | max|Δg| = {max_diff:12.3e}")
+
+            if max_diff < 1e-6:
+                print("✅ Attractive part IBI converged.")
+                break
+
+        # -------------------------------------------------
+        # Save final potentials
+        # -------------------------------------------------
+        u_final = u_repulsive + u_attr_trial
+
+        print("\n✅ Final potential (repulsive + attractive) ready for all sigma-fixed pairs.")
+
+        # Optional: plot final attractive fit
+        plots_dir.mkdir(parents=True, exist_ok=True)
+        for sname, sdata in states.items():
+            _, _, g_final = multi_component_oz_solver_alpha(
+                r=r,
+                pair_closures=pair_closures,
+                densities=np.asarray(sdata["densities"], float),
+                u_matrix=beta_s * u_final / beta_ref,
+                sigma_matrix=np.zeros((N, N)),
+                n_iter=n_iter,
+                tol=tolerance,
+                alpha_rdf_max=alpha_max,
+            )
+
+            for (i, j) in attractive_pairs:
+                plt.figure(figsize=(6, 4))
+                plt.plot(r, sdata["g_target"][i, j], label="g_target", lw=2)
+                plt.plot(r, g_ref[sname][i, j], "--", label="g_ref (repulsive)", lw=2)
+                plt.plot(r, g_final[i, j], ":", label="g_final (rep + attr)", lw=2)
+                plt.xlabel("r")
+                plt.ylabel(f"g$_{{{i}{j}}}$(r)")
+                plt.title(f"State: {sname} | Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}")
+                plt.legend()
+                plt.tight_layout()
+                plt.savefig(plots_dir / f"{filename_prefix}_attractive_{sname}_{i}{j}.png", dpi=600)
+                plt.close()
+
+            
+        
+        
     if export_json:
         out = Path(ctx.scratch_dir)
         out.mkdir(parents=True, exist_ok=True)
