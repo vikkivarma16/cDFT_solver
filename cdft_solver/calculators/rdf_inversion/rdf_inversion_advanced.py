@@ -1086,8 +1086,11 @@ def boltzmann_inversion_advanced(
     # PHASE E: Calibrate attractive part on fixed sigma
     # -------------------------------------------------
 
-    # Only for pairs with finite sigma
-    attractive_pairs = hard_core_pairs.copy()
+    # -------------------------------------------------
+    # Select all sigma-fixed (hard-core) pairs explicitly
+    # -------------------------------------------------
+    attractive_pairs = [(i, j) for i in range(N) for j in range(i+1, N) if hard_core[i, j]]
+
     if not attractive_pairs:
         print("No hard-core pairs → no attractive calibration needed.")
     else:
@@ -1098,8 +1101,8 @@ def boltzmann_inversion_advanced(
         u_repulsive = build_hard_core_u_from_sigma(sigma_opt)  # hard-core only
         u_attractive = np.zeros_like(u_matrix)  # initialize attractive
 
+        # Initial attractive split
         for (i, j) in attractive_pairs:
-            # Attractive = total - repulsive (sigma-fixed)
             u_attractive[i, j] = u_matrix[i, j] - u_repulsive[i, j]
             u_attractive[j, i] = u_attractive[i, j]
 
@@ -1112,7 +1115,6 @@ def boltzmann_inversion_advanced(
         for it in range(1, n_iter_attr + 1):
 
             max_diff = 0.0
-
             delta_u_accum = np.zeros_like(u_attr_trial)
 
             for sname, sdata in states.items():
@@ -1120,7 +1122,7 @@ def boltzmann_inversion_advanced(
                 rho_s = sdata["densities"]
                 fixed_mask = sdata["fixed_mask"]
 
-                # Compute RDF for current trial attractive potential + fixed sigma
+                # Compute RDF for current trial potential
                 _, _, g_trial = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
@@ -1132,17 +1134,30 @@ def boltzmann_inversion_advanced(
                     alpha_rdf_max=alpha_max,
                 )
 
-                # Compute updates only for attractive pairs
+                # Compute updates only for sigma-fixed pairs
                 for (i, j) in attractive_pairs:
-                    mask_r = r > sigma_opt[i, j]  # avoid div by zero
+                    mask_r = r > sigma_opt[i, j]  # avoid divergence near core
                     delta = np.zeros_like(r)
-                    
-                    delta[mask_r] = np.log(g_trial[i, j, mask_r] / final_oz_results[sname]["g_pred"][i, j, mask_r] )
+
+                    delta[mask_r] = np.log(
+                        g_trial[i, j, mask_r] /
+                        final_oz_results[sname]["g_pred"][i, j, mask_r]
+                    )
+
                     delta_u_accum[i, j] += delta
                     delta_u_accum[j, i] = delta_u_accum[i, j]
-                    max_diff = max(max_diff, np.max(np.abs(g_trial[i, j] - final_oz_results[sname]["g_pred"][i, j])))
 
-            # Apply combined update for attractive potentials only
+                    max_diff = max(
+                        max_diff,
+                        np.max(
+                            np.abs(
+                                g_trial[i, j] -
+                                final_oz_results[sname]["g_pred"][i, j]
+                            )
+                        ),
+                    )
+
+            # Apply combined update
             for (i, j) in attractive_pairs:
                 u_attr_trial[i, j] -= alpha_attr * delta_u_accum[i, j]
                 u_attr_trial[j, i] = u_attr_trial[i, j]
@@ -1154,14 +1169,17 @@ def boltzmann_inversion_advanced(
                 break
 
         # -------------------------------------------------
-        # Save final potentials
+        # Final potential
         # -------------------------------------------------
         u_final = u_repulsive + u_attr_trial
 
         print("\n✅ Final potential (repulsive + attractive) ready for all sigma-fixed pairs.")
 
-        # Optional: plot final attractive fit
+        # -------------------------------------------------
+        # Plot RDF fits (using g_pred)
+        # -------------------------------------------------
         plots_dir.mkdir(parents=True, exist_ok=True)
+
         for sname, sdata in states.items():
             _, _, g_final = multi_component_oz_solver_alpha(
                 r=r,
@@ -1176,7 +1194,7 @@ def boltzmann_inversion_advanced(
 
             for (i, j) in attractive_pairs:
                 plt.figure(figsize=(6, 4))
-                plt.plot(r, sdata["g_target"][i, j], label="g_target", lw=2)
+                plt.plot(r, final_oz_results[sname]["g_pred"][i, j], label="g_pred", lw=2)
                 plt.plot(r, g_ref[sname][i, j], "--", label="g_ref (repulsive)", lw=2)
                 plt.plot(r, g_final[i, j], ":", label="g_final (rep + attr)", lw=2)
                 plt.xlabel("r")
@@ -1184,8 +1202,28 @@ def boltzmann_inversion_advanced(
                 plt.title(f"State: {sname} | Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}")
                 plt.legend()
                 plt.tight_layout()
-                plt.savefig(plots_dir / f"{filename_prefix}_attractive_{sname}_{i}{j}.png", dpi=600)
+                plt.savefig(
+                    plots_dir / f"{filename_prefix}_attractive_{sname}_{i}{j}.png",
+                    dpi=600,
+                )
                 plt.close()
+
+        # -------------------------------------------------
+        # Plot final attractive potentials
+        # -------------------------------------------------
+        for (i, j) in attractive_pairs:
+            plt.figure(figsize=(6, 4))
+            plt.plot(r, u_attr_trial[i, j], label="U_attractive", lw=2)
+            plt.xlabel("r")
+            plt.ylabel(f"U$_{{{i}{j}}}$(r)")
+            plt.title(f"Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}")
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig(
+                plots_dir / f"{filename_prefix}_attractive_potential_{i}{j}.png",
+                dpi=600,
+            )
+            plt.close()
 
             
         
