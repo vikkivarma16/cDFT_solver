@@ -1137,7 +1137,7 @@ def boltzmann_inversion_advanced(
                     mask_r = r > sigma_opt[i, j]  # avoid div by zero
                     delta = np.zeros_like(r)
                     
-                    delta[mask_r] = np.log(g_trial[i, j, mask_r] / final_oz_results[sname]["g_pred"][i, j] )
+                    delta[mask_r] = np.log(g_trial[i, j, mask_r] / final_oz_results[sname]["g_pred"][i, j, mask_r] )
                     delta_u_accum[i, j] += delta
                     delta_u_accum[j, i] = delta_u_accum[i, j]
                     max_diff = max(max_diff, np.max(np.abs(g_trial[i, j] - final_oz_results[sname]["g_pred"][i, j])))
