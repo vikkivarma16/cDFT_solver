@@ -1102,9 +1102,9 @@ def boltzmann_inversion_advanced(
         u_attractive = np.zeros_like(u_matrix)  # initialize attractive
 
         # Initial attractive split
-        for (i, j) in attractive_pairs:
-            u_attractive[i, j] = u_matrix[i, j] - u_repulsive[i, j]
-            u_attractive[j, i] = u_attractive[i, j]
+        #for (i, j) in attractive_pairs:
+        #    u_attractive[i, j] = u_matrix[i, j] - u_repulsive[i, j]
+        #    u_attractive[j, i] = u_attractive[i, j]
 
         # IBI for attractive potentials
         n_iter_attr = 50
