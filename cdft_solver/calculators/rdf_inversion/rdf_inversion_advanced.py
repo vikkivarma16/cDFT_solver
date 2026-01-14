@@ -1140,7 +1140,7 @@ def boltzmann_inversion_advanced(
                     delta[mask_r] = np.log(g_trial[i, j, mask_r] / final_oz_results["sname"]["g_pred"][i, j] )
                     delta_u_accum[i, j] += delta
                     delta_u_accum[j, i] = delta_u_accum[i, j]
-                    max_diff = max(max_diff, np.max(np.abs(g_trial[i, j] - final_oz_results["sname"]["g_pred"][i, j] )))
+                    max_diff = max(max_diff, np.max(np.abs(g_trial[i, j] - final_oz_results["sname"]["g_pred"][i, j])))
 
             # Apply combined update for attractive potentials only
             for (i, j) in attractive_pairs:
