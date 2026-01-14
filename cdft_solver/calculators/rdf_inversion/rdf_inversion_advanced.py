@@ -1150,8 +1150,8 @@ def boltzmann_inversion_advanced(
                         max_diff,
                         np.max(
                             np.abs(
-                                g_trial[i, j] -
-                                final_oz_results[sname]["g_pred"][i, j]
+                                g_trial[i, j, mask_r] -
+                                final_oz_results[sname]["g_pred"][i, j, mask_r]
                             )
                         ),
                     )
@@ -1161,6 +1161,7 @@ def boltzmann_inversion_advanced(
             
                 print ("before :",  u_attr_trial[j, i])
                 
+                print ("masked delta", delta_u_accum[i, j])
                 
                 
                 u_attr_trial[i, j] += alpha_attr * delta_u_accum[i, j]
@@ -1168,7 +1169,7 @@ def boltzmann_inversion_advanced(
                 
             
                 
-                print ("after: ",  u_attr_trial[j, i])
+                print ("after :",  u_attr_trial[j, i])
 
             print(f"Attractive IBI iter {it:3d} | max|Δg| = {max_diff:12.3e}")
 
