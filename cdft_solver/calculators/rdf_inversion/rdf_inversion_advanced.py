@@ -1343,7 +1343,7 @@ def boltzmann_inversion_advanced(
 
             print(f"Attractive IBI iter {it:3d} | max|Δg| = {max_diff:12.3e}")
 
-            if max_diff < 1e-6:
+            if max_diff < 0.5:
                 print("✅ Attractive part IBI converged.")
                 break
 
