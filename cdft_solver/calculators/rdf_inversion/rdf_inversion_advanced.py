@@ -1323,9 +1323,9 @@ def boltzmann_inversion_advanced(
             # Apply combined update
             for (i, j) in attractive_pairs:
             
-                print ("before :",  u_attr_trial[j, i])
+                #print ("before :",  u_attr_trial[j, i])
                 
-                print ("masked delta", delta_u_accum[i, j])
+                #print ("masked delta", delta_u_accum[i, j])
                 
                 
                 u_attr_trial[i, j] += alpha_attr * delta_u_accum[i, j]
@@ -1333,7 +1333,7 @@ def boltzmann_inversion_advanced(
                 
             
                 
-                print ("after :",  u_attr_trial[j, i])
+                #print ("after :",  u_attr_trial[j, i])
 
             print(f"Attractive IBI iter {it:3d} | max|Δg| = {max_diff:12.3e}")
 
