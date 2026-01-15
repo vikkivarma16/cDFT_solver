@@ -1154,12 +1154,6 @@ def boltzmann_inversion_advanced(
             g_trial_opt[sname] = g_trial_state
             
             
-            
-            
-       
-
-          
-          
           
         for sname, sdata in states.items():
 
@@ -1239,7 +1233,7 @@ def boltzmann_inversion_advanced(
         u_repulsive_wca = np.zeros_like(u_matrix)
         u_attractive_wca = np.zeros_like(u_matrix)
     
-        u_repulsive_wca = build_hard_core_u_from_sigma(sigma_opt)
+        u_repulsive_wca = build_hard_core_u_from_sigma(bh_sigma)
         
         
         print (u_repulsive_wca)
@@ -1293,7 +1287,7 @@ def boltzmann_inversion_advanced(
             for (i, j) in hard_core_pairs:
                 plt.figure(figsize=(6, 4))
                 plt.plot(r, final_oz_results[sname]["g_pred"][i, j], label="g_pred", lw=2)
-                plt.plot(r, g_wca[sname][i, j], "--", label="g_ref (repulsive)", lw=2)
+                plt.plot(r, g_wca[sname][i, j], "--", label="g_wca", lw=2)
                 plt.xlabel("r")
                 plt.ylabel(f"g$_{{{i}{j}}}$(r)")
                 plt.title(f"State: {sname} | Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}")
