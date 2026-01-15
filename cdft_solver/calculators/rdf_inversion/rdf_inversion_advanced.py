@@ -898,22 +898,7 @@ def boltzmann_inversion_advanced(
     # PHASE A: Detect hard-core pairs from g(r)
     # -------------------------------------------------
 
-    def detect_first_zero_crossing(r, u_r):
-        """
-        Detect first r where u(r) crosses zero from positive to negative.
-
-        Returns
-        -------
-        r0 : float
-            First zero crossing radius.
-            If not found, returns r[-1].
-        """
-        for k in range(len(r) - 1):
-            if u_r[k] > 0.0 and u_r[k + 1] <= 0.0:
-                # Linear interpolation
-                t = u_r[k] / (u_r[k] - u_r[k + 1])
-                return r[k] + t * (r[k + 1] - r[k])
-        return r[-1]
+    
 
     
     
@@ -923,9 +908,17 @@ def boltzmann_inversion_advanced(
         Barker–Henderson radius with integration truncated
         at the first zero of u(r).
         """
-        r0 = detect_first_zero_crossing(r, u_r)
+        idx_zero = np.where(u_r <= 0)[0]
+        r_tab = r
 
-        mask = r <= r0
+        if len(idx_zero) > 0:
+            # Take the first r where potential becomes zero
+            r_max = r_tab[idx_zero[0]]
+        else:
+            # fallback if potential never crosses zero
+            r_max = r_tab.max()
+        r0 =  r_max
+        mask = r <= r_max
         integrand = 1.0 - np.exp(-beta * u_r[mask])
 
         return np.trapz(integrand, r[mask]), r0
