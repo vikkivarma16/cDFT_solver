@@ -1148,11 +1148,6 @@ def boltzmann_inversion_advanced(
             u_attractive /= num_state
         else:
             raise RuntimeError("No states found for attractive calibration.")
-
-
-        print(u_attractive)        
-        exit (0)
-
         # Initial attractive split
         #for (i, j) in attractive_pairs:
         #    u_attractive[i, j] = u_matrix[i, j] - u_repulsive[i, j]
