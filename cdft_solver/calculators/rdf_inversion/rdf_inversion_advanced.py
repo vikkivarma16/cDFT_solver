@@ -1123,7 +1123,7 @@ def boltzmann_inversion_advanced(
     # -------------------------------------------------
     
     
-    if hard_core_pair :
+    if hard_core_pairs:
         u_repulsive_wca = np.zeros_like(u_matrix)
         u_attractive_wca = np.zeros_like(u_matrix)
     
