@@ -1144,10 +1144,14 @@ def boltzmann_inversion_advanced(
                     u_att[mask_rep] = u_m
                     u_att[mask_att] = u_matrix[i, j][mask_att]
                     u_attractive_wca[i, j] = u_att
-                    u_wca_total[i, j] =  u_attractive_wca[i, j] + u_repulsive_wca[i, j]
+                    u_wca_total[i, j] = u_attractive_wca[i, j] + u_repulsive_wca[i, j]
                     u_wca_total[j, i] = u_wca_total[i, j]  
                     continue
                     
+                    
+        
+        print (u_wca_total)
+        
         
         g_wca = {}
         
@@ -1186,7 +1190,7 @@ def boltzmann_inversion_advanced(
                 plt.close()
 
 
-
+    exit (0)
 
 
 
