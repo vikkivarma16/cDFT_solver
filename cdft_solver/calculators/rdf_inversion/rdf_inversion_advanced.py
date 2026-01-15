@@ -1195,10 +1195,6 @@ def boltzmann_inversion_advanced(
                 plt.close()
 
 
-    exit (0)
-
-
-
 
     # -------------------------------------------------
     # Select all sigma-fixed (hard-core) pairs explicitly
