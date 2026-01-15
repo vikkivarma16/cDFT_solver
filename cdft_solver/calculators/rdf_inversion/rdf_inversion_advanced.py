@@ -1314,7 +1314,7 @@ def boltzmann_inversion_advanced(
         # -------------------------------------------------
         # Hard-core repulsive part
         # -------------------------------------------------
-        u_repulsive = build_hard_core_u_from_sigma(sigma_opt)
+        u_repulsive = build_hard_core_u_from_sigma(bh_sigma)
 
         # Initialize attractive part safely
         u_attractive = np.zeros_like(u_matrix, dtype=float)
@@ -1341,7 +1341,7 @@ def boltzmann_inversion_advanced(
             for (i, j) in attractive_pairs:
 
                 # Only outside hard core
-                mask_r = r > sigma_opt[i, j]
+                mask_r = r > bh_sigma[i, j]
 
                 # Avoid division by zero
                 safe_g_ref = np.maximum(g_ref_state[i, j], eps)
