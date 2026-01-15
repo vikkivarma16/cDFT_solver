@@ -1170,7 +1170,7 @@ def boltzmann_inversion_advanced(
             )
             g_wca[sname] = g_wca_state
             
-            for (i, j) in attractive_pairs:
+            for (i, j) in hard_core_pairs:
                 plt.figure(figsize=(6, 4))
                 plt.plot(r, final_oz_results[sname]["g_pred"][i, j], label="g_pred", lw=2)
                 plt.plot(r, g_wca[sname][i, j], "--", label="g_ref (repulsive)", lw=2)
