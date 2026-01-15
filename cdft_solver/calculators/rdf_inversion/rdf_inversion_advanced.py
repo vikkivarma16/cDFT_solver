@@ -1096,54 +1096,61 @@ def boltzmann_inversion_advanced(
     else:
 
         print("\n🔧 Starting attractive part calibration for sigma-fixed pairs...")
-
-        # Build the initial repulsive + attractive split
-        # Build repulsive hard-core part
+        # -------------------------------------------------
+        # Hard-core repulsive part
+        # -------------------------------------------------
         u_repulsive = build_hard_core_u_from_sigma(sigma_opt)
 
-        # Initialize attractive potential safely
+        # Initialize attractive part safely
         u_attractive = np.zeros_like(u_matrix, dtype=float)
 
+        # Only sigma-fixed (hard-core) pairs
+        attractive_pairs = [
+            (i, j) for i in range(N) for j in range(i, N) if has_core[i, j]
+        ]
+
+        eps = 1e-12
         num_state = 0
-        eps = 1e-12  # numerical safety
 
         for sname, sdata in states.items():
 
             beta_s = float(sdata["beta"])
 
-            # Explicit references
-            g_ref_state = g_ref[sname]                  # shape (N, N, nr)
+            g_ref_state  = g_ref[sname]                     # (N, N, nr)
             g_pred_state = final_oz_results[sname]["g_pred"]
 
-            # Sanity checks (optional but strongly recommended)
+            # Sanity checks
             assert g_ref_state.shape == g_pred_state.shape
             assert g_ref_state.shape == u_attractive.shape
 
-            # Mask: only outside hard core
-            mask = r[None, None, :] > sigma_opt[:, :, None]
+            for (i, j) in attractive_pairs:
 
-            # Avoid division by zero
-            safe_g_ref = np.maximum(g_ref_state, eps)
+                # Only outside hard core
+                mask_r = r > sigma_opt[i, j]
 
-            # Accumulate attractive correction
-            delta_u = (
-                beta_ref
-                * (g_ref_state - g_pred_state)
-                / (safe_g_ref * beta_s)
-            )
+                # Avoid division by zero
+                safe_g_ref = np.maximum(g_ref_state[i, j], eps)
 
-            u_attractive[mask] += delta_u[mask]
+                # Linearized attractive correction
+                delta_u = (
+                    beta_ref
+                    * (g_ref_state[i, j] - g_pred_state[i, j])
+                    / (safe_g_ref * beta_s)
+                )
+
+                u_attractive[i, j, mask_r] += delta_u[mask_r]
+                u_attractive[j, i, mask_r]  = u_attractive[i, j, mask_r]
 
             num_state += 1
 
-        # Final average
+        # Final state average
         if num_state > 0:
             u_attractive /= num_state
         else:
             raise RuntimeError("No states found for attractive calibration.")
-        
-        print (u_attractive)
-        
+
+
+        print(u_attractive)        
         exit (0)
 
         # Initial attractive split
