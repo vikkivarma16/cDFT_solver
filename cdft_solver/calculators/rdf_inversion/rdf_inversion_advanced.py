@@ -284,6 +284,39 @@ def boltzmann_potential_from_gr(g, beta=1.0, g_min=1e-8):
     """
     g_safe = np.maximum(g, g_min)
     return -np.log(g_safe) / beta
+    
+    
+    
+    
+def detect_first_minimum_near_core(r, u_ij, sigma=None):
+    """
+    Detect the first local minimum of u(r) after the hard core.
+    If sigma is provided, search starts slightly above sigma.
+    """
+
+    # Exclude hard-core region
+    if sigma is not None and sigma > 0:
+        mask = r > 1.05 * sigma
+    else:
+        mask = r > r[1]
+
+    r_use = r[mask]
+    u_use = u_ij[mask]
+
+    # Finite difference derivative
+    du = np.gradient(u_use, r_use)
+
+    # Find zero-crossings of derivative (− → +)
+    for k in range(1, len(du) - 1):
+        if du[k - 1] < 0 and du[k] > 0:
+            return r_use[k], u_use[k]
+
+    # Fallback: global minimum (safe)
+    idx = np.argmin(u_use)
+    return r_use[idx], u_use[idx]
+    
+    
+    
 
 
 def process_supplied_rdf_multistate(supplied_data, species, r_grid):
@@ -1085,6 +1118,78 @@ def boltzmann_inversion_advanced(
     # -------------------------------------------------
     # PHASE E: Calibrate attractive part on fixed sigma
     # -------------------------------------------------
+    # -------------------------------------------------
+    # Build WCA repulsive + attractive potentials
+    # -------------------------------------------------
+    
+    
+    if hard_core_pair :
+        u_repulsive_wca = np.zeros_like(u_matrix)
+        u_attractive_wca = np.zeros_like(u_matrix)
+    
+        u_repulsive_wca = build_hard_core_u_from_sigma(sigma_opt)
+        r_minima = {}
+        u_wca_total = u_matrix.copy ()
+        for i in range(N):
+            for j in range(i, N):
+                if not has_core[i, j]:
+                    # Detect first minimum near hard core
+                    r_m, u_m = detect_first_minimum_near_core( r, u_matrix[i, j], sigma=sigma_opt[i, j], )
+
+                    # Perform WCA split
+                    u_rep = np.zeros_like(r)
+                    u_att = np.zeros_like(r)
+                    mask_rep = r <= r_m
+                    mask_att = r > r_m
+                    u_att[mask_rep] = u_m
+                    u_att[mask_att] = u_matrix[i, j][mask_att]
+                    u_attractive_wca[i, j] = u_att
+                    u_wca_total[i, j] =  u_attractive_wca[i, j] + u_repulsive_wca[i, j]
+                    u_wca_total[j, i] = u_wca_total[i, j]  
+                    continue
+                    
+        
+        g_wca = {}
+        
+        
+        
+        for sname, sdata in states.items():
+
+            beta_s = sdata["beta"]
+            rho_s  = sdata["densities"]
+
+            _, _, g_wca_state = multi_component_oz_solver_alpha(
+                r=r,
+                pair_closures=pair_closures,
+                densities=np.asarray(rho_s, float),
+                u_matrix=beta_s * u_wca_total / beta_ref,
+                sigma_matrix=np.zeros((N, N)),
+                n_iter=n_iter,
+                tol=tolerance,
+                alpha_rdf_max=alpha_max,
+            )
+            g_wca[sname] = g_wca_state
+            
+            for (i, j) in attractive_pairs:
+                plt.figure(figsize=(6, 4))
+                plt.plot(r, final_oz_results[sname]["g_pred"][i, j], label="g_pred", lw=2)
+                plt.plot(r, g_wca[sname][i, j], "--", label="g_ref (repulsive)", lw=2)
+                plt.xlabel("r")
+                plt.ylabel(f"g$_{{{i}{j}}}$(r)")
+                plt.title(f"State: {sname} | Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}")
+                plt.legend()
+                plt.tight_layout()
+                plt.savefig(
+                    plots_dir / f"{filename_prefix}_after_splitting_{sname}_{i}{j}.png",
+                    dpi=600,
+                )
+                plt.close()
+
+
+
+
+
+
 
     # -------------------------------------------------
     # Select all sigma-fixed (hard-core) pairs explicitly
@@ -1163,10 +1268,6 @@ def boltzmann_inversion_advanced(
             plt.tight_layout()
             plt.savefig( plots_dir / f"{filename_prefix}_attractive_potential_bi_{i}{j}.png",dpi=600,)
             plt.close()
-        
-        
-        
-        
         
 
         # IBI for attractive potentials
