@@ -923,10 +923,26 @@ def boltzmann_inversion_advanced(
 
     hard_core_pairs = [(i, j) for i in range(N) for j in range(i, N) if has_core[i, j]]
 
+    def hard_core_potential(r, sigma, U0=1e6):
+                u = np.zeros_like(r)
+                u[r < sigma] = U0
+                return u
+
+    def build_hard_core_u_from_sigma(sigma_mat):
+        u = np.zeros_like(u_matrix)
+        for i in range(N):
+            for j in range(i, N):
+                if has_core[i, j]:
+                    u[i, j] = hard_core_potential(r, sigma_mat[i, j])
+                else:
+                    u[i, j] = u_matrix[i, j]
+                u[j, i] =  u[i, j]
+        return u
+
+
     if hard_core_pairs:
 
         print("\n🔧 Starting sigma calibration stage...")
-
         # -------------------------------------------------
         # PHASE B: Build WCA-repulsive reference potential
         # -------------------------------------------------
@@ -979,21 +995,7 @@ def boltzmann_inversion_advanced(
                 k += 1
             return sigma_mat
 
-        def hard_core_potential(r, sigma, U0=1e6):
-                u = np.zeros_like(r)
-                u[r < sigma] = U0
-                return u
-
-        def build_hard_core_u_from_sigma(sigma_mat):
-            u = np.zeros_like(u_matrix)
-            for i in range(N):
-                for j in range(N):
-                    if has_core[i, j]:
-                        u[i, j] = hard_core_potential(r, sigma_mat[i, j])
-                    else:
-                        u[i, j] = u_matrix[i, j]
-            return u
-
+        
 
         def sigma_objective(sigma_vec):
 
@@ -1128,6 +1130,9 @@ def boltzmann_inversion_advanced(
         u_attractive_wca = np.zeros_like(u_matrix)
     
         u_repulsive_wca = build_hard_core_u_from_sigma(sigma_opt)
+        
+        
+        
         r_minima = {}
         u_wca_total = u_matrix.copy ()
         for i in range(N):
