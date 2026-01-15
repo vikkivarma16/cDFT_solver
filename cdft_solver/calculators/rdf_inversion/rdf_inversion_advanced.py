@@ -1244,7 +1244,7 @@ def boltzmann_inversion_advanced(
             for j in range(i, N):
                 if has_core[i, j]:
                     # Detect first minimum near hard core
-                    r_m, u_m = detect_first_minimum_near_core( r, u_matrix[i, j], sigma=sigma_opt[i, j], )
+                    r_m, u_m = detect_first_minimum_near_core( r, u_matrix[i, j], sigma=bh_sigma[i, j], )
 
                     # Perform WCA split
                     u_rep = np.zeros_like(r)
