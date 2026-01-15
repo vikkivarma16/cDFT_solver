@@ -935,7 +935,7 @@ def boltzmann_inversion_advanced(
                 if has_core[i, j]:
                     u[i, j] = hard_core_potential(r, sigma_mat[i, j])
                 else:
-                    u[i, j] = u_matrix[i, j]
+                    u[i, j] = u_matrix[i, j].copy()
                 u[j, i] =  u[i, j]
         return u
 
@@ -955,7 +955,7 @@ def boltzmann_inversion_advanced(
                 if has_core[i, j]:
                     u_ref[i, j] = wca_split(r, u_matrix[i, j])
                 else:
-                    u_ref[i, j] = u_matrix[i, j]
+                    u_ref[i, j] = u_matrix[i, j].copy()
 
         # -------------------------------------------------
         # PHASE C: Compute reference RDFs for ALL states
@@ -1330,7 +1330,7 @@ def boltzmann_inversion_advanced(
             for (i, j) in attractive_pairs:
                 
                 u_attr_trial[i, j] += alpha_attr * delta_u_accum[i, j]
-                r_m, u_m = detect_first_minimum_near_core( r, u_matrix[i, j], sigma=sigma_opt[i, j], )
+                r_m, u_m = detect_first_minimum_near_core( r, u_attr_trial[i, j], sigma=sigma_opt[i, j], )
                 # Perform WCA split
                 u_att = np.zeros_like(r)
                 mask_rep = r <= r_m
