@@ -1116,19 +1116,22 @@ def boltzmann_inversion_advanced(
             
             
         bh_radius = {}
+        bh_zero = {}
 
         for (i, j) in hard_core_pairs:
-            d_bh = compute_bh_radius(
+            d_bh, r0 = compute_bh_radius_truncated(
                 r,
-                u_matrix[i, j],   # FULL potential
+                u_matrix[i, j],   # or u_repulsive_wca[i,j]
                 beta_ref
             )
             bh_radius[(i, j)] = d_bh
+            bh_zero[(i, j)] = r0
 
             print(
-                f"BH radius for pair ({i},{j}): "
+                f"Pair ({i},{j}): r0 = {r0:.4f}, "
                 f"d_BH = {d_bh:.4f}, σ_fit = {sigma_opt[i,j]:.4f}"
             )
+
 
           
           
@@ -1167,12 +1170,22 @@ def boltzmann_inversion_advanced(
                     lw=1.5,
                     label=fr"$\sigma_{{fit}}={sigma_ij:.3f}$",
                 )
+                
+                
                 plt.axvline(
-                    d_bh,
+                    bh_zero[(i, j)],
+                    color="gray",
+                    ls="--",
+                    lw=1.0,
+                    label=r"$r_0$ (u=0)",
+                )
+
+                plt.axvline(
+                    bh_radius[(i, j)],
                     color="r",
                     ls=":",
                     lw=1.5,
-                    label=fr"$d_{{BH}}={d_bh:.3f}$",
+                    label=fr"$d_{{BH}}={bh_radius[(i,j)]:.3f}$",
                 )
 
                 plt.xlabel("r")
