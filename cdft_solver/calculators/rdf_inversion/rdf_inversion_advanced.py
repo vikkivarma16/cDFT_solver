@@ -1412,7 +1412,7 @@ def boltzmann_inversion_advanced(
 
                 # Compute updates only for sigma-fixed pairs
                 for (i, j) in attractive_pairs:
-                    mask_r = r > sigma_opt[i, j]  # avoid divergence near core
+                    mask_r = r > bh_sigma[i, j]  # avoid divergence near core
                     delta = np.zeros_like(r)
 
                     delta[mask_r] = np.log(g_trial[i, j, mask_r] / final_oz_results[sname]["g_pred"][i, j, mask_r])
