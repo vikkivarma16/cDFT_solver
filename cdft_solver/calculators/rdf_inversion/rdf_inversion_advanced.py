@@ -1067,7 +1067,7 @@ def boltzmann_inversion_advanced(
             sigma_objective,
             sigma_init_vec,
             method="Powell",
-            options={"xtol": 1e-4, "ftol": 1e-6, "disp": True},
+            options={"xtol": 1e-6, "ftol": 1e-6, "disp": True},
         )
 
         sigma_opt = unpack_sigma_vector(result.x)
@@ -1083,7 +1083,30 @@ def boltzmann_inversion_advanced(
         plots_dir.mkdir(parents=True, exist_ok=True)
         
         
-        u_trial_opt = build_hard_core_u_from_sigma(sigma_opt)
+        bh_radius = {}
+        bh_zero = {}
+
+        bh_sigma  =  np.zeros_like(sigma_opt)
+        for (i, j) in hard_core_pairs:
+            d_bh, r0 = compute_bh_radius_truncated(
+                r,
+                u_matrix[i, j],   # or u_repulsive_wca[i,j]
+                beta_ref
+            )
+            bh_radius[(i, j)] = d_bh
+            bh_zero[(i, j)] = r0
+            bh_sigma[i, j] = d_bh
+            bh_sigma[j, i] =  bh_sigma[i, j]
+            print(
+                f"Pair ({i},{j}): r0 = {r0:.4f}, "
+                f"d_BH = {d_bh:.4f}, σ_fit = {sigma_opt[i,j]:.4f}"
+            )
+
+        
+        
+        
+        
+        u_trial_opt = build_hard_core_u_from_sigma(bh_sigma)
         
         g_trial_opt = {}
 
@@ -1108,23 +1131,7 @@ def boltzmann_inversion_advanced(
             g_trial_opt[sname] = g_trial_state
             
             
-        bh_radius = {}
-        bh_zero = {}
-
-        for (i, j) in hard_core_pairs:
-            d_bh, r0 = compute_bh_radius_truncated(
-                r,
-                u_matrix[i, j],   # or u_repulsive_wca[i,j]
-                beta_ref
-            )
-            bh_radius[(i, j)] = d_bh
-            bh_zero[(i, j)] = r0
-
-            print(
-                f"Pair ({i},{j}): r0 = {r0:.4f}, "
-                f"d_BH = {d_bh:.4f}, σ_fit = {sigma_opt[i,j]:.4f}"
-            )
-
+       
 
           
           
