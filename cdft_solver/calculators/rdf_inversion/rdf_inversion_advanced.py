@@ -1132,12 +1132,13 @@ def boltzmann_inversion_advanced(
         u_repulsive_wca = build_hard_core_u_from_sigma(sigma_opt)
         
         
+        print (u_repulsive_wca)
         
         r_minima = {}
         u_wca_total = u_matrix.copy ()
         for i in range(N):
             for j in range(i, N):
-                if not has_core[i, j]:
+                if has_core[i, j]:
                     # Detect first minimum near hard core
                     r_m, u_m = detect_first_minimum_near_core( r, u_matrix[i, j], sigma=sigma_opt[i, j], )
 
