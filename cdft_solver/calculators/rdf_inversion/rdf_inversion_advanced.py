@@ -1148,10 +1148,29 @@ def boltzmann_inversion_advanced(
             u_attractive /= num_state
         else:
             raise RuntimeError("No states found for attractive calibration.")
-        # Initial attractive split
-        #for (i, j) in attractive_pairs:
-        #    u_attractive[i, j] = u_matrix[i, j] - u_repulsive[i, j]
-        #    u_attractive[j, i] = u_attractive[i, j]
+        
+        
+        plots_dir.mkdir(parents=True, exist_ok=True)
+
+        
+        for (i, j) in attractive_pairs:
+            plt.figure(figsize=(6, 4))
+            plt.plot(r, u_attr_trial[i, j], label="U_attractive", lw=2)
+            plt.xlabel("r")
+            plt.ylabel(f"U$_{{{i}{j}}}$(r)")
+            plt.title(f"Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}")
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig(
+                plots_dir / f"{filename_prefix}_attractive_potential_bi_{i}{j}.png",
+                dpi=600,
+            )
+            plt.close()
+        
+        
+        
+        
+        
 
         # IBI for attractive potentials
         alpha_attr = 0.1
