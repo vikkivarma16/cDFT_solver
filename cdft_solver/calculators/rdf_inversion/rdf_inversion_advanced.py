@@ -1250,6 +1250,9 @@ def boltzmann_inversion_advanced(
                 )
 
                 u_attractive[i, j, mask_r] += delta_u[mask_r]
+                
+                
+                
                 u_attractive[j, i, mask_r]  = u_attractive[i, j, mask_r]
 
             num_state += 1
@@ -1308,10 +1311,7 @@ def boltzmann_inversion_advanced(
                     mask_r = r > sigma_opt[i, j]  # avoid divergence near core
                     delta = np.zeros_like(r)
 
-                    delta[mask_r] = np.log(
-                        g_trial[i, j, mask_r] /
-                        final_oz_results[sname]["g_pred"][i, j, mask_r]
-                    )
+                    delta[mask_r] = np.log(g_trial[i, j, mask_r] / final_oz_results[sname]["g_pred"][i, j, mask_r])
 
                     delta_u_accum[i, j] += delta
                     delta_u_accum[j, i] = delta_u_accum[i, j]
@@ -1328,18 +1328,18 @@ def boltzmann_inversion_advanced(
 
             # Apply combined update
             for (i, j) in attractive_pairs:
-            
-                #print ("before :",  u_attr_trial[j, i])
-                
-                #print ("masked delta", delta_u_accum[i, j])
-                
                 
                 u_attr_trial[i, j] += alpha_attr * delta_u_accum[i, j]
+                r_m, u_m = detect_first_minimum_near_core( r, u_attr_trial[i, j], sigma=sigma_opt[i, j], )
+                # Perform WCA split
+                u_att = np.zeros_like(r)
+                mask_rep = r <= r_m
+                mask_att = r > r_m
+                u_att[mask_rep] = u_m
+                u_att[mask_att] = u_attr_trial[i, j][mask_att]
+                u_attr_trial[i, j] = u_att
                 u_attr_trial[j, i] = u_attr_trial[i, j]
                 
-            
-                
-                #print ("after :",  u_attr_trial[j, i])
 
             print(f"Attractive IBI iter {it:3d} | max|Δg| = {max_diff:12.3e}")
 
@@ -1381,10 +1381,7 @@ def boltzmann_inversion_advanced(
                 plt.title(f"State: {sname} | Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}")
                 plt.legend()
                 plt.tight_layout()
-                plt.savefig(
-                    plots_dir / f"{filename_prefix}_attractive_{sname}_{i}{j}.png",
-                    dpi=600,
-                )
+                plt.savefig(plots_dir / f"{filename_prefix}_attractive_{sname}_{i}{j}.png", dpi=600,)
                 plt.close()
 
         # -------------------------------------------------
