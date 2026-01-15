@@ -1107,9 +1107,32 @@ def boltzmann_inversion_advanced(
         
         
         u_trial_opt = build_hard_core_u_from_sigma(bh_sigma)
-        
-        g_trial_opt = {}
+        g_trial_bh = {}
+        for sname, sdata in states.items():
 
+            beta_s = sdata["beta"]
+            rho_s = sdata["densities"]
+
+            print(f"\nComputing optimized trial RDF for state {sname}")
+
+            _, _, g_trial_state = multi_component_oz_solver_alpha(
+                r=r,
+                pair_closures=pair_closures,
+                densities=np.asarray(rho_s, float),
+                u_matrix=beta_s * u_trial_opt / beta_ref,
+                sigma_matrix=np.zeros((N, N)),
+                n_iter=n_iter,
+                tol=tolerance,
+                alpha_rdf_max=alpha_max,
+            )
+
+            g_trial_bh[sname] = g_trial_state
+            
+            
+        
+        
+        u_trial_opt = build_hard_core_u_from_sigma(sigma_opt)
+        g_trial_opt = {}
         for sname, sdata in states.items():
 
             beta_s = sdata["beta"]
@@ -1131,6 +1154,8 @@ def boltzmann_inversion_advanced(
             g_trial_opt[sname] = g_trial_state
             
             
+            
+            
        
 
           
@@ -1149,8 +1174,8 @@ def boltzmann_inversion_advanced(
                         g_target[i, j] = sdata["g_target"][i, j]
 
             g_ref_state = g_ref[sname]
-            g_trial_state = g_trial_opt[sname]
-
+            g_state_opt = g_trial_opt[sname]
+            g_state_bh = g_trial_bh[sname]
             for (i, j) in hard_core_pairs:
 
                 d_bh = bh_radius[(i, j)]
@@ -1160,7 +1185,8 @@ def boltzmann_inversion_advanced(
 
                 plt.plot(r, g_target[i, j], label="g_target", lw=2)
                 plt.plot(r, g_ref_state[i, j], "--", label="g_ref (WCA repulsive)", lw=2)
-                plt.plot(r, g_trial_state[i, j], ":", label="g_trial (hard core σ)", lw=2)
+                plt.plot(r, g_state_opt[i, j], ":", label="g_trial_opt (hard core σ)", lw=2)
+                plt.plot(r, g_state_bh[i, j], "-", label="g_trial_bh (hard core σ)", lw=2)
 
                 # Mark effective diameters
                 plt.axvline(
@@ -1170,8 +1196,6 @@ def boltzmann_inversion_advanced(
                     lw=1.5,
                     label=fr"$\sigma_{{fit}}={sigma_ij:.3f}$",
                 )
-                
-                
                 plt.axvline(
                     bh_zero[(i, j)],
                     color="gray",
@@ -1179,7 +1203,6 @@ def boltzmann_inversion_advanced(
                     lw=1.0,
                     label=r"$r_0$ (u=0)",
                 )
-
                 plt.axvline(
                     bh_radius[(i, j)],
                     color="r",
@@ -1187,13 +1210,11 @@ def boltzmann_inversion_advanced(
                     lw=1.5,
                     label=fr"$d_{{BH}}={bh_radius[(i,j)]:.3f}$",
                 )
-
                 plt.xlabel("r")
                 plt.ylabel(f"g$_{{{i}{j}}}$(r)")
                 plt.title(
                     f"State: {sname} | Pair ({i},{j})"
                 )
-
                 plt.legend()
                 plt.tight_layout()
                 plt.savefig(
@@ -1201,8 +1222,6 @@ def boltzmann_inversion_advanced(
                     dpi=600,
                 )
                 plt.close()
-        
-
     else:
         print("\nNo hard-core pairs detected — sigma calibration skipped.")
         
