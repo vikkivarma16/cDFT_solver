@@ -898,6 +898,40 @@ def boltzmann_inversion_advanced(
     # PHASE A: Detect hard-core pairs from g(r)
     # -------------------------------------------------
 
+    def detect_first_zero_crossing(r, u_r):
+        """
+        Detect first r where u(r) crosses zero from positive to negative.
+
+        Returns
+        -------
+        r0 : float
+            First zero crossing radius.
+            If not found, returns r[-1].
+        """
+        for k in range(len(r) - 1):
+            if u_r[k] > 0.0 and u_r[k + 1] <= 0.0:
+                # Linear interpolation
+                t = u_r[k] / (u_r[k] - u_r[k + 1])
+                return r[k] + t * (r[k + 1] - r[k])
+        return r[-1]
+
+    
+    
+    
+    def compute_bh_radius_truncated(r, u_r, beta):
+        """
+        Barker–Henderson radius with integration truncated
+        at the first zero of u(r).
+        """
+        r0 = detect_first_zero_crossing(r, u_r)
+
+        mask = r <= r0
+        integrand = 1.0 - np.exp(-beta * u_r[mask])
+
+        return np.trapz(integrand, r[mask]), r0
+        
+    
+
     sigma_guess = np.zeros((N, N))
     has_core = np.zeros((N, N), dtype=bool)
 
@@ -1080,18 +1114,44 @@ def boltzmann_inversion_advanced(
 
             g_trial_opt[sname] = g_trial_state
             
+            
+        bh_radius = {}
+
+        for (i, j) in hard_core_pairs:
+            d_bh = compute_bh_radius(
+                r,
+                u_matrix[i, j],   # FULL potential
+                beta_ref
+            )
+            bh_radius[(i, j)] = d_bh
+
+            print(
+                f"BH radius for pair ({i},{j}): "
+                f"d_BH = {d_bh:.4f}, σ_fit = {sigma_opt[i,j]:.4f}"
+            )
+
+          
+          
+          
         for sname, sdata in states.items():
+
             fixed_mask = sdata["fixed_mask"]
+
             g_ij = final_oz_results[sname]["g_pred"]
             g_target = g_ij.copy()
-            for i in range (len(species)):
-                for j in range (len(species)):
-                    if (fixed_mask[i, j]):
+
+            for i in range(len(species)):
+                for j in range(len(species)):
+                    if fixed_mask[i, j]:
                         g_target[i, j] = sdata["g_target"][i, j]
+
             g_ref_state = g_ref[sname]
             g_trial_state = g_trial_opt[sname]
 
             for (i, j) in hard_core_pairs:
+
+                d_bh = bh_radius[(i, j)]
+                sigma_ij = sigma_opt[i, j]
 
                 plt.figure(figsize=(6, 4))
 
@@ -1099,16 +1159,34 @@ def boltzmann_inversion_advanced(
                 plt.plot(r, g_ref_state[i, j], "--", label="g_ref (WCA repulsive)", lw=2)
                 plt.plot(r, g_trial_state[i, j], ":", label="g_trial (hard core σ)", lw=2)
 
+                # Mark effective diameters
+                plt.axvline(
+                    sigma_ij,
+                    color="k",
+                    ls="--",
+                    lw=1.5,
+                    label=fr"$\sigma_{{fit}}={sigma_ij:.3f}$",
+                )
+                plt.axvline(
+                    d_bh,
+                    color="r",
+                    ls=":",
+                    lw=1.5,
+                    label=fr"$d_{{BH}}={d_bh:.3f}$",
+                )
+
                 plt.xlabel("r")
                 plt.ylabel(f"g$_{{{i}{j}}}$(r)")
                 plt.title(
-                    f"State: {sname} | Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}"
+                    f"State: {sname} | Pair ({i},{j})"
                 )
 
                 plt.legend()
                 plt.tight_layout()
                 plt.savefig(
-                        plots_dir / f"{filename_prefix}_sigma_{sname}_{i}{j}.png", dpi  =  600 )
+                    plots_dir / f"{filename_prefix}_sigma_BH_{sname}_{i}{j}.png",
+                    dpi=600,
+                )
                 plt.close()
         
 
