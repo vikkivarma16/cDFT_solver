@@ -1371,7 +1371,7 @@ def boltzmann_inversion_standard(
                     
                     
                 for (i, j)  in attractive_pairs:
-                    u_gone[i, j]  += u_attr_trial
+                    u_gone[i, j]  += u_attr_trial[i, j]
                     u_gone[j, i] = u_gone[i, j]
                     
                 
