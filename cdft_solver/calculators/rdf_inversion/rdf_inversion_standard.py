@@ -936,7 +936,6 @@ def boltzmann_inversion_standard(
             for sname, res in final_oz_results.items():
                 g_ij = res["g_pred"][i, j]
                 sigma_s = detect_sigma_from_gr(r, g_ij)
-
                 if sigma_s > 0.0:
                     sigma_candidates.append(sigma_s)
 
@@ -971,33 +970,28 @@ def boltzmann_inversion_standard(
 
         print("\n🔧 Starting sigma calibration stage...")
         # -------------------------------------------------
-        # PHASE B: Build WCA-repulsive reference potential
+        # PHASE B: Build WCA-repulsive reference potential, which could be computed on the same basis where it was derived to be the same number of particles... now the computatoin for
         # -------------------------------------------------
 
-        u_ref = np.zeros_like(u_matrix)
-
+        u_ref = np.zeros_like(u_matrix)   
         for i in range(N):
             for j in range(N):
-
                 if has_core[i, j]:
-                    #u_ref[i, j] = wca_split(r, u_matrix[i, j])
-                    
-                    u_r =  u_matrix[i, j]
-                    bh , r0 =  compute_bh_radius_truncated(r, u_r, beta_ref)
-                    mask  =  r < r0
-                    u_ref[i ,j] =  np.zeros_like(r)
-                    u_ref[i, j, mask] =  u_matrix[i, j, mask]
-                    
-                    print (r0)
-                    
+                    u_ref[i, j] = wca_split(r, u_matrix[i, j])
+                    # u_r =  u_matrix[i, j]
+                    # bh , r0 =  compute_bh_radius_truncated(r, u_r, beta_ref)
+                    # mask  =  r < r0
+                    # u_ref[i ,j] =  np.zeros_like(r)
+                    # u_ref[i, j, mask] =  u_matrix[i, j, mask]
                 else:
                     u_ref[i, j] = u_matrix[i, j].copy()
+        
+        
         # -------------------------------------------------
         # PHASE C: Compute reference RDFs for ALL states
         # -------------------------------------------------
 
         g_ref = {}
-
         for sname, sdata in states.items():
 
             beta_s = sdata["beta"]
@@ -1220,7 +1214,7 @@ def boltzmann_inversion_standard(
                 plt.legend()
                 plt.tight_layout()
                 plt.savefig(
-                    plots_dir / f"{filename_prefix}_sigma_BH_{sname}_{i}{j}.png",
+                    plots_dir / f"Reference_system_analysis_ state_{sname}_pair_{i}{j}.png",
                     dpi=600,
                 )
                 plt.close()
@@ -1240,11 +1234,7 @@ def boltzmann_inversion_standard(
     if hard_core_pairs:
         u_repulsive_wca = np.zeros_like(u_matrix)
         u_attractive_wca = np.zeros_like(u_matrix)
-    
         u_repulsive_wca = build_hard_core_u_from_sigma(bh_sigma)
-        
-        
-        print (u_repulsive_wca)
         
         r_minima = {}
         u_wca_total = u_matrix.copy ()
@@ -1253,7 +1243,6 @@ def boltzmann_inversion_standard(
                 if has_core[i, j]:
                     # Detect first minimum near hard core
                     r_m, u_m = detect_first_minimum_near_core( r, u_matrix[i, j], sigma=bh_sigma[i, j], )
-
                     # Perform WCA split
                     u_rep = np.zeros_like(r)
                     u_att = np.zeros_like(r)
@@ -1266,15 +1255,7 @@ def boltzmann_inversion_standard(
                     u_wca_total[j, i] = u_wca_total[i, j]  
                     continue
                     
-                    
-        
-        print (u_wca_total)
-        
-        
         g_wca = {}
-        
-        
-        
         for sname, sdata in states.items():
 
             beta_s = sdata["beta"]
@@ -1306,9 +1287,7 @@ def boltzmann_inversion_standard(
                     dpi=600,
                 )
                 plt.close()
-
-
-
+                
     # -------------------------------------------------
     # Select all sigma-fixed (hard-core) pairs explicitly
     # -------------------------------------------------
@@ -1322,51 +1301,30 @@ def boltzmann_inversion_standard(
         # -------------------------------------------------
         # Hard-core repulsive part
         # -------------------------------------------------
-        u_repulsive = build_hard_core_u_from_sigma(bh_sigma)
-
+        u_repulsive = build_hard_core_u_from_sigma(sigma_opt)
         # Initialize attractive part safely
         u_attractive = np.zeros_like(u_matrix, dtype=float)
-
         # Only sigma-fixed (hard-core) pairs
-        attractive_pairs = [
-            (i, j) for i in range(N) for j in range(i, N) if has_core[i, j]
-        ]
+        attractive_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] and np.any(u_matrix[i, j] < -1e-3) ]
 
         eps = 1e-12
         num_state = 0
-
         for sname, sdata in states.items():
-
             beta_s = float(sdata["beta"])
-
             g_ref_state  = g_ref[sname]                     # (N, N, nr)
             g_pred_state = final_oz_results[sname]["g_pred"]
-
             # Sanity checks
             assert g_ref_state.shape == g_pred_state.shape
             assert g_ref_state.shape == u_attractive.shape
-
             for (i, j) in attractive_pairs:
-
                 # Only outside hard core
-                mask_r = r > bh_sigma[i, j]
-
+                mask_r = r > sigma_opt[i, j]
                 # Avoid division by zero
                 safe_g_ref = np.maximum(g_ref_state[i, j], eps)
-
                 # Linearized attractive correction
-                delta_u = (
-                    beta_ref
-                    * (g_ref_state[i, j] - g_pred_state[i, j])
-                    / (safe_g_ref * beta_s)
-                )
-
+                delta_u = ( beta_ref * (g_ref_state[i, j] - g_pred_state[i, j]) / (safe_g_ref * beta_s))
                 u_attractive[i, j, mask_r] += delta_u[mask_r]
-                
-                
-                
                 u_attractive[j, i, mask_r]  = u_attractive[i, j, mask_r]
-
             num_state += 1
 
         # Final state average
@@ -1377,8 +1335,6 @@ def boltzmann_inversion_standard(
         
         
         plots_dir.mkdir(parents=True, exist_ok=True)
-
-        
         for (i, j) in attractive_pairs:
             plt.figure(figsize=(6, 4))
             plt.plot(r, u_attractive[i, j], label="U_attractive", lw=2)
@@ -1387,7 +1343,7 @@ def boltzmann_inversion_standard(
             plt.title(f"Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}")
             plt.legend()
             plt.tight_layout()
-            plt.savefig( plots_dir / f"{filename_prefix}_attractive_potential_bi_{i}{j}.png",dpi=600,)
+            plt.savefig( plots_dir / f"attractive_potential_before_inversion_{i}{j}.png",dpi=600,)
             plt.close()
         
 
@@ -1407,11 +1363,23 @@ def boltzmann_inversion_standard(
                 fixed_mask = sdata["fixed_mask"]
 
                 # Compute RDF for current trial potential
+                
+                u_gone  =  u_matrix.copy()
+                for (i, j) in hard_core_pairs:
+                    u_gone[i, j] =  u_repulsive [i, j]
+                    u_gone[j, i] =  u_gone[i, j]
+                    
+                    
+                for (i, j)  in attractive_pairs:
+                    u_gone[i, j]  += u_attr_trial
+                    u_gone[j, i] = u_gone[i, j]
+                    
+                
                 _, _, g_trial = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(rho_s, float),
-                    u_matrix=beta_s * (u_repulsive + u_attr_trial) / beta_ref,
+                    u_matrix=beta_s * (u_gone) / beta_ref,
                     sigma_matrix=np.zeros((N, N)),
                     n_iter=n_iter,
                     tol=tolerance,
@@ -1483,7 +1451,7 @@ def boltzmann_inversion_standard(
                 alpha_rdf_max=alpha_max,
             )
 
-            for (i, j) in attractive_pairs:
+            for (i, j) in hard_core_pairs:
                 plt.figure(figsize=(6, 4))
                 plt.plot(r, final_oz_results[sname]["g_pred"][i, j], label="g_pred", lw=2)
                 plt.plot(r, g_ref[sname][i, j], "--", label="g_ref (repulsive)", lw=2)
@@ -1493,7 +1461,7 @@ def boltzmann_inversion_standard(
                 plt.title(f"State: {sname} | Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}")
                 plt.legend()
                 plt.tight_layout()
-                plt.savefig(plots_dir / f"{filename_prefix}_attractive_{sname}_{i}{j}.png", dpi=600,)
+                plt.savefig(plots_dir / f"Repulsive_plus_attractive_{sname}_{i}{j}.png", dpi=600,)
                 plt.close()
 
         # -------------------------------------------------
@@ -1508,7 +1476,7 @@ def boltzmann_inversion_standard(
             plt.legend()
             plt.tight_layout()
             plt.savefig(
-                plots_dir / f"{filename_prefix}_attractive_potential_{i}{j}.png",
+                plots_dir / f"Attractive_potential_{i}{j}.png",
                 dpi=600,
             )
             plt.close()
