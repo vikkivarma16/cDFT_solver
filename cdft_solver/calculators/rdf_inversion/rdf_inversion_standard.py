@@ -965,7 +965,7 @@ def boltzmann_inversion_standard(
                 u[j, i] =  u[i, j]
         return u
 
-
+    total_pair = [ (i, j) for i in range(N) for j in range(i, N) ]
     if hard_core_pairs:
 
         print("\n🔧 Starting sigma calibration stage...")
@@ -1437,6 +1437,7 @@ def boltzmann_inversion_standard(
         # Plot RDF fits (using g_pred)
         # -------------------------------------------------
         plots_dir.mkdir(parents=True, exist_ok=True)
+        total_pair = [ (i, j) for i in range(N) for j in range(i, N) ]
 
         for sname, sdata in states.items():
             _, _, g_final = multi_component_oz_solver_alpha(
@@ -1450,7 +1451,7 @@ def boltzmann_inversion_standard(
                 alpha_rdf_max=alpha_max,
             )
             
-            total_pair = [ (i, j) for i in range(N) for j in range(i, N) ]
+            
 
             for (i, j) in total_pair:
                 plt.figure(figsize=(6, 4))
