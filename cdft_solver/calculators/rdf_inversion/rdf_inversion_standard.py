@@ -1312,7 +1312,7 @@ def boltzmann_inversion_standard(
             beta_s = float(sdata["beta"])
             g_ref_state  = g_ref[sname]                     # (N, N, nr)
             g_pred_state = final_oz_results[sname]["g_pred"]
-            # Sanity checks
+            # Sanity checksplt.plot(r, u_attr_trial[i, j], label="U_attractive", lw=2)
             assert g_ref_state.shape == g_pred_state.shape
             assert g_ref_state.shape == u_attractive.shape
             for (i, j) in attractive_pairs:
@@ -1387,7 +1387,7 @@ def boltzmann_inversion_standard(
 
                 # Compute updates only for sigma-fixed pairs
                 for (i, j) in attractive_pairs:
-                    mask_r = r > bh_sigma[i, j]  # avoid divergence near core
+                    mask_r = r > sigma_opt[i, j]  # avoid divergence near core
                     delta = np.zeros_like(r)
 
                     delta[mask_r] = np.log(g_trial[i, j, mask_r] / final_oz_results[sname]["g_pred"][i, j, mask_r])
@@ -1449,8 +1449,10 @@ def boltzmann_inversion_standard(
                 tol=tolerance,
                 alpha_rdf_max=alpha_max,
             )
+            
+            total_pair = [ (i, j) for i in range(N) for j in range(i, N) ]
 
-            for (i, j) in hard_core_pairs:
+            for (i, j) in total_pair:
                 plt.figure(figsize=(6, 4))
                 plt.plot(r, final_oz_results[sname]["g_pred"][i, j], label="g_pred", lw=2)
                 plt.plot(r, g_ref[sname][i, j], "--", label="g_ref (repulsive)", lw=2)
@@ -1466,7 +1468,7 @@ def boltzmann_inversion_standard(
         # -------------------------------------------------
         # Plot final attractive potentials
         # -------------------------------------------------
-        for (i, j) in attractive_pairs:
+        for (i, j) in total_pair:
             plt.figure(figsize=(6, 4))
             plt.plot(r, u_attr_trial[i, j], label="U_attractive", lw=2)
             plt.plot(r, u_matrix[i, j], "--", label="U_total", lw=2)
