@@ -1470,6 +1470,7 @@ def boltzmann_inversion_standard(
             plt.figure(figsize=(6, 4))
             plt.plot(r, u_attr_trial[i, j], label="U_attractive", lw=2)
             plt.plot(r, u_matrix[i, j], "--", label="U_total", lw=2)
+            plt.ylim(-1,0.5)
             plt.xlabel("r")
             plt.ylabel(f"U$_{{{i}{j}}}$(r)")
             plt.title(f"Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}")
