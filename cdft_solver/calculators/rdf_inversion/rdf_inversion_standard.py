@@ -1291,8 +1291,7 @@ def boltzmann_inversion_standard(
     # -------------------------------------------------
     # Select all sigma-fixed (hard-core) pairs explicitly
     # -------------------------------------------------
-    attractive_pairs = [(i, j) for i in range(N) for j in range(i, N) if  has_core[i, j]]
-
+    attractive_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] and np.any(u_matrix[i, j] < -1e-4) ]
     if not attractive_pairs:
         print("No hard-core pairs → no attractive calibration needed.")
     else:
@@ -1305,8 +1304,8 @@ def boltzmann_inversion_standard(
         # Initialize attractive part safely
         u_attractive = np.zeros_like(u_matrix, dtype=float)
         # Only sigma-fixed (hard-core) pairs
-        attractive_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] and np.any(u_matrix[i, j] < -1e-3) ]
-
+        attractive_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] and np.any(u_matrix[i, j] < -1e-4) ]
+        
         eps = 1e-12
         num_state = 0
         for sname, sdata in states.items():
@@ -1470,6 +1469,7 @@ def boltzmann_inversion_standard(
         for (i, j) in attractive_pairs:
             plt.figure(figsize=(6, 4))
             plt.plot(r, u_attr_trial[i, j], label="U_attractive", lw=2)
+            plt.plot(r, u_matrix[i, j], "--", label="U_total", lw=2)
             plt.xlabel("r")
             plt.ylabel(f"U$_{{{i}{j}}}$(r)")
             plt.title(f"Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}")
