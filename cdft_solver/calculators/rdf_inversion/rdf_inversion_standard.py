@@ -1049,7 +1049,7 @@ def boltzmann_inversion_standard(
                     alpha_rdf_max=alpha_max,
                 )
 
-                for (i, j) in hard_core_pairs:
+                for (i, j) in total_pair:
                     diff = g_trial[i, j] - g_ref[sname][i, j]
                     loss += np.sum(diff * diff)
 
@@ -1283,7 +1283,7 @@ def boltzmann_inversion_standard(
                 plt.legend()
                 plt.tight_layout()
                 plt.savefig(
-                    plots_dir / f"{filename_prefix}_after_splitting_{sname}_{i}{j}.png",
+                    plots_dir / f"After_wca_splitting_{sname}_{i}{j}.png",
                     dpi=600,
                 )
                 plt.close()
@@ -1322,7 +1322,7 @@ def boltzmann_inversion_standard(
                 safe_g_ref = np.maximum(g_ref_state[i, j], eps)
                 # Linearized attractive correction
                 delta_u = ( beta_ref * (g_ref_state[i, j] - g_pred_state[i, j]) / (safe_g_ref * beta_s))
-                u_attractive[i, j, mask_r] += delta_u[mask_r]
+                u_attractive[i, j, mask_r]  = delta_u[mask_r]
                 u_attractive[j, i, mask_r]  = u_attractive[i, j, mask_r]
             num_state += 1
 
@@ -1391,7 +1391,7 @@ def boltzmann_inversion_standard(
                     delta = np.zeros_like(r)
 
                     delta[mask_r] = np.log(g_trial[i, j, mask_r] / final_oz_results[sname]["g_pred"][i, j, mask_r])
-
+                    
                     delta_u_accum[i, j] += delta
                     delta_u_accum[j, i] = delta_u_accum[i, j]
 
