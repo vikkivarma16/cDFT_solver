@@ -992,9 +992,6 @@ def boltzmann_inversion_standard(
                     
                 else:
                     u_ref[i, j] = u_matrix[i, j].copy()
-                    
-        exit(0)
-
         # -------------------------------------------------
         # PHASE C: Compute reference RDFs for ALL states
         # -------------------------------------------------
