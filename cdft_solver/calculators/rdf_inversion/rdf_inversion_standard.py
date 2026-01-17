@@ -966,6 +966,19 @@ def boltzmann_inversion_standard(
         return u
 
     total_pair = [ (i, j) for i in range(N) for j in range(i, N) ]
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     if hard_core_pairs:
 
         print("\n🔧 Starting sigma calibration stage...")
@@ -996,9 +1009,7 @@ def boltzmann_inversion_standard(
 
             beta_s = sdata["beta"]
             rho_s = sdata["densities"]
-
             print(f"\nComputing reference RDF for state {sname}")
-
             _, _, g_ref_state = multi_component_oz_solver_alpha(
                 r=r,
                 pair_closures=pair_closures,
@@ -1027,17 +1038,13 @@ def boltzmann_inversion_standard(
         
 
         def sigma_objective(sigma_vec):
-
             sigma_mat = unpack_sigma_vector(sigma_vec)
             u_trial = build_hard_core_u_from_sigma(sigma_mat)
-
             loss = 0.0
 
             for sname, sdata in states.items():
-
                 beta_s = sdata["beta"]
                 rho_s = sdata["densities"]
-
                 _, _, g_trial = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
@@ -1060,34 +1067,21 @@ def boltzmann_inversion_standard(
         # -------------------------------------------------
 
         sigma_init_vec = np.array([sigma_guess[i, j] for (i, j) in hard_core_pairs])
-
         print("\nOptimizing sigma collectively across all states and pairs...")
-        
-        
-
         result = minimize(
             sigma_objective,
             sigma_init_vec,
             method="Powell",
             options={"xtol": 1e-6, "ftol": 1e-6, "disp": True},
         )
-
         sigma_opt = unpack_sigma_vector(result.x)
-
-        print("\n✅ Final optimized sigma matrix:")
-        for (i, j) in hard_core_pairs:
-            print(f"σ[{i},{j}] = {sigma_opt[i, j]:.4f}")
-            
         
         
-        plots_dir = getattr(ctx, "plots_dir", ctx.scratch_dir)
-        plots_dir = Path(plots_dir)
-        plots_dir.mkdir(parents=True, exist_ok=True)
+        
         
         
         bh_radius = {}
         bh_zero = {}
-
         bh_sigma  =  np.zeros_like(sigma_opt)
         for (i, j) in hard_core_pairs:
             d_bh, r0 = compute_bh_radius_truncated(
@@ -1099,392 +1093,384 @@ def boltzmann_inversion_standard(
             bh_zero[(i, j)] = r0
             bh_sigma[i, j] = d_bh
             bh_sigma[j, i] =  bh_sigma[i, j]
-            print(
-                f"Pair ({i},{j}): r0 = {r0:.4f}, "
-                f"d_BH = {d_bh:.4f}, σ_fit = {sigma_opt[i,j]:.4f}"
-            )
-
-        
-        
-        
-        
-        u_trial_opt = build_hard_core_u_from_sigma(bh_sigma)
-        g_trial_bh = {}
-        for sname, sdata in states.items():
-
-            beta_s = sdata["beta"]
-            rho_s = sdata["densities"]
-
-            print(f"\nComputing optimized trial RDF for state {sname}")
-
-            _, _, g_trial_state = multi_component_oz_solver_alpha(
-                r=r,
-                pair_closures=pair_closures,
-                densities=np.asarray(rho_s, float),
-                u_matrix=beta_s * u_trial_opt / beta_ref,
-                sigma_matrix=np.zeros((N, N)),
-                n_iter=n_iter,
-                tol=tolerance,
-                alpha_rdf_max=alpha_max,
-            )
-
-            g_trial_bh[sname] = g_trial_state
-            
             
         
         
-        u_trial_opt = build_hard_core_u_from_sigma(sigma_opt)
-        g_trial_opt = {}
-        for sname, sdata in states.items():
-
-            beta_s = sdata["beta"]
-            rho_s = sdata["densities"]
-
-            print(f"\nComputing optimized trial RDF for state {sname}")
-
-            _, _, g_trial_state = multi_component_oz_solver_alpha(
-                r=r,
-                pair_closures=pair_closures,
-                densities=np.asarray(rho_s, float),
-                u_matrix=beta_s * u_trial_opt / beta_ref,
-                sigma_matrix=np.zeros((N, N)),
-                n_iter=n_iter,
-                tol=tolerance,
-                alpha_rdf_max=alpha_max,
-            )
-
-            g_trial_opt[sname] = g_trial_state
-            
-            
-          
-        for sname, sdata in states.items():
-
-            fixed_mask = sdata["fixed_mask"]
-
-            g_ij = final_oz_results[sname]["g_pred"]
-            g_target = g_ij.copy()
-
-            for i in range(len(species)):
-                for j in range(len(species)):
-                    if fixed_mask[i, j]:
-                        g_target[i, j] = sdata["g_target"][i, j]
-
-            g_ref_state = g_ref[sname]
-            g_state_opt = g_trial_opt[sname]
-            g_state_bh = g_trial_bh[sname]
-            for (i, j) in hard_core_pairs:
-
-                d_bh = bh_radius[(i, j)]
-                sigma_ij = sigma_opt[i, j]
-
-                plt.figure(figsize=(6, 4))
-
-                plt.plot(r, g_target[i, j], label="g_target", lw=2)
-                plt.plot(r, g_ref_state[i, j], "--", label="g_ref (WCA repulsive)", lw=2)
-                plt.plot(r, g_state_opt[i, j], ":", label="g_trial_opt (hard core σ)", lw=2)
-                plt.plot(r, g_state_bh[i, j], "-", label="g_trial_bh (hard core σ)", lw=2)
-
-                # Mark effective diameters
-                plt.axvline(
-                    sigma_ij,
-                    color="k",
-                    ls="--",
-                    lw=1.5,
-                    label=fr"$\sigma_{{fit}}={sigma_ij:.3f}$",
-                )
-                plt.axvline(
-                    bh_zero[(i, j)],
-                    color="gray",
-                    ls="--",
-                    lw=1.0,
-                    label=r"$r_0$ (u=0)",
-                )
-                plt.axvline(
-                    bh_radius[(i, j)],
-                    color="r",
-                    ls=":",
-                    lw=1.5,
-                    label=fr"$d_{{BH}}={bh_radius[(i,j)]:.3f}$",
-                )
-                plt.xlabel("r")
-                plt.ylabel(f"g$_{{{i}{j}}}$(r)")
-                plt.title(
-                    f"State: {sname} | Pair ({i},{j})"
-                )
-                plt.legend()
-                plt.tight_layout()
-                plt.savefig(
-                    plots_dir / f"Reference_system_analysis_ state_{sname}_pair_{i}{j}.png",
-                    dpi=600,
-                )
-                plt.close()
-    else:
-        print("\nNo hard-core pairs detected — sigma calibration skipped.")
-        
-        
-        
-    # -------------------------------------------------
-    # PHASE E: Calibrate attractive part on fixed sigma
-    # -------------------------------------------------
-    # -------------------------------------------------
-    # Build WCA repulsive + attractive potentials
-    # -------------------------------------------------
-    
-    
-    if hard_core_pairs:
-        u_repulsive_wca = np.zeros_like(u_matrix)
-        u_attractive_wca = np.zeros_like(u_matrix)
-        u_repulsive_wca = build_hard_core_u_from_sigma(bh_sigma)
-        
-        r_minima = {}
-        u_wca_total = u_matrix.copy ()
-        for i in range(N):
-            for j in range(i, N):
-                if has_core[i, j]:
-                    # Detect first minimum near hard core
-                    r_m, u_m = detect_first_minimum_near_core( r, u_matrix[i, j], sigma=bh_sigma[i, j], )
-                    # Perform WCA split
-                    u_rep = np.zeros_like(r)
-                    u_att = np.zeros_like(r)
-                    mask_rep = r <= r_m
-                    mask_att = r > r_m
-                    u_att[mask_rep] = u_m
-                    u_att[mask_att] = u_matrix[i, j][mask_att]
-                    u_attractive_wca[i, j] = u_att
-                    u_wca_total[i, j] = u_attractive_wca[i, j] + u_repulsive_wca[i, j]
-                    u_wca_total[j, i] = u_wca_total[i, j]  
-                    continue
-                    
-        g_wca = {}
-        for sname, sdata in states.items():
-
-            beta_s = sdata["beta"]
-            rho_s  = sdata["densities"]
-
-            _, _, g_wca_state = multi_component_oz_solver_alpha(
-                r=r,
-                pair_closures=pair_closures,
-                densities=np.asarray(rho_s, float),
-                u_matrix=beta_s * u_wca_total / beta_ref,
-                sigma_matrix=np.zeros((N, N)),
-                n_iter=n_iter,
-                tol=tolerance,
-                alpha_rdf_max=alpha_max,
-            )
-            g_wca[sname] = g_wca_state
-            
-            for (i, j) in hard_core_pairs:
-                plt.figure(figsize=(6, 4))
-                plt.plot(r, final_oz_results[sname]["g_pred"][i, j], label="g_pred", lw=2)
-                plt.plot(r, g_wca[sname][i, j], "--", label="g_wca", lw=2)
-                plt.xlabel("r")
-                plt.ylabel(f"g$_{{{i}{j}}}$(r)")
-                plt.title(f"State: {sname} | Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}")
-                plt.legend()
-                plt.tight_layout()
-                plt.savefig(
-                    plots_dir / f"After_wca_splitting_{sname}_{i}{j}.png",
-                    dpi=600,
-                )
-                plt.close()
-                
-    # -------------------------------------------------
-    # Select all sigma-fixed (hard-core) pairs explicitly
-    # -------------------------------------------------
-    attractive_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] and np.any(u_matrix[i, j] < -1e-4) ]
-    if not attractive_pairs:
-        print("No hard-core pairs → no attractive calibration needed.")
-    else:
-
-        print("\n🔧 Starting attractive part calibration for sigma-fixed pairs...")
-        # -------------------------------------------------
-        # Hard-core repulsive part
-        # -------------------------------------------------
-        u_repulsive = build_hard_core_u_from_sigma(sigma_opt)
-        # Initialize attractive part safely
-        u_attractive = np.zeros_like(u_matrix, dtype=float)
-        # Only sigma-fixed (hard-core) pairs
-        attractive_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] and np.any(u_matrix[i, j] < -1e-4) ]
-        
-        eps = 1e-12
-        num_state = 0
-        for sname, sdata in states.items():
-            beta_s = float(sdata["beta"])
-            g_ref_state  = g_ref[sname]                     # (N, N, nr)
-            g_pred_state = final_oz_results[sname]["g_pred"]
-            # Sanity checksplt.plot(r, u_attr_trial[i, j], label="U_attractive", lw=2)
-            assert g_ref_state.shape == g_pred_state.shape
-            assert g_ref_state.shape == u_attractive.shape
-            for (i, j) in attractive_pairs:
-                # Only outside hard core
-                mask_r = r > sigma_opt[i, j]
-                # Avoid division by zero
-                safe_g_ref = np.maximum(g_ref_state[i, j], eps)
-                # Linearized attractive correction
-                delta_u = ( beta_ref * (g_ref_state[i, j] - g_pred_state[i, j]) / (safe_g_ref * beta_s))
-                u_attractive[i, j, mask_r]  = delta_u[mask_r]
-                u_attractive[j, i, mask_r]  = u_attractive[i, j, mask_r]
-            num_state += 1
-
-        # Final state average
-        if num_state > 0:
-            u_attractive /= num_state
-        else:
-            raise RuntimeError("No states found for attractive calibration.")
-        
-        
-        plots_dir.mkdir(parents=True, exist_ok=True)
-        for (i, j) in attractive_pairs:
-            plt.figure(figsize=(6, 4))
-            plt.plot(r, u_attractive[i, j], label="U_attractive", lw=2)
-            plt.xlabel("r")
-            plt.ylabel(f"U$_{{{i}{j}}}$(r)")
-            plt.title(f"Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}")
-            plt.legend()
-            plt.tight_layout()
-            plt.savefig( plots_dir / f"attractive_potential_before_inversion_{i}{j}.png",dpi=600,)
-            plt.close()
-        
-
-        # IBI for attractive potentials
-        alpha_attr = 0.1
-
-        u_attr_trial = u_attractive.copy()
-
-        for it in range(1, n_iter_ibi + 1):
-
-            max_diff = 0.0
-            delta_u_accum = np.zeros_like(u_attr_trial)
+        def compute_repulsive_gr(sigma_mat):
+            """
+            Compute RDFs using ONLY hard-core repulsion defined by sigma_mat.
+            """
+            g_store = {}
+            u_rep = build_hard_core_u_from_sigma(sigma_mat)
 
             for sname, sdata in states.items():
-                beta_s = sdata["beta"]
-                rho_s = sdata["densities"]
-                fixed_mask = sdata["fixed_mask"]
-
-                # Compute RDF for current trial potential
-                
-                u_gone  =  u_matrix.copy()
-                for (i, j) in hard_core_pairs:
-                    u_gone[i, j] =  u_repulsive [i, j]
-                    u_gone[j, i] =  u_gone[i, j]
-                    
-                    
-                for (i, j)  in attractive_pairs:
-                    u_gone[i, j]  += u_attr_trial[i, j]
-                    u_gone[j, i] = u_gone[i, j]
-                    
-                
-                _, _, g_trial = multi_component_oz_solver_alpha(
+                _, _, g_state = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
-                    densities=np.asarray(rho_s, float),
-                    u_matrix=beta_s * (u_gone) / beta_ref,
+                    densities=np.asarray(sdata["densities"], float),
+                    u_matrix=sdata["beta"] * u_rep / beta_ref,
                     sigma_matrix=np.zeros((N, N)),
                     n_iter=n_iter,
                     tol=tolerance,
                     alpha_rdf_max=alpha_max,
                 )
+                g_store[sname] = g_state
 
-                # Compute updates only for sigma-fixed pairs
+            return g_store
+
+
+        # Repulsive RDFs using optimized sigma
+        g_rep_sigma_opt = compute_repulsive_gr(sigma_opt)
+        # Repulsive RDFs using Barker–Henderson sigma
+        g_rep_sigma_bh = compute_repulsive_gr(bh_sigma)
+        # ============================================================
+        # PHASE 7 — Save reference package (JSON)
+        # ============================================================
+        reference_package = {
+            # --- sigmas ---
+            "sigma_opt": sigma_opt.tolist(),
+            "sigma_bh": bh_sigma.tolist(),
+
+            # --- BH metadata ---
+            "bh_meta": {
+                f"{i},{j}": {
+                    "d_bh": bh_meta[(i, j)]["d_bh"],
+                    "r0": bh_meta[(i, j)]["r0"],
+                }
+                for (i, j) in bh_meta
+            },
+
+            # --- reference RDFs ---
+            "g_ref_wca": {k: v.tolist() for k, v in g_ref.items()},
+            "g_rep_sigma_opt": {k: v.tolist() for k, v in g_rep_sigma_opt.items()},
+            "g_rep_sigma_bh": {k: v.tolist() for k, v in g_rep_sigma_bh.items()},
+
+            # --- target RDFs ---
+            "g_target": {
+                k: v["g_pred"].tolist() for k, v in final_oz_results.items()
+            },
+        }
+
+        with open("result_sigma_analysis.json", "w") as f:
+            json.dump(reference_package, f, indent=2)
+
+        print("✅ Saved Sigma_package.json")
+
+                
+        
+        
+        
+        
+        # ============================================================
+        # PHASE 8 — WCA splitting RDFs (σ_BH vs σ_opt)
+        # ============================================================
+
+        def compute_wca_gr(sigma_mat):
+            """
+            Compute RDFs after WCA splitting using a given hard-core sigma.
+            Repulsive part: hard core from sigma_mat
+            Attractive part: shifted tail beyond first minimum
+            """
+            u_repulsive = build_hard_core_u_from_sigma(sigma_mat)
+            u_attractive = np.zeros_like(u_matrix)
+            u_wca_total = np.zeros_like(u_matrix)
+            r_minima = {}
+            attractive_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] and np.any(u_matrix[i, j] < -1e-4) ]
+            for i in range(N):
+                for j in range(i, N):
+                    if attractive_pairs[i, j]:
+                        # Detect first minimum close to the hard core
+                        r_m, u_m = detect_first_minimum_near_core(
+                            r,
+                            u_matrix[i, j],
+                            sigma=sigma_mat[i, j],
+                        )
+                        r_minima[(i, j)] = r_m
+                        u_att = np.zeros_like(r)
+                        mask_rep = r <= r_m
+                        mask_att = r > r_m
+                        # WCA attractive tail
+                        u_att[mask_rep] = u_m
+                        u_att[mask_att] = u_matrix[i, j][mask_att]
+                        u_attractive[i, j] = u_att
+                        u_attractive[j, i] = u_att
+                        u_wca_total[i, j] = u_repulsive[i, j] + u_att
+                        u_wca_total[j, i] = u_wca_total[i, j]
+                    else:
+                        # No hard core → keep original interaction
+                        u_wca_total[i, j] = u_matrix[i, j]
+                        u_wca_total[j, i] = u_matrix[j, i]
+
+            # ---- Compute RDFs for all states ----
+            g_wca = {}
+            for sname, sdata in states.items():
+                _, _, g_state = multi_component_oz_solver_alpha(
+                    r=r,
+                    pair_closures=pair_closures,
+                    densities=np.asarray(sdata["densities"], float),
+                    u_matrix=sdata["beta"] * u_wca_total / beta_ref,
+                    sigma_matrix=np.zeros((N, N)),
+                    n_iter=n_iter,
+                    tol=tolerance,
+                    alpha_rdf_max=alpha_max,
+                )
+                g_wca[sname] = g_state
+
+            return g_wca, r_minima
+
+
+        # ------------------------------------------------------------
+        # Compute WCA RDFs for both sigma definitions
+        # ------------------------------------------------------------
+
+        g_wca_sigma_bh, rmin_bh = compute_wca_gr(bh_sigma)
+        g_wca_sigma_opt, rmin_opt = compute_wca_gr(sigma_opt)
+
+
+        # ============================================================
+        # PHASE 9 — Export WCA diagnostics to JSON
+        # ============================================================
+
+        wca_package = {
+            "sigma_bh": bh_sigma.tolist(),
+            "sigma_opt": sigma_opt.tolist(),
+
+            "rmin_bh": {f"{i},{j}": float(v) for (i, j), v in rmin_bh.items()},
+            "rmin_opt": {f"{i},{j}": float(v) for (i, j), v in rmin_opt.items()},
+
+            "g_wca_sigma_bh": {k: v.tolist() for k, v in g_wca_sigma_bh.items()},
+            "g_wca_sigma_opt": {k: v.tolist() for k, v in g_wca_sigma_opt.items()},
+
+            "g_pred": {
+                k: v["g_pred"].tolist() for k, v in final_oz_results.items()
+            },
+        }
+
+        with open("result_wca_gr_comparison.json", "w") as f:
+            json.dump(wca_package, f, indent=2)
+
+        print("✅ Saved wca_gr_comparison_package.json")
+
+                
+        
+        
+        
+        
+        
+        
+        
+        
+        # ============================================================
+        # PHASE 10 — Attractive calibration (σ_opt vs σ_BH)
+        # ============================================================
+
+        def run_attractive_calibration(sigma_mat, label):
+            """
+            Run attractive-part calibration for a given sigma definition.
+            Returns final attractive potential, total potential, and RDFs.
+            """
+
+            print(f"\n🔧 Starting attractive calibration using {label}")
+
+            # -------------------------------------------------
+            # Select sigma-fixed attractive pairs
+            # -------------------------------------------------
+            attractive_pairs = [
+                (i, j)
+                for i in range(N)
+                for j in range(i, N)
+                if has_core[i, j] and np.any(u_matrix[i, j] < -1e-4)
+            ]
+
+            if not attractive_pairs:
+                print("No hard-core attractive pairs found.")
+                return None
+
+            # -------------------------------------------------
+            # Repulsive hard-core part
+            # -------------------------------------------------
+            u_repulsive = build_hard_core_u_from_sigma(sigma_mat)
+
+            # -------------------------------------------------
+            # Initial attractive estimate (linearized OZ)
+            # -------------------------------------------------
+            u_attractive = np.zeros_like(u_matrix, dtype=float)
+
+            eps = 1e-12
+            num_state = 0
+
+            for sname, sdata in states.items():
+                beta_s = float(sdata["beta"])
+                g_ref_state  = g_ref[sname]
+                g_pred_state = final_oz_results[sname]["g_pred"]
+
                 for (i, j) in attractive_pairs:
-                    mask_r = r > sigma_opt[i, j]  # avoid divergence near core
-                    delta = np.zeros_like(r)
+                    mask_r = r > sigma_mat[i, j]
+                    safe_g_ref = np.maximum(g_ref_state[i, j], eps)
 
-                    delta[mask_r] = np.log(g_trial[i, j, mask_r] / final_oz_results[sname]["g_pred"][i, j, mask_r])
-                    
-                    delta_u_accum[i, j] += delta
-                    delta_u_accum[j, i] = delta_u_accum[i, j]
-
-                    max_diff = max(
-                        max_diff,
-                        np.max(
-                            np.abs(
-                                g_trial[i, j, mask_r] -
-                                final_oz_results[sname]["g_pred"][i, j, mask_r]
-                            )
-                        ),
+                    delta_u = (
+                        beta_ref
+                        * (g_ref_state[i, j] - g_pred_state[i, j])
+                        / (safe_g_ref * beta_s)
                     )
 
-            # Apply combined update
-            for (i, j) in attractive_pairs:
+                    u_attractive[i, j, mask_r] = delta_u[mask_r]
+                    u_attractive[j, i, mask_r] = u_attractive[i, j, mask_r]
+
+                num_state += 1
+
+            u_attractive /= num_state
+
+            # -------------------------------------------------
+            # IBI refinement of attractive tail
+            # -------------------------------------------------
+            alpha_attr = 0.1
+            u_attr_trial = u_attractive.copy()
+
+            for it in range(1, n_iter_ibi + 1):
+
+                max_diff = 0.0
+                delta_u_accum = np.zeros_like(u_attr_trial)
+
+                for sname, sdata in states.items():
+                    beta_s = sdata["beta"]
+                    rho_s  = sdata["densities"]
+
+                    # Build total potential
+                    u_total = u_matrix.copy()
+
+                    for (i, j) in hard_core_pairs:
+                        u_total[i, j] = u_repulsive[i, j]
+                        u_total[j, i] = u_total[i, j]
+
+                    for (i, j) in attractive_pairs:
+                        u_total[i, j] += u_attr_trial[i, j]
+                        u_total[j, i] = u_total[i, j]
+
+                    # Compute RDF
+                    _, _, g_trial = multi_component_oz_solver_alpha(
+                        r=r,
+                        pair_closures=pair_closures,
+                        densities=np.asarray(rho_s, float),
+                        u_matrix=beta_s * u_total / beta_ref,
+                        sigma_matrix=np.zeros((N, N)),
+                        n_iter=n_iter,
+                        tol=tolerance,
+                        alpha_rdf_max=alpha_max,
+                    )
+
+                    # Accumulate corrections
+                    for (i, j) in attractive_pairs:
+                        mask_r = r > sigma_mat[i, j]
+                        delta = np.zeros_like(r)
+
+                        delta[mask_r] = np.log(
+                            g_trial[i, j, mask_r]
+                            / final_oz_results[sname]["g_pred"][i, j, mask_r]
+                        )
+
+                        delta_u_accum[i, j] += delta
+                        delta_u_accum[j, i] = delta_u_accum[i, j]
+
+                        max_diff = max(
+                            max_diff,
+                            np.max(
+                                np.abs(
+                                    g_trial[i, j, mask_r]
+                                    - final_oz_results[sname]["g_pred"][i, j, mask_r]
+                                )
+                            ),
+                        )
+
+                # Apply update + enforce WCA continuity
+                for (i, j) in attractive_pairs:
+                    u_attr_trial[i, j] += alpha_attr * delta_u_accum[i, j]
+
+                    r_m, u_m = detect_first_minimum_near_core(
+                        r, u_matrix[i, j], sigma=sigma_mat[i, j]
+                    )
+
+                    u_att = np.zeros_like(r)
+                    u_att[r <= r_m] = u_m
+                    u_att[r >  r_m] = u_attr_trial[i, j][r > r_m]
+
+                    u_attr_trial[i, j] = u_att
+                    u_attr_trial[j, i] = u_att
+
+                print(f"[{label}] Attractive IBI iter {it:3d} | max|Δg| = {max_diff:10.3e}")
+
+                if max_diff < 1e-2:
+                    print(f"✅ Attractive IBI converged for {label}")
+                    break
+
+            # -------------------------------------------------
+            # Final RDFs with calibrated potential
+            # -------------------------------------------------
+            u_final = u_repulsive + u_attr_trial
+            g_ur = {}
+
+            for sname, sdata in states.items():
+                _, _, g_state = multi_component_oz_solver_alpha(
+                    r=r,
+                    pair_closures=pair_closures,
+                    densities=np.asarray(sdata["densities"], float),
+                    u_matrix=sdata["beta"] * u_final / beta_ref,
+                    sigma_matrix=np.zeros((N, N)),
+                    n_iter=n_iter,
+                    tol=tolerance,
+                    alpha_rdf_max=alpha_max,
+                )
+                g_ur[sname] = g_state
+
+            return {
+                "u_attractive": u_attr_trial,
+                "u_total": u_final,
+                "g_ur": g_ur,
+            }
+
+
+        # ============================================================
+        # Run for both sigma definitions
+        # ============================================================
+
+        results_sigma_opt = run_attractive_calibration(sigma_opt, "sigma_opt")
+        results_sigma_bh  = run_attractive_calibration(bh_sigma,  "sigma_bh")
+
+
+        # ============================================================
+        # Export attractive-calibration package
+        # ============================================================
+
+        attractive_package = {
+            "sigma_opt": sigma_opt.tolist(),
+            "sigma_bh": bh_sigma.tolist(),
+
+            "g_pred": {
+                k: v["g_pred"].tolist() for k, v in final_oz_results.items()
+            },
+
+            "sigma_opt_results": {
+                "g_ur": {k: v.tolist() for k, v in results_sigma_opt["g_ur"].items()},
+                "u_attractive": results_sigma_opt["u_attractive"].tolist(),
+                "u_total": results_sigma_opt["u_total"].tolist(),
+            },
+
+            "sigma_bh_results": {
+                "g_ur": {k: v.tolist() for k, v in results_sigma_bh["g_ur"].items()},
+                "u_attractive": results_sigma_bh["u_attractive"].tolist(),
+                "u_total": results_sigma_bh["u_total"].tolist(),
+            },
+        }
+
+        with open("result_attractive_calibration.json", "w") as f:
+            json.dump(attractive_package, f, indent=2)
+
+        print("✅ Saved attractive_calibration_comparison.json")
+           
                 
-                u_attr_trial[i, j] += alpha_attr * delta_u_accum[i, j]
-                r_m, u_m = detect_first_minimum_near_core( r, u_matrix[i, j], sigma=sigma_opt[i, j], )
-                # Perform WCA split
-                u_att = np.zeros_like(r)
-                mask_rep = r <= r_m
-                mask_att = r > r_m
-                u_att[mask_rep] = u_m
-                u_att[mask_att] = u_attr_trial[i, j][mask_att]
-                u_attr_trial[i, j] = u_att
-                u_attr_trial[j, i] = u_attr_trial[i, j]
+                        
                 
-
-            print(f"Attractive IBI iter {it:3d} | max|Δg| = {max_diff:12.3e}")
-
-            if max_diff < 0.0001:
-                print("✅ Attractive part IBI converged.")
-                break
-
-        # -------------------------------------------------
-        # Final potential
-        # -------------------------------------------------
-        u_final = u_repulsive + u_attr_trial
-
-        print("\n✅ Final potential (repulsive + attractive) ready for all sigma-fixed pairs.")
-
-        # -------------------------------------------------
-        # Plot RDF fits (using g_pred)
-        # -------------------------------------------------
-        plots_dir.mkdir(parents=True, exist_ok=True)
-        total_pair = [ (i, j) for i in range(N) for j in range(i, N) ]
-
-        for sname, sdata in states.items():
-            _, _, g_final = multi_component_oz_solver_alpha(
-                r=r,
-                pair_closures=pair_closures,
-                densities=np.asarray(sdata["densities"], float),
-                u_matrix=beta_s * u_final / beta_ref,
-                sigma_matrix=np.zeros((N, N)),
-                n_iter=n_iter,
-                tol=tolerance,
-                alpha_rdf_max=alpha_max,
-            )
-            
-            
-
-            for (i, j) in total_pair:
-                plt.figure(figsize=(6, 4))
-                plt.plot(r, final_oz_results[sname]["g_pred"][i, j], label="g_pred", lw=2)
-                plt.plot(r, g_ref[sname][i, j], "--", label="g_ref (repulsive)", lw=2)
-                plt.plot(r, g_final[i, j], ":", label="g_final (rep + attr)", lw=2)
-                plt.xlabel("r")
-                plt.ylabel(f"g$_{{{i}{j}}}$(r)")
-                plt.title(f"State: {sname} | Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}")
-                plt.legend()
-                plt.tight_layout()
-                plt.savefig(plots_dir / f"Repulsive_plus_attractive_{sname}_{i}{j}.png", dpi=600,)
-                plt.close()
-
-        # -------------------------------------------------
-        # Plot final attractive potentials
-        # -------------------------------------------------
-        for (i, j) in total_pair:
-            plt.figure(figsize=(6, 4))
-            plt.plot(r, u_attr_trial[i, j], label="U_attractive", lw=2)
-            plt.plot(r, u_matrix[i, j], "--", label="U_total", lw=2)
-            plt.ylim(-1,0.5)
-            plt.xlabel("r")
-            plt.ylabel(f"U$_{{{i}{j}}}$(r)")
-            plt.title(f"Pair ({i},{j}) | σ = {sigma_opt[i,j]:.3f}")
-            plt.legend()
-            plt.tight_layout()
-            plt.savefig(
-                plots_dir / f"Attractive_potential_{i}{j}.png",
-                dpi=600,
-            )
-            plt.close()
-        
+                 
         
     if export_json:
         out = Path(ctx.scratch_dir)
