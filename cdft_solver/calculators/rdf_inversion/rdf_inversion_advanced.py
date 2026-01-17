@@ -1434,7 +1434,7 @@ def boltzmann_inversion_advanced(
             for (i, j) in attractive_pairs:
                 
                 u_attr_trial[i, j] += alpha_attr * delta_u_accum[i, j]
-                r_m, u_m = detect_first_minimum_near_core( r, u_attr_trial[i, j], sigma=bh_sigma[i, j], )
+                r_m, u_m = detect_first_minimum_near_core( r, u_matrix[i, j], sigma=bh_sigma[i, j], )
                 # Perform WCA split
                 u_att = np.zeros_like(r)
                 mask_rep = r <= r_m
