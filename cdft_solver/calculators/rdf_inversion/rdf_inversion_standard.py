@@ -1176,7 +1176,7 @@ def boltzmann_inversion_standard(
             attractive_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] and np.any(u_matrix[i, j] < -1e-4) ]
             for i in range(N):
                 for j in range(i, N):
-                    if attractive_pairs[i, j]:
+                    if (i, j) in attractive_pairs:
                         # Detect first minimum close to the hard core
                         r_m, u_m = detect_first_minimum_near_core(
                             r,
