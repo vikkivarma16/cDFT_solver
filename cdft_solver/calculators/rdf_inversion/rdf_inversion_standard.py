@@ -1473,13 +1473,15 @@ def boltzmann_inversion_standard(
             "sigma_opt_results": {
                 "g_ur": {k: v.tolist() for k, v in results_sigma_opt["g_ur"].items()},
                 "u_attractive": results_sigma_opt["u_attractive"].tolist(),
-                "u_total": results_sigma_opt["u_total"].tolist(),
+                "u_splitted": results_sigma_opt["u_total"].tolist(),
+                "u_total": u_matrix.tolist(),
             },
 
             "sigma_bh_results": {
                 "g_ur": {k: v.tolist() for k, v in results_sigma_bh["g_ur"].items()},
                 "u_attractive": results_sigma_bh["u_attractive"].tolist(),
-                "u_total": results_sigma_bh["u_total"].tolist(),
+                "u_splitted": results_sigma_bh["u_total"].tolist(),
+                "u_total": u_matrix.tolist(),
             },
         }
 
