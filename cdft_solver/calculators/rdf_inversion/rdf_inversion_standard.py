@@ -1149,8 +1149,12 @@ def boltzmann_inversion_standard(
             },
         }
 
-        with open("result_sigma_analysis.json", "w") as f:
-            json.dump(reference_package, f, indent=2)
+
+        out = Path(ctx.scratch_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        json_file = out / "result_sigma_analysis.json"
+        with open(json_file, "w") as f:
+            json.dump(reference_package, f, indent=4)
 
         print("✅ Saved Sigma_package.json")
 
@@ -1244,8 +1248,13 @@ def boltzmann_inversion_standard(
             },
         }
 
-        with open("result_wca_gr_comparison.json", "w") as f:
-            json.dump(wca_package, f, indent=2)
+
+        out = Path(ctx.scratch_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        json_file = out / "result_wca_gr_comparison.json"
+
+        with open(json_file, "w") as f:
+            json.dump(wca_package, f, indent=4)
 
         print("✅ Saved wca_gr_comparison_package.json")
 
@@ -1359,6 +1368,9 @@ def boltzmann_inversion_standard(
 
                     # Accumulate corrections
                     for (i, j) in attractive_pairs:
+                    
+                        r_m, u_m = detect_first_minimum_near_core( r, u_matrix[i, j], sigma=sigma_mat[i, j])
+                        mask_r_super  = r > r_m 
                         mask_r = r > sigma_mat[i, j]
                         delta = np.zeros_like(r)
 
@@ -1374,8 +1386,8 @@ def boltzmann_inversion_standard(
                             max_diff,
                             np.max(
                                 np.abs(
-                                    g_trial[i, j, mask_r]
-                                    - final_oz_results[sname]["g_pred"][i, j, mask_r]
+                                    g_trial[i, j, mask_r_super]
+                                    - final_oz_results[sname]["g_pred"][i, j, mask_r_super]
                                 )
                             ),
                         )
@@ -1460,8 +1472,12 @@ def boltzmann_inversion_standard(
             },
         }
 
-        with open("result_attractive_calibration.json", "w") as f:
-            json.dump(attractive_package, f, indent=2)
+        out = Path(ctx.scratch_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        json_file = out / "result_attractive_calibration.json"
+
+        with open(json_file, "w") as f:
+            json.dump(attractive_package, f, indent=4)
 
         print("✅ Saved attractive_calibration_comparison.json")
            
