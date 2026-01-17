@@ -1139,6 +1139,7 @@ def boltzmann_inversion_standard(
             },
 
             # --- reference RDFs ---
+            "r" : r.tolist(), 
             "g_ref_wca": {k: v.tolist() for k, v in g_ref.items()},
             "g_rep_sigma_opt": {k: v.tolist() for k, v in g_rep_sigma_opt.items()},
             "g_rep_sigma_bh": {k: v.tolist() for k, v in g_rep_sigma_bh.items()},
@@ -1236,6 +1237,8 @@ def boltzmann_inversion_standard(
         wca_package = {
             "sigma_bh": bh_sigma.tolist(),
             "sigma_opt": sigma_opt.tolist(),
+            
+            "r" : r.tolist(),
 
             "rmin_bh": {f"{i},{j}": float(v) for (i, j), v in rmin_bh.items()},
             "rmin_opt": {f"{i},{j}": float(v) for (i, j), v in rmin_opt.items()},
@@ -1456,6 +1459,8 @@ def boltzmann_inversion_standard(
         attractive_package = {
             "sigma_opt": sigma_opt.tolist(),
             "sigma_bh": bh_sigma.tolist(),
+            
+            "r" : r.tolist(), 
 
             "g_pred": {
                 k: v["g_pred"].tolist() for k, v in final_oz_results.items()
