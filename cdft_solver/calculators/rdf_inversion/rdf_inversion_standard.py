@@ -1080,7 +1080,6 @@ def boltzmann_inversion_standard(
         
         
         
-        bh_radius = {}
         bh_zero = {}
         bh_sigma  =  np.zeros_like(sigma_opt)
         for (i, j) in hard_core_pairs:
@@ -1089,7 +1088,6 @@ def boltzmann_inversion_standard(
                 u_matrix[i, j],   # or u_repulsive_wca[i,j]
                 beta_ref
             )
-            bh_radius[(i, j)] = d_bh
             bh_zero[(i, j)] = r0
             bh_sigma[i, j] = d_bh
             bh_sigma[j, i] =  bh_sigma[i, j]
@@ -1134,10 +1132,10 @@ def boltzmann_inversion_standard(
             # --- BH metadata ---
             "bh_meta": {
                 f"{i},{j}": {
-                    "d_bh": bh_meta[(i, j)]["d_bh"],
-                    "r0": bh_meta[(i, j)]["r0"],
+                    "d_bh": bh_sigma[i, j],
+                    "r0": bh_zero[(i, j)],
                 }
-                for (i, j) in bh_meta
+                for (i, j) in hard_core_pairs
             },
 
             # --- reference RDFs ---
