@@ -1341,7 +1341,7 @@ def boltzmann_inversion_standard(
             alpha_attr = 0.1
             u_attr_trial = u_attractive.copy()
 
-            for it in range(1, 1500):
+            for it in range(1, n_iter_ibi):
 
                 max_diff = 0.0
                 delta_u_accum = np.zeros_like(u_attr_trial)
