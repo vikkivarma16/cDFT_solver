@@ -1219,15 +1219,15 @@ def boltzmann_inversion_standard(
                 )
                 g_wca[sname] = g_state
 
-            return g_wca, r_minima
+            return g_wca, r_minima, u_repulsive, u_attractive
 
 
         # ------------------------------------------------------------
         # Compute WCA RDFs for both sigma definitions
         # ------------------------------------------------------------
 
-        g_wca_sigma_bh, rmin_bh = compute_wca_gr(bh_sigma)
-        g_wca_sigma_opt, rmin_opt = compute_wca_gr(sigma_opt)
+        g_wca_sigma_bh, rmin_bh, u_repulsive_bh, u_attractive_bh  = compute_wca_gr(bh_sigma)
+        g_wca_sigma_opt, rmin_opt, u_repulsive_opt, u_attractive_opt = compute_wca_gr(sigma_opt)
 
 
         # ============================================================
@@ -1242,7 +1242,11 @@ def boltzmann_inversion_standard(
 
             "rmin_bh": {f"{i},{j}": float(v) for (i, j), v in rmin_bh.items()},
             "rmin_opt": {f"{i},{j}": float(v) for (i, j), v in rmin_opt.items()},
-
+            "u_attractive_bh" : u_attractive_bh.tolist(),
+            "u_repulsive_bh" : u_repulsive_bh.tolist(),
+            "u_attractive_opt" : u_attractive_opt.tolist(),
+            "u_repulsive_opt" : u_repulsive_opt.tolist(),
+            "u_total" : u_matrix.tolist(),
             "g_wca_sigma_bh": {k: v.tolist() for k, v in g_wca_sigma_bh.items()},
             "g_wca_sigma_opt": {k: v.tolist() for k, v in g_wca_sigma_opt.items()},
 
