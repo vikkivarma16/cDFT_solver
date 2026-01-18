@@ -19,6 +19,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     from sympy import log, diff, lambdify
     from scipy import integrate
     from scipy.special import j0
+    from numba import njit, prange
             
     
     
@@ -773,6 +774,54 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     
     prev_residual = np.inf
     
+    
+    # Numba c section to boots up the speed...
+    
+
+    @njit(parallel=True, fastmath=True)
+    def meanfield_kernel(
+        del_rhoA_1, del_rhoA_2,
+        del_rhoB_1, del_rhoB_2,
+        rho_1_factor, rho_2_factor,
+        vij_array, dz
+    ):
+        N, _, _, nx = del_rhoA_1.shape
+        total_f_ext_mf = np.zeros((N, nx))
+        landau = np.zeros(nx)
+
+        for i in prange(N):
+            for k in range(N):
+                for j in range(N):
+                    for z1 in range(nx):
+
+                        conv_A = 0.0
+                        conv_B = 0.0
+                        conv_L = 0.0
+
+                        for z2 in range(nx):
+                            vij = vij_array[k, j, z1, z2]
+                            conv_A += vij * del_rhoA_2[i,k,j,z2]
+                            conv_B += vij * del_rhoB_2[i,k,j,z2]
+                            if i == 0:
+                                conv_L += vij * rho_2_factor[k,j,z2]
+
+                        conv_A *= dz
+                        conv_B *= dz
+
+                        total_f_ext_mf[i, z1] += (
+                            del_rhoA_1[i,k,j,z1] * conv_A
+                            + del_rhoB_1[i,k,j,z1] * conv_B
+                        )
+
+                        if i == 0:
+                            landau[z1] += rho_1_factor[k,j,z1] * conv_L * dz
+
+        return total_f_ext_mf, landau
+
+    
+    
+    
+    
     while (iteration < iteration_max):
         
         rho_r_initial = rho_r_current.copy()  # IMPORTANT: real copy for residual
@@ -893,76 +942,43 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         if grand_meanfield_flag == 1:
 
             total_f_ext_mf = []
+            
+            
             N = len(species)  # number of species
             nx = len(rho_r_current[0])  # grid points
 
-            # Pre-build lambdified density vectors per grid point
-            for i in range(N):
-                ind_mf_energy = np.zeros(nx)
+            for j in range(N):
 
-                for k in range(N):
-                    energy_r_ind = np.zeros(nx)
+                # Allocate arrays for FFT convolution
+                del_rhoA_1 = np.zeros(nx)
+                del_rhoA_2 = np.zeros(nx)
+                del_rhoB_1 = np.zeros(nx)
+                del_rhoB_2 = np.zeros(nx)
 
-                    for j in range(N):
+                rho_1_factor = np.zeros(nx)
+                rho_2_factor = np.zeros(nx)
 
-                        # Allocate arrays for FFT convolution
-                        del_rhoA_1 = np.zeros(nx)
-                        del_rhoA_2 = np.zeros(nx)
-                        del_rhoB_1 = np.zeros(nx)
-                        del_rhoB_2 = np.zeros(nx)
+                # Loop over spatial grid
+                for ldx in range(nx):
+                    # Build densities vector for lambdified functions
+                    #print (rho_r_current)
+                    
+                    rho_point = rho_r_current[:, ldx]  # shape (N,)
+                    densities = np.concatenate([rho_point, rho_point])
+                    
+                    del_rhoA_1[ldx] = c1_mf_parts[i][0][k][j](*densities)
+                    del_rhoA_2[ldx] = c1_mf_parts[i][1][k][j](*densities)
+                    del_rhoB_1[ldx] = c1_mf_parts[i][2][k][j](*densities)
+                    del_rhoB_2[ldx] = c1_mf_parts[i][3][k][j](*densities)
 
-                        rho_1_factor = np.zeros(nx)
-                        rho_2_factor = np.zeros(nx)
+                    # Evaluate factorized A/B contributions
+                    rho_1_factor[ldx] = A_fn[k][j](*densities)
+                    rho_2_factor[ldx] = B_fn[k][j](*densities)
+            
+            
+            total_f_ext_mf, landau = meanfield_kernel( del_rhoA_1, del_rhoA_2, del_rhoB_1, del_rhoB_2, rho_1_factor, rho_2_factor, vij_array, dz )
 
-                        # Loop over spatial grid
-                        for ldx in range(nx):
-                            # Build densities vector for lambdified functions
-                            #print (rho_r_current)
-                            
-                            rho_point = rho_r_current[:, ldx]  # shape (N,)
-                            densities = np.concatenate([rho_point, rho_point])
-                            
-                            del_rhoA_1[ldx] = c1_mf_parts[i][0][k][j](*densities)
-                            del_rhoA_2[ldx] = c1_mf_parts[i][1][k][j](*densities)
-                            del_rhoB_1[ldx] = c1_mf_parts[i][2][k][j](*densities)
-                            del_rhoB_2[ldx] = c1_mf_parts[i][3][k][j](*densities)
-
-                            # Evaluate factorized A/B contributions
-                            rho_1_factor[ldx] = A_fn[k][j](*densities)
-                            rho_2_factor[ldx] = B_fn[k][j](*densities)
-                            
-                        for z1 in range(nx):
-
-                            # Integral over z2
-                            conv_A = 0.0
-                            conv_B = 0.0
-                            conv_L = 0.0
-
-                            for z2 in range(nx):
-
-                                vij_val = vij_array[k, j, z1, z2]
-
-                                conv_A += vij_val * del_rhoA_2[z2]
-                                conv_B += vij_val * del_rhoB_2[z2]
-
-                                if i == 0:
-                                    conv_L += vij_val * rho_2_factor[z2]
-
-                            conv_A *= dz
-                            conv_B *= dz
-
-                            energy_r_ind[z1] += (
-                                del_rhoA_1[z1] * conv_A
-                                + del_rhoB_1[z1] * conv_B
-                            )
-
-                            if i == 0:
-                                landau[z1] += rho_1_factor[z1] * conv_L * dz
-
-
-                    ind_mf_energy += energy_r_ind
-
-                total_f_ext_mf.append(ind_mf_energy)
+            
 
     
         
