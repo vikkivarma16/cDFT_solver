@@ -1393,8 +1393,8 @@ def boltzmann_inversion_standard(
                             max_diff,
                             np.max(
                                 np.abs(
-                                    g_trial[i, j, mask_r]
-                                    - final_oz_results[sname]["g_pred"][i, j, mask_r]
+                                    g_trial[i, j, mask_r_super]
+                                    - final_oz_results[sname]["g_pred"][i, j, mask_r_super]
                                 )
                             ),
                         )
