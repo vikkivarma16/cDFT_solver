@@ -789,7 +789,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         rho_2_factor,
         vij_kj,        # shape (nx, nx)
         dz,
-        do_landau,     # bool
         landau,        # shape (nx,)
         energy_out     # shape (nx,)
     ):
@@ -814,9 +813,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                 del_rhoA_1[z1] * conv_A
                 + del_rhoB_1[z1] * conv_B
             )
-
-            if do_landau:
-                landau[z1] += rho_1_factor[z1] * conv_L * dz
+            landau[z1] += rho_1_factor[z1] * conv_L * dz
 
 
   
@@ -994,7 +991,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                                     rho_2_factor,
                                     vij_array[k, j],
                                     dz,
-                                    do_landau== 1,
                                     landau,
                                     energy_r_ind)
                                     
