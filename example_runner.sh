@@ -15,6 +15,6 @@ source "$ENV_NAME/bin/activate"
 # Replace cdft_package.example_executor with your actual module path if needed
 echo "▶️ Running CDFT example executor..."
 
-python3 -m cdft_solver.executor_dft_main executor_isochor.in
+python3 -m cdft_solver.executor_dft_main  example_input_file.in
 
 echo "✅ Execution complete."
