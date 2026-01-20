@@ -903,12 +903,66 @@ def boltzmann_inversion_standard(
     
     
     
+    
+    
+    #import numpy as np
+
+    def compute_bh_radius_shift_truncated(r, u_r, beta):
+        """
+        Compute Barker–Henderson (BH) hard-core diameter
+        with integration truncated at the first zero of the
+        WCA reference potential.
+
+        Parameters
+        ----------
+        r : (nr,) ndarray
+            Radial grid (assumed increasing, starting near 0).
+        u_r : (nr,) ndarray
+            Pair potential u(r).
+        beta : float
+            Inverse temperature (1 / kT).
+
+        Returns
+        -------
+        d_bh : float
+            Barker–Henderson diameter.
+        r0 : float
+            First zero-crossing of the WCA reference potential.
+        """
+
+        # WCA reference (purely repulsive part)
+        u_ref = wca_split(r, u_r)   # must return repulsive reference only
+
+        # Locate first zero crossing (repulsive → attractive)
+        zero_mask = u_ref <= 0.0
+        if not np.any(zero_mask):
+            raise RuntimeError("WCA reference potential never crosses zero.")
+
+        idx0 = np.argmax(zero_mask)   # first True index
+        r0 = r[idx0]
+
+        # Truncate integration domain
+        r_trunc = r[:idx0 + 1]
+        u_trunc = u_ref[:idx0 + 1]
+
+        # Barker–Henderson integrand
+        integrand = 1.0 - np.exp(-beta * u_trunc)
+
+        # BH diameter
+        d_bh = np.trapz(integrand, r_trunc)
+
+        return d_bh, r0
+
+        
+        
+        
     def compute_bh_radius_truncated(r, u_r, beta):
         """
         Barker–Henderson radius with integration truncated
         at the first zero of u(r).
         """
         idx_zero = np.where(u_r <= 0.001)[0]
+        
         r_tab = r
 
         if len(idx_zero) > 0:
@@ -1083,7 +1137,7 @@ def boltzmann_inversion_standard(
         bh_zero = {}
         bh_sigma  =  np.zeros_like(sigma_opt)
         for (i, j) in hard_core_pairs:
-            d_bh, r0 = compute_bh_radius_truncated(
+            d_bh, r0 = compute_bh_radius_shift_truncated(
                 r,
                 u_matrix[i, j],   # or u_repulsive_wca[i,j]
                 beta_ref
