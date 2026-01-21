@@ -859,16 +859,19 @@ def boltzmann_inversion_standard(
         # -------------------------------------------------
         # FINAL STORAGE PASS (one extra OZ solve)
         # -------------------------------------------------
+        
         if storage_flag:
             print("\n📦 Storing final OZ results for sigma analysis...")
 
             final_oz_results.clear()
+            c_pred =  np.zeros_like (g_pred) 
+            gamma_pred =  np.zeros_like (g_pred)
 
             for sname, sdata in states.items():
                 beta_s = sdata["beta"]
                 densities_s = sdata["densities"]
 
-                _, _, g_pred = multi_component_oz_solver_alpha(
+              c_pred, gamma_pred, g_pred = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(densities_s, float),
@@ -883,6 +886,8 @@ def boltzmann_inversion_standard(
                     "beta": beta_s,
                     "densities": np.asarray(densities_s, float),
                     "g_pred": g_pred.copy(),
+                    "c_pred": c_pred.copy(),
+                    "gamma_pred": gamma_pred.copy(),
                 }
 
             break
@@ -1202,6 +1207,14 @@ def boltzmann_inversion_standard(
             "g_target": {
                 k: v["g_pred"].tolist() for k, v in final_oz_results.items()
             },
+            
+            "c_target": {
+                k: v["c_pred"].tolist() for k, v in final_oz_results.items()
+            },
+            
+             "gamma_target": {
+                k: v["gamma_pred"].tolist() for k, v in final_oz_results.items()
+            },
         }
 
 
@@ -1303,9 +1316,16 @@ def boltzmann_inversion_standard(
             "u_total" : u_matrix.tolist(),
             "g_wca_sigma_bh": {k: v.tolist() for k, v in g_wca_sigma_bh.items()},
             "g_wca_sigma_opt": {k: v.tolist() for k, v in g_wca_sigma_opt.items()},
-
-            "g_pred": {
+            "g_total": {
                 k: v["g_pred"].tolist() for k, v in final_oz_results.items()
+            },
+            
+            "c_total": {
+                k: v["c_pred"].tolist() for k, v in final_oz_results.items()
+            },
+            
+             "gamma_total": {
+                k: v["gamma_pred"].tolist() for k, v in final_oz_results.items()
             },
         }
 
@@ -1481,9 +1501,11 @@ def boltzmann_inversion_standard(
             # -------------------------------------------------
             u_final = u_repulsive + u_attr_trial
             g_ur = {}
+            c_ur = {}
+            gamma_ur = {}
 
             for sname, sdata in states.items():
-                _, _, g_state = multi_component_oz_solver_alpha(
+                c_state, gamma_state, g_state = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(sdata["densities"], float),
@@ -1494,11 +1516,15 @@ def boltzmann_inversion_standard(
                     alpha_rdf_max=alpha_max,
                 )
                 g_ur[sname] = g_state
+                c_ur[sname] = c_state
+                gamma_ur[sname] =  gamma_state
 
             return {
                 "u_attractive": u_attr_trial,
                 "u_total": u_final,
                 "g_ur": g_ur,
+                "c_ur": c_ur,
+                "gamma_ur": gamma_ur,
             }
 
 
@@ -1526,6 +1552,8 @@ def boltzmann_inversion_standard(
 
             "sigma_opt_results": {
                 "g_ur": {k: v.tolist() for k, v in results_sigma_opt["g_ur"].items()},
+                "c_ur": {k: v.tolist() for k, v in results_sigma_opt["c_ur"].items()},
+                "gamma_ur": {k: v.tolist() for k, v in results_sigma_opt["gamma_ur"].items()},
                 "u_attractive": results_sigma_opt["u_attractive"].tolist(),
                 "u_splitted": results_sigma_opt["u_total"].tolist(),
                 "u_total": u_matrix.tolist(),
@@ -1533,6 +1561,8 @@ def boltzmann_inversion_standard(
 
             "sigma_bh_results": {
                 "g_ur": {k: v.tolist() for k, v in results_sigma_bh["g_ur"].items()},
+                "c_ur": {k: v.tolist() for k, v in results_sigma_bh["c_ur"].items()},
+                "gamma_ur": {k: v.tolist() for k, v in results_sigma_bh["gamma_ur"].items()},
                 "u_attractive": results_sigma_bh["u_attractive"].tolist(),
                 "u_splitted": results_sigma_bh["u_total"].tolist(),
                 "u_total": u_matrix.tolist(),
