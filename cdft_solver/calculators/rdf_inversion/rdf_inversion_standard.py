@@ -1435,7 +1435,7 @@ def boltzmann_inversion_standard(
                         mask_r = r > sigma_mat[i, j]
                         delta = np.zeros_like(r)
 
-                        delta[mask_r] = np.log(
+                        delta[mask_r_super] = np.log(
                             g_trial[i, j, mask_r_super]
                             / final_oz_results[sname]["g_pred"][i, j, mask_r_super]
                         )
