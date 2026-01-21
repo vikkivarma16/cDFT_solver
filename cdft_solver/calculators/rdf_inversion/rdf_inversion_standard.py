@@ -1472,7 +1472,7 @@ def boltzmann_inversion_standard(
 
                 print(f"[{label}] Attractive IBI iter {it:3d} | max|Δg| = {max_diff:10.3e}")
 
-                if max_diff < 1e-2:
+                if max_diff < ibi_tolerance:
                     print(f"✅ Attractive IBI converged for {label}")
                     break
 
