@@ -870,8 +870,8 @@ def boltzmann_inversion_standard(
             for sname, sdata in states.items():
                 beta_s = sdata["beta"]
                 densities_s = sdata["densities"]
-
-              c_pred, gamma_pred, g_pred = multi_component_oz_solver_alpha(
+                
+                c_pred, gamma_pred, g_pred = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(densities_s, float),
@@ -1505,6 +1505,7 @@ def boltzmann_inversion_standard(
             gamma_ur = {}
 
             for sname, sdata in states.items():
+            
                 c_state, gamma_state, g_state = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
