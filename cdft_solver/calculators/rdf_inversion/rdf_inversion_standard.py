@@ -1137,7 +1137,7 @@ def boltzmann_inversion_standard(
         bh_zero = {}
         bh_sigma  =  np.zeros_like(sigma_opt)
         for (i, j) in hard_core_pairs:
-            d_bh, r0 = compute_bh_radius_shift_truncated(
+            d_bh, r0 = compute_bh_radius_truncated(
                 r,
                 u_matrix[i, j],   # or u_repulsive_wca[i,j]
                 beta_ref
