@@ -1482,7 +1482,7 @@ def boltzmann_inversion_standard(
                         mask_r = r > sigma_mat[i, j]
                         delta = np.zeros_like(r)
 
-                        delta[mask_r_super] = np.log(
+                        delta[mask_r_super] = (beta_ref/beta_s) * np.log(
                             g_trial[i, j, mask_r_super]
                             / final_oz_results[sname]["g_pred"][i, j, mask_r_super]
                         )
@@ -1618,116 +1618,218 @@ def boltzmann_inversion_standard(
                 
                         
     
-    print ("Integrated strength kernel analysis is going on !!!!!!!")
-    
-    
-    
-    
-    # ============================================================
-    # Compute G(r) via λ-integration for each pair and state
-    # ============================================================
+        print ("\n\n\n\n\n Integrated strength kernel analysis is going on !!!!!!! \n\n\n\n")
+        
+        
+        
+        
+        # ============================================================
+        # Compute G(r) via λ-integration for each pair and state
+        # ============================================================
 
-    def compute_G_of_r(u_repulsive, u_attractive, states, r, pair_closures, beta_ref, N, n_alpha=20):
-        """
-        Computes G(r) = ∫_0^1 g_alpha(r) dα
-        where u_alpha = u_repulsive + α * u_attractive
-        """
+        def compute_G_of_r(u_repulsive, u_attractive, states, r, pair_closures, beta_ref, N, n_alpha=20):
+            """
+            Computes G(r) = ∫_0^1 g_alpha(r) dα
+            where u_alpha = u_repulsive + α * u_attractive
+            """
 
-        alpha_grid = np.linspace(0.0, 1.0, n_alpha)
-        dalpha = alpha_grid[1] - alpha_grid[0]
+            alpha_grid = np.linspace(0.0, 1.0, n_alpha)
+            dalpha = alpha_grid[1] - alpha_grid[0]
 
-        G_r_dict = {sname: np.zeros_like(u_attractive) for sname in states.keys()}
+            G_r_dict = {}
+            G_u_r_dict  = {}
+            
 
-        # Loop over states
-        for sname, sdata in states.items():
-            beta_s = sdata["beta"]
-            rho_s = np.asarray(sdata["densities"], float)
+            # Loop over states
+            for sname, sdata in states.items():
+                beta_s = sdata["beta"]
+                rho_s = np.asarray(sdata["densities"], float)
 
-            G_accum = np.zeros_like(u_attractive)
+                G_accum = np.zeros_like(u_attractive)
 
-            # Loop over λ (α)
-            for alpha in alpha_grid:
-                # Total potential for this α
-                u_alpha = u_repulsive + alpha * u_attractive
+                # Loop over λ (α)
+                for alpha in alpha_grid:
+                    # Total potential for this α
+                    u_alpha = u_repulsive + alpha * u_attractive
 
-                # Solve OZ for this u_alpha
-                _, _, g_alpha = multi_component_oz_solver_alpha(
-                    r=r,
-                    pair_closures=pair_closures,
-                    densities=rho_s,
-                    u_matrix=beta_s * u_alpha / beta_ref,
-                    sigma_matrix=np.zeros((N, N)),
-                    n_iter=n_iter,
-                    tol=tolerance,
-                    alpha_rdf_max=alpha_max,
-                )
+                    # Solve OZ for this u_alpha
+                    _, _, g_alpha = multi_component_oz_solver_alpha(
+                        r=r,
+                        pair_closures=pair_closures,
+                        densities=rho_s,
+                        u_matrix=beta_s * u_alpha / beta_ref,
+                        sigma_matrix=np.zeros((N, N)),
+                        n_iter=n_iter,
+                        tol=tolerance,
+                        alpha_rdf_max=alpha_max,
+                    )
 
-                # Accumulate for integration
+                    # Accumulate for integration
+                    for i in range(N):
+                        for j in range(N):
+                            G_accum[i, j] += g_alpha[i, j] * dalpha
+                            
+                G_u = np.zeros_like(u_matrix)
                 for i in range(N):
-                    for j in range(N):
-                        G_accum[i, j] += g_alpha[i, j] * dalpha
+                        for j in range(N):
+                            G_u[i, j] = G_accum[i, j] *  beta_s * u_attractive / beta_ref
 
-            # Store G(r) for this state
-            G_r_dict[sname] = G_accum
+                # Store G(r) for this state
+                G_r_dict[sname] = G_accum
+                G_u_r_dict[sname] =  G_u
 
-        return G_r_dict
+            return G_r_dict, G_u_r_dict
 
-    # ============================================================
-    # Run G(r) computation for σ_opt
-    # ============================================================
-    G_r_sigma_opt = compute_G_of_r(
-        u_repulsive=results_sigma_opt ["u_repulsive"],
-        u_attractive=results_sigma_opt["u_attractive"],
-        states=states,
-        r=r,
-        pair_closures=pair_closures,
-        beta_ref=beta_ref,
-        N=N,
-        n_alpha=20
-    )
+        # ============================================================
+        # Run G(r) computation for σ_opt
+        # ============================================================
+        G_r_sigma_opt, G_u_r_sigma_opt = compute_G_of_r(
+            u_repulsive=results_sigma_opt ["u_repulsive"],
+            u_attractive=results_sigma_opt["u_attractive"],
+            states=states,
+            r=r,
+            pair_closures=pair_closures,
+            beta_ref=beta_ref,
+            N=N,
+            n_alpha=20
+        )
 
-    # ============================================================
-    # Run G(r) computation for σ_BH
-    # ============================================================
-    G_r_sigma_bh = compute_G_of_r(
-        u_repulsive=results_sigma_bh["u_repulsive"],
-        u_attractive=results_sigma_bh["u_attractive"],
-        states=states,
-        r=r,
-        pair_closures=pair_closures,
-        beta_ref=beta_ref,
-        N=N,
-        n_alpha=20
-    )
+        # ============================================================
+        # Run G(r) computation for σ_BH
+        # ============================================================
+        G_r_sigma_bh, G_u_r_sigma_bh = compute_G_of_r(
+            u_repulsive=results_sigma_bh["u_repulsive"],
+            u_attractive=results_sigma_bh["u_attractive"],
+            states=states,
+            r=r,
+            pair_closures=pair_closures,
+            beta_ref=beta_ref,
+            N=N,
+            n_alpha=20
+        )
 
-    # ============================================================
-    # Export results along with u_attractive
-    # ============================================================
-    attractive_package = {
-        "sigma_opt": sigma_opt.tolist(),
-        "sigma_bh": bh_sigma.tolist(),
-        "r": r.tolist(),
+        # ============================================================
+        # Export results along with u_attractive
+        # ============================================================
+        attractive_package = {
+            "sigma_opt": sigma_opt.tolist(),
+            "sigma_bh": bh_sigma.tolist(),
+            "r": r.tolist(),
+            
+            "G_r_sigma_opt": {k: v.tolist() for k, v in G_r_sigma_opt.items()},
+            "G_r_sigma_bh":  {k: v.tolist() for k, v in G_r_sigma_bh.items()},
+            
+            "G_u_r_sigma_opt": {k: v.tolist() for k, v in G_u_r_sigma_opt.items()},
+            "G_u_r_sigma_bh":  {k: v.tolist() for k, v in G_u_r_sigma_bh.items()},
+            
+            "u_attractive_sigma_opt": results_sigma_opt["u_attractive"].tolist(),
+            "u_attractive_sigma_bh": results_sigma_bh["u_attractive"].tolist()
+        }
+
+        out = Path(ctx.scratch_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        json_file = out / "result_G_of_r.json"
+
+        with open(json_file, "w") as f:
+            json.dump(attractive_package, f, indent=4)
+
+        print("✅ G(r) and u_attractive exported →", json_file)
+
+        # ------------------------------------------------------------
+        # r grid
+        # ------------------------------------------------------------
+        r = np.asarray(reference_package["r"])
+
+        # ------------------------------------------------------------
+        # State-resolved c(r)
+        # ------------------------------------------------------------
+        c_real = {
+            state: np.asarray(arr)
+            for state, arr in reference_package["c_real"].items()
+        }
+
+        c_ref_hard = {
+            state: np.asarray(arr)
+            for state, arr in reference_package["c_ref_hard"].items()
+        }
+
+        c_rep_sigma_bh = {
+            state: np.asarray(arr)
+            for state, arr in reference_package["c_rep_sigma_bh"].items()
+        }
+
+        c_rep_sigma_opt = {
+            state: np.asarray(arr)
+            for state, arr in reference_package["c_rep_sigma_opt"].items()
+        }
+
+        states = list(c_real.keys())
+
+        # ------------------------------------------------------------
+        # Compute Δc(r)
+        # ------------------------------------------------------------
+        delta_c_hard = {}
+        delta_c_sigma_bh = {}
+        delta_c_sigma_opt = {}
+
+        for state in states:
+            delta_c_hard[state] = c_real[state] - c_ref_hard[state]
+            delta_c_sigma_bh[state] = c_real[state] - c_rep_sigma_bh[state]
+            delta_c_sigma_opt[state] = c_real[state] - c_rep_sigma_opt[state]
+
+        # ------------------------------------------------------------
+        # Export package
+        # ------------------------------------------------------------
+        delta_c_package = {
+            "r": r.tolist(),
+
+            "delta_c_hard": {
+                state: arr.tolist()
+                for state, arr in delta_c_hard.items()
+            },
+
+            "delta_c_sigma_bh": {
+                state: arr.tolist()
+                for state, arr in delta_c_sigma_bh.items()
+            },
+
+            "delta_c_sigma_opt": {
+                state: arr.tolist()
+                for state, arr in delta_c_sigma_opt.items()
+            },
+
+            "metadata": {
+                "definition": "delta_c(state,i,j,r) = c_real - c_reference",
+                "references": {
+                    "hard": "c_ref_hard",
+                    "sigma_bh": "c_rep_sigma_bh",
+                    "sigma_opt": "c_rep_sigma_opt",
+                },
+                "array_shape": "[N, N, r]"
+            }
+        }
+
+        # ------------------------------------------------------------
+        # Write JSON
+        # ------------------------------------------------------------
+        out = Path(ctx.scratch_dir)
+        out.mkdir(parents=True, exist_ok=True)
+
+        out_file = out / "delta_c_by_state.json"
+        with open(out_file, "w") as f:
+            json.dump(delta_c_package, f, indent=4)
+
+        print(f"✅ Δc(r) by state exported → {out_file}")
+
+            
+            
+            
+    
+    
+    
+    
+
         
-        "G_r_sigma_opt": {k: v.tolist() for k, v in G_r_sigma_opt.items()},
-        "G_r_sigma_bh":  {k: v.tolist() for k, v in G_r_sigma_bh.items()},
-        
-        "u_attractive_sigma_opt": results_sigma_opt["u_attractive"].tolist(),
-        "u_attractive_sigma_bh": results_sigma_bh["u_attractive"].tolist()
-    }
-
-    out = Path(ctx.scratch_dir)
-    out.mkdir(parents=True, exist_ok=True)
-    json_file = out / "result_G_of_r.json"
-
-    with open(json_file, "w") as f:
-        json.dump(attractive_package, f, indent=4)
-
-    print("✅ G(r) and u_attractive exported →", json_file)
-
-    
-    
-    
-    
     
     
     
