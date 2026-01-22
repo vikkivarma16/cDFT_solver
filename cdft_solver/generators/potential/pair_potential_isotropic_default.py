@@ -183,7 +183,7 @@ def wca(p):
 
         mask = (r >= r_cutoff) & (r < cutoff)
         v[mask] = 4 * epsilon * (
-            (sigma / r[mask]) ** 12 - 2 * (sigma / r[mask]) ** 6
+            (sigma / r[mask]) ** 12 -  (sigma / r[mask]) ** 6
         )
 
         return v
