@@ -122,7 +122,7 @@ def second_virial(
     # -----------------------------
     # Lambda grid
     # -----------------------------
-    lam = np.linspace(0.0000001, 1.0, n_lambda)
+    lam = np.linspace(0.000000001, 1.0, n_lambda)
     dlam = lam[1] - lam[0]
 
     # -----------------------------
@@ -150,9 +150,6 @@ def second_virial(
             lambda_integrand = gl * uij[None, :]
             lambda_integrated = np.trapz(lambda_integrand, lam, axis=0)
             
-            print (lambda_integrand[n_lambda-1])
-            
-            exit (0)
 
             strength_integrand = 4.0 * np.pi * r**2 * lambda_integrated
             I_ij = np.trapz(strength_integrand, r)
