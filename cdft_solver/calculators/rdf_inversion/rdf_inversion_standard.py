@@ -1707,20 +1707,57 @@ def boltzmann_inversion_standard(
             N=N,
             n_alpha=20
         )
+        
+        u_attractive = np.zeros_like(u_matrix)
+        r_minima = {}
+        attractive_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] and np.any(u_matrix[i, j] < -1e-4) ]
+        for i in range(N):
+            for j in range(i, N):
+                if (i, j) in attractive_pairs:
+                    # Detect first minimum close to the hard core
+                    r_m, u_m = detect_first_minimum_near_core(
+                        r,
+                        u_matrix[i, j],
+                        sigma=sigma_mat[i, j],
+                    )
+                    r_minima[(i, j)] = r_m
+                    u_att = np.zeros_like(r)
+                    mask_rep = r <= r_m
+                    mask_att = r > r_m
+                    # WCA attractive tail
+                    u_att[mask_rep] = u_m
+                    u_att[mask_att] = u_matrix[i, j][mask_att]
+                    u_attractive[i, j] = u_att
+                    u_attractive[j, i] = u_att
+                    
+         G_r_real, G_u_r_real = compute_G_of_r(
+            u_repulsive=u_ref,
+            u_attractive=u_attractive,
+            states=states,
+            r=r,
+            pair_closures=pair_closures,
+            beta_ref=beta_ref,
+            N=N,
+            n_alpha=20
+        )
+        
+        
 
         # ============================================================
         # Export results along with u_attractive
         # ============================================================
-        attractive_package = {
+        attractive_package_g = {
             "sigma_opt": sigma_opt.tolist(),
             "sigma_bh": bh_sigma.tolist(),
             "r": r.tolist(),
             
             "G_r_sigma_opt": {k: v.tolist() for k, v in G_r_sigma_opt.items()},
             "G_r_sigma_bh":  {k: v.tolist() for k, v in G_r_sigma_bh.items()},
+            "G_r_real":  {k: v.tolist() for k, v in G_r_real.items()},
             
             "G_u_r_sigma_opt": {k: v.tolist() for k, v in G_u_r_sigma_opt.items()},
             "G_u_r_sigma_bh":  {k: v.tolist() for k, v in G_u_r_sigma_bh.items()},
+            "G_u_r_real":  {k: v.tolist() for k, v in G_u_r_sigma_bh.items()},
             
             "u_attractive_sigma_opt": results_sigma_opt["u_attractive"].tolist(),
             "u_attractive_sigma_bh": results_sigma_bh["u_attractive"].tolist()
@@ -1731,7 +1768,7 @@ def boltzmann_inversion_standard(
         json_file = out / "result_G_of_r.json"
 
         with open(json_file, "w") as f:
-            json.dump(attractive_package, f, indent=4)
+            json.dump(attractive_package_g, f, indent=4)
 
         print("✅ G(r) and u_attractive exported →", json_file)
 
