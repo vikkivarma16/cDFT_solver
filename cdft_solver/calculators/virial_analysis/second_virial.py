@@ -150,7 +150,7 @@ def second_virial(
             lambda_integrand = gl * uij[None, :]
             lambda_integrated = np.trapz(lambda_integrand, lam, axis=0)
             
-            print (lambda_integrand)
+            print (lambda_integrand[n_lambda-1])
             
             exit (0)
 
