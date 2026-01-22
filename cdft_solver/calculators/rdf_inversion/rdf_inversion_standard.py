@@ -1718,7 +1718,7 @@ def boltzmann_inversion_standard(
                     r_m, u_m = detect_first_minimum_near_core(
                         r,
                         u_matrix[i, j],
-                        sigma=sigma_mat[i, j],
+                        sigma=bh_sigma[i, j],
                     )
                     r_minima[(i, j)] = r_m
                     u_att = np.zeros_like(r)
@@ -1800,6 +1800,11 @@ def boltzmann_inversion_standard(
             state: np.asarray(arr)
             for state, arr in reference_package["c_rep_sigma_opt"].items()
         }
+        
+        c_sigma_opt =  { state : np.asarray(arr) for state, arr in attractive_package["sigma_opt_results"]["c_ur"].items () } 
+        c_sigma_bh =  { state : np.asarray(arr) for state, arr in attractive_package["sigma_bh_results"]["c_ur"].items () } 
+        
+        
 
         new_states = list(c_real.keys())
 
@@ -1809,13 +1814,17 @@ def boltzmann_inversion_standard(
         delta_c_hard = {}
         delta_c_sigma_bh = {}
         delta_c_sigma_opt = {}
+        delta_c_sigma_bh_pure = {}
+        delta_c_sigma_opt_pure = {}
 
         for state in new_states:
             delta_c_hard[state] = c_real[state] - c_ref_hard[state]
             delta_c_sigma_bh[state] = c_real[state] - c_rep_sigma_bh[state]
             delta_c_sigma_opt[state] = c_real[state] - c_rep_sigma_opt[state]
+            delta_c_sigma_bh_pure[state] = c_sigma_bh[state] - c_rep_sigma_bh[state]
+            delta_c_sigma_opt_pure[state] = c_sigma_opt[state] - c_rep_sigma_opt[state]
 
-        # ------------------------------------------------------------
+        # -----------------------------------------------------------
         # Export package
         # ------------------------------------------------------------
         delta_c_package = {
