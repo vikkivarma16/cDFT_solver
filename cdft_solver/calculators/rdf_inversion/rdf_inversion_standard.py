@@ -1764,7 +1764,7 @@ def boltzmann_inversion_standard(
             for state, arr in reference_package["c_rep_sigma_opt"].items()
         }
 
-        states = list(c_real.keys())
+        new_states = list(c_real.keys())
 
         # ------------------------------------------------------------
         # Compute Δc(r)
@@ -1773,7 +1773,7 @@ def boltzmann_inversion_standard(
         delta_c_sigma_bh = {}
         delta_c_sigma_opt = {}
 
-        for state in states:
+        for state in new_states:
             delta_c_hard[state] = c_real[state] - c_ref_hard[state]
             delta_c_sigma_bh[state] = c_real[state] - c_rep_sigma_bh[state]
             delta_c_sigma_opt[state] = c_real[state] - c_rep_sigma_opt[state]
