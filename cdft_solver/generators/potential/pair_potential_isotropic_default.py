@@ -183,7 +183,7 @@ def wca(p):
 
         mask = (r >= r_cutoff) & (r < cutoff)
         v[mask] = 4 * epsilon * (
-            (sigma / r[mask]) ** 12 -  (sigma / r[mask]) ** 6
+            (sigma / r[mask]) ** 12 -  2.0 *(sigma / r[mask]) ** 6
         )
 
         return v
@@ -192,7 +192,30 @@ def wca(p):
 
 
 register_isotropic_pair_potential("wca", wca)
-register_isotropic_pair_potential("salj", wca)
+
+def salj(p):
+    sigma = p.get("sigma", 1.0)
+    epsilon = p.get("epsilon", 1.0)
+    cutoff = p.get("cutoff", 5.0)
+
+    r_cutoff = 2 ** (1 / 6) * sigma
+
+    def V(r):
+        r = np.asarray(r)
+        v = np.zeros_like(r)
+
+        v[r < r_cutoff] = -epsilon
+
+        mask = (r >= r_cutoff) & (r < cutoff)
+        v[mask] = 4 * epsilon * (
+            (sigma / r[mask]) ** 12 -  (sigma / r[mask]) ** 6
+        )
+
+        return v
+
+    return V
+
+register_isotropic_pair_potential("salj", salj)
 
 
 # ============================================================
