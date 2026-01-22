@@ -148,7 +148,7 @@ def second_virial(
             # g_lambda(r) = exp(-lambda * beta u)
             gl = np.exp(-lam[:, None] * uij[None, :])
             lambda_integrand = gl * uij[None, :]
-            lambda_integrated = np.trapz(lambda_integrand, lam, axis=0)
+            lambda_integrated = np.trapz(lambda_integrand, lam, axis=1)
 
             strength_integrand = 4.0 * np.pi * r**2 * lambda_integrated
             I_ij = np.trapz(strength_integrand, r)
