@@ -22,7 +22,7 @@ def find_key_recursive(d, key):
 def second_virial(
     ctx,
     virial_config,
-    on = "total"
+    on = "total", 
     export=True,
     filename_prefix="second_virial_coefficient",
     r_max_factor=6.0,
