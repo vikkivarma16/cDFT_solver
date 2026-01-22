@@ -146,7 +146,7 @@ def second_virial(
 
             # ---- Integrated strength (thermodynamic integration)
             # g_lambda(r) = exp(-lambda * beta u)
-            gl = np.exp(lam[:, None] * uij[None, :])
+            gl = np.exp(-lam[:, None] * uij[None, :])
             lambda_integrand = gl * uij[None, :]
             print (lambda_integrand)
             
