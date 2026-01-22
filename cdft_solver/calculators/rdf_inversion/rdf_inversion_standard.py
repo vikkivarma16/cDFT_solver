@@ -1729,6 +1729,8 @@ def boltzmann_inversion_standard(
                     u_att[mask_att] = u_matrix[i, j][mask_att]
                     u_attractive[i, j] = u_att
                     u_attractive[j, i] = u_att
+                    print ("\n\n\n\n\n\n\n", r_m, "\n\n\n\n\n\n\")
+                    print ("\n\n\n\n\n\n\n", u_m, "\n\n\n\n\n\n\")
                     
         G_r_real, G_u_r_real = compute_G_of_r(
             u_repulsive=u_ref,
