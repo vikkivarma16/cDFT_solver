@@ -149,6 +149,8 @@ def second_virial(
             gl = np.exp(-lam[:, None] * uij[None, :])
             lambda_integrand = gl * uij[None, :]
             print (lambda_integrand)
+            print (len (lambda_integrand))
+            print (len (lambda_integrand[0]))
             
             exit (0)
             
