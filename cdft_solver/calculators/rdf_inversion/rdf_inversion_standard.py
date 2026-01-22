@@ -1743,10 +1743,11 @@ def boltzmann_inversion_standard(
         # ------------------------------------------------------------
         # State-resolved c(r)
         # ------------------------------------------------------------
+        
+        
         c_real = {
-            state: np.asarray(arr)
-            for state, arr in reference_package["c_real"].items()
-        }
+                k: v["c_pred"].tolist() for k, v in final_oz_results.items()
+            }
 
         c_ref_hard = {
             state: np.asarray(arr)
