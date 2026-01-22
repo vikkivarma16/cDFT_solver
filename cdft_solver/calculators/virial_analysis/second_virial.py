@@ -108,7 +108,7 @@ def second_virial(
 
             # ---- Extract potentials ----
             u_attr_ij = u_attr[i, j]
-            sigma_ij = sigma[i]
+            sigma_ij = sigma[i, j]
             u_hc = np.zeros_like(r)
             u_hc[r < sigma_ij] = 1e12  # large repulsive core
 
