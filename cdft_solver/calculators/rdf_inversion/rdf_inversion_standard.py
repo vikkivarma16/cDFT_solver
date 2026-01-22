@@ -1313,7 +1313,7 @@ def boltzmann_inversion_standard(
         # Compute WCA RDFs for both sigma definitions
         # ------------------------------------------------------------
 
-        g_wca_sigma_bh, c_wca_sigma_bh,, gamma_wca_sigma_bh, rmin_bh, u_repulsive_bh, u_attractive_bh  = compute_wca_gr(bh_sigma)
+        g_wca_sigma_bh, c_wca_sigma_bh, gamma_wca_sigma_bh, rmin_bh, u_repulsive_bh, u_attractive_bh  = compute_wca_gr(bh_sigma)
         g_wca_sigma_opt, c_wca_sigma_opt, gamma_wca_sigma_opt, rmin_opt, u_repulsive_opt, u_attractive_opt = compute_wca_gr(sigma_opt)
 
 
