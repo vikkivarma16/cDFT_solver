@@ -48,7 +48,6 @@ def lj(p):
         return v
     return V
 
-register_isotropic_pair_potentials = register_isotropic_pair_potential
 register_isotropic_pair_potentials("lj", lj)
 register_isotropic_pair_potentials("lennard-jones", lj)
 
