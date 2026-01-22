@@ -1672,7 +1672,7 @@ def boltzmann_inversion_standard(
                 G_u = np.zeros_like(u_matrix)
                 for i in range(N):
                         for j in range(N):
-                            G_u[i, j] = G_accum[i, j] *  beta_s * u_attractive / beta_ref
+                            G_u[i, j] = G_accum[i, j] *  beta_s * u_attractive[i, j] / beta_ref
 
                 # Store G(r) for this state
                 G_r_dict[sname] = G_accum
