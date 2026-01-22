@@ -22,18 +22,19 @@ def find_key_recursive(d, key):
 def second_virial(
     ctx,
     virial_config,
-    on = "total", 
+    on="total",
     export=True,
     filename_prefix="second_virial_coefficient",
     r_max_factor=6.0,
     nr=8192,
     n_lambda=128,
+    beta_scale=1.0,
 ):
     """
     Research-grade computation of:
       - Second virial coefficients B2^{ij}
       - Integrated strength via thermodynamic (lambda) integration
-    using the exact low-density limit.
+    using the exact low-density limit with hard-core + mean-field splitting.
     """
 
     # -----------------------------
@@ -44,85 +45,52 @@ def second_virial(
         raise KeyError("Missing 'virial' block")
 
     species = find_key_recursive(virial_config, "species")
-    beta = virial_block.get("beta", 1.0)
+    beta = virial_block.get("beta", beta_scale)
     n = len(species)
 
     # -----------------------------
     # Generate potentials
     # -----------------------------
-    hc_data = hard_core_potentials(
-        ctx=ctx,
-        input_data=virial_config,
-        grid_points=nr,
-        export_files=True,
-    )
+    hc_data = hard_core_potentials(ctx=ctx, input_data=virial_config, grid_points=nr, export_files=False)
+    mf_data = meanfield_potentials(ctx=ctx, input_data=virial_config, grid_points=nr, export_files=False)
+    total_data = total_potentials(ctx=ctx, hc_source=hc_data, mf_source=mf_data, export_files=False)
+    raw_data = raw_potentials(ctx=ctx, input_data=virial_config, grid_points=nr, export_files=False)
 
-    mf_data = meanfield_potentials(
-        ctx=ctx,
-        input_data=virial_config,
-        grid_points=nr,
-        export_files=True,
-    )
-
-    total_data = total_potentials(
-        ctx=ctx,
-        hc_source=hc_data,
-        mf_source=mf_data,
-        export_files=True,
-    )
-    raw_data = raw_potentials(
-        ctx=ctx,
-        input_data=virial_config,
-        grid_points=5000,
-        export_files=True
-    )
-
-    
-
+    # -----------------------------
+    # Radial grid
+    # -----------------------------
     sigma = np.asarray(hc_data["sigma"])
     sigma_max = np.max(sigma)
-
-    # -----------------------------
-    # Radial grid (research-grade)
-    # -----------------------------
     r_max = r_max_factor * sigma_max
-    r = np.linspace(1e-6, r_max, nr)
+    r = np.linspace(1e-12, r_max, nr)
     dr = r[1] - r[0]
 
     # -----------------------------
-    # Build beta * u_ij(r)
+    # Select potential
     # -----------------------------
-    if (on == "total"):
-        potential_dict = total_data["total_potentials"]
+    if on == "total":
+        potential_dict = mf["potentials"]
     else:
-        potential_dict =  raw_data ["potentials"]
-        
-    
-    u = np.zeros((n, n, nr))
+        potential_dict = raw_data["potentials"]
 
+    u_attr = np.zeros((n, n, nr))
     for i, si in enumerate(species):
         for j in range(i, n):
             sj = species[j]
             key = si + sj if si + sj in potential_dict else sj + si
-
             pdata = potential_dict[key]
 
             interp_u = interp1d(
-                pdata["r"],
-                pdata["U"],
-                bounds_error=False,
-                fill_value=0.0,
-                assume_sorted=True,
+                pdata["r"], pdata["U"], bounds_error=False, fill_value=0.0, assume_sorted=True
             )
-
-            u_ij = beta * interp_u(r)
-            u[i, j, :] = u_ij
-            u[j, i, :] = u_ij
+            u_attr_ij = beta * interp_u(r)
+            u_attr[i, j, :] = u_attr_ij
+            u_attr[j, i, :] = u_attr_ij
 
     # -----------------------------
     # Lambda grid
     # -----------------------------
-    lam = np.linspace(0.1, 1.0, n_lambda)
+    lam = np.linspace(0.0, 1.0, n_lambda)
     dlam = lam[1] - lam[0]
 
     # -----------------------------
@@ -137,28 +105,36 @@ def second_virial(
     for i in range(n):
         for j in range(i, n):
 
-            uij = u[i, j]
+            # ---- Extract potentials ----
+            u_attr_ij = u_attr[i, j]
+            sigma_ij = sigma[i]
+            u_hc = np.zeros_like(r)
+            u_hc[r < sigma_ij] = 1e12  # large repulsive core
 
-            # ---- Second virial coefficient
-            f = np.exp(-uij) - 1.0
+            # ---- Second virial coefficient: f = exp(-beta u_total) - 1 ----
+            u_total = u_hc + u_attr_ij
+            f = np.exp(-u_total) - 1.0
             integrand = 4.0 * np.pi * r**2 * f
             B2_ij = -0.5 * np.trapz(integrand, r)
 
-            # ---- Integrated strength (thermodynamic integration)
-            # g_lambda(r) = exp(-lambda * beta u)
-            gl = np.exp(-lam[:, None] * uij[None, :])
-            lambda_integrand = gl * uij[None, :]
-            lambda_integrated = np.trapz(lambda_integrand, lam, axis=0)
-            
+            # ---- Integrated strength (thermodynamic integration) ----
+            # lambda perturbs only the attractive part
+            # Exponential sees: u_hc + lambda * u_attr
+            lambda_integrated = np.zeros_like(r)
+            for lam_k in lam:
+                gl = np.exp(-(u_hc + lam_k * u_attr_ij))
+                lambda_integrated += gl * u_attr_ij * dlam  # g_lambda * u_attr
 
+            # Radial integration
             strength_integrand = 4.0 * np.pi * r**2 * lambda_integrated
             I_ij = np.trapz(strength_integrand, r)
 
+            # Symmetric assignment
             B2[i, j] = B2[j, i] = B2_ij
             integrated_strength[i, j] = integrated_strength[j, i] = I_ij
 
     # -----------------------------
-    # Export
+    # Export results
     # -----------------------------
     if export:
         out = Path(ctx.scratch_dir)
