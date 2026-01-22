@@ -22,7 +22,7 @@ def find_key_recursive(d, key):
 def second_virial(
     ctx,
     virial_config,
-    on="total",
+    on="splitted",
     export=True,
     filename_prefix="second_virial_coefficient",
     r_max_factor=6.0,
@@ -51,10 +51,10 @@ def second_virial(
     # -----------------------------
     # Generate potentials
     # -----------------------------
-    hc_data = hard_core_potentials(ctx=ctx, input_data=virial_config, grid_points=nr, export_files=False)
-    mf_data = meanfield_potentials(ctx=ctx, input_data=virial_config, grid_points=nr, export_files=False)
-    total_data = total_potentials(ctx=ctx, hc_source=hc_data, mf_source=mf_data, export_files=False)
-    raw_data = raw_potentials(ctx=ctx, input_data=virial_config, grid_points=nr, export_files=False)
+    hc_data = hard_core_potentials(ctx=ctx, input_data=virial_config, grid_points=nr, export_files=True)
+    mf_data = meanfield_potentials(ctx=ctx, input_data=virial_config, grid_points=nr, export_files=True)
+    total_data = total_potentials(ctx=ctx, hc_source=hc_data, mf_source=mf_data, export_files=True)
+    raw_data = raw_potentials(ctx=ctx, input_data=virial_config, grid_points=nr, export_files=True)
 
     # -----------------------------
     # Radial grid
@@ -68,103 +68,209 @@ def second_virial(
     # -----------------------------
     # Select potential
     # -----------------------------
-    if on == "total":
+    if on == "splitted":
         potential_dict = mf_data["potentials"]
+        u_attr = np.zeros((n, n, nr))
+        for i, si in enumerate(species):
+            for j in range(i, n):
+                sj = species[j]
+                key = si + sj if si + sj in potential_dict else sj + si
+                pdata = potential_dict[key]
+
+                interp_u = interp1d(
+                    pdata["r"], pdata["U"], bounds_error=False, fill_value=0.0, assume_sorted=True
+                )
+                u_attr_ij = beta * interp_u(r)
+                u_attr[i, j, :] = u_attr_ij
+                u_attr[j, i, :] = u_attr_ij
+
+        # -----------------------------
+        # Lambda grid
+        # -----------------------------
+        lam = np.linspace(0.0, 1.0, n_lambda)
+        dlam = lam[1] - lam[0]
+
+        # -----------------------------
+        # Allocate results
+        # -----------------------------
+        B2 = np.zeros((n, n))
+        integrated_strength = np.zeros((n, n))
+
+        # -----------------------------
+        # Core computation
+        # -----------------------------
+        for i in range(n):
+            for j in range(i, n):
+
+                # ---- Extract potentials ----
+                u_attr_ij = u_attr[i, j]
+                sigma_ij = sigma[i, j]
+                u_hc = np.zeros_like(r)
+                u_hc[r < sigma_ij] = 1e12  # large repulsive core
+
+                # ---- Second virial coefficient: f = exp(-beta u_total) - 1 ----
+                u_total = u_hc + u_attr_ij
+                f = np.exp(-u_total) - 1.0
+                integrand = 4.0 * np.pi * r**2 * f
+                B2_ij = -0.5 * np.trapz(integrand, r)
+
+                # ---- Integrated strength (thermodynamic integration) ----
+                # lambda perturbs only the attractive part
+                # Exponential sees: u_hc + lambda * u_attr
+                lambda_integrated = np.zeros_like(r)
+                for lam_k in lam:
+                    gl = np.exp(-(u_hc + lam_k * u_attr_ij))
+                    lambda_integrated += gl * u_attr_ij * dlam  # g_lambda * u_attr
+
+                # Radial integration
+                strength_integrand = 4.0 * np.pi * r**2 * lambda_integrated
+                I_ij = np.trapz(strength_integrand, r)
+
+                # Symmetric assignment
+                B2[i, j] = B2[j, i] = B2_ij
+                integrated_strength[i, j] = integrated_strength[j, i] = I_ij
+
+        # -----------------------------
+        # Export results
+        # -----------------------------
+        if export:
+            out = Path(ctx.scratch_dir)
+            out.mkdir(parents=True, exist_ok=True)
+
+            data = {
+                "metadata": {
+                    "species": species,
+                    "beta": beta,
+                    "r_max": r_max,
+                    "nr": nr,
+                    "n_lambda": n_lambda,
+                },
+                "pairs": {},
+            }
+
+            for i, si in enumerate(species):
+                for j, sj in enumerate(species):
+                    key = f"{si}{sj}"
+                    data["pairs"][key] = {
+                        "B2": float(B2[i, j]),
+                        "integrated_strength": float(integrated_strength[i, j]),
+                    }
+
+            path = out / f"{filename_prefix}.json"
+            with open(path, "w") as f:
+                json.dump(data, f, indent=4)
+
+            print(f"✅ Second virial + integrated strength exported → {path}")
+
+        return B2, integrated_strength
+
+            
+        
+        
+        
+        
+        
+        
+        
+        
+        
     else:
-        print ("not implemented properly")
+        # -----------------------------
+        # Build beta * u_ij(r) from raw potentials
+        # -----------------------------
         potential_dict = raw_data["potentials"]
-
-    u_attr = np.zeros((n, n, nr))
-    for i, si in enumerate(species):
-        for j in range(i, n):
-            sj = species[j]
-            key = si + sj if si + sj in potential_dict else sj + si
-            pdata = potential_dict[key]
-
-            interp_u = interp1d(
-                pdata["r"], pdata["U"], bounds_error=False, fill_value=0.0, assume_sorted=True
-            )
-            u_attr_ij = beta * interp_u(r)
-            u_attr[i, j, :] = u_attr_ij
-            u_attr[j, i, :] = u_attr_ij
-
-    # -----------------------------
-    # Lambda grid
-    # -----------------------------
-    lam = np.linspace(0.0, 1.0, n_lambda)
-    dlam = lam[1] - lam[0]
-
-    # -----------------------------
-    # Allocate results
-    # -----------------------------
-    B2 = np.zeros((n, n))
-    integrated_strength = np.zeros((n, n))
-
-    # -----------------------------
-    # Core computation
-    # -----------------------------
-    for i in range(n):
-        for j in range(i, n):
-
-            # ---- Extract potentials ----
-            u_attr_ij = u_attr[i, j]
-            sigma_ij = sigma[i, j]
-            u_hc = np.zeros_like(r)
-            u_hc[r < sigma_ij] = 1e12  # large repulsive core
-
-            # ---- Second virial coefficient: f = exp(-beta u_total) - 1 ----
-            u_total = u_hc + u_attr_ij
-            f = np.exp(-u_total) - 1.0
-            integrand = 4.0 * np.pi * r**2 * f
-            B2_ij = -0.5 * np.trapz(integrand, r)
-
-            # ---- Integrated strength (thermodynamic integration) ----
-            # lambda perturbs only the attractive part
-            # Exponential sees: u_hc + lambda * u_attr
-            lambda_integrated = np.zeros_like(r)
-            for lam_k in lam:
-                gl = np.exp(-(u_hc + lam_k * u_attr_ij))
-                lambda_integrated += gl * u_attr_ij * dlam  # g_lambda * u_attr
-
-            # Radial integration
-            strength_integrand = 4.0 * np.pi * r**2 * lambda_integrated
-            I_ij = np.trapz(strength_integrand, r)
-
-            # Symmetric assignment
-            B2[i, j] = B2[j, i] = B2_ij
-            integrated_strength[i, j] = integrated_strength[j, i] = I_ij
-
-    # -----------------------------
-    # Export results
-    # -----------------------------
-    if export:
-        out = Path(ctx.scratch_dir)
-        out.mkdir(parents=True, exist_ok=True)
-
-        data = {
-            "metadata": {
-                "species": species,
-                "beta": beta,
-                "r_max": r_max,
-                "nr": nr,
-                "n_lambda": n_lambda,
-            },
-            "pairs": {},
-        }
+        u = np.zeros((n, n, nr))
 
         for i, si in enumerate(species):
-            for j, sj in enumerate(species):
-                key = f"{si}{sj}"
-                data["pairs"][key] = {
-                    "B2": float(B2[i, j]),
-                    "integrated_strength": float(integrated_strength[i, j]),
-                }
+            for j in range(i, n):
+                sj = species[j]
 
-        path = out / f"{filename_prefix}.json"
-        with open(path, "w") as f:
-            json.dump(data, f, indent=4)
+                # Determine the key for the pair
+                key = si + sj if si + sj in potential_dict else sj + si
+                pdata = potential_dict[key]
 
-        print(f"✅ Second virial + integrated strength exported → {path}")
+                # Interpolate potential on radial grid
+                interp_u = interp1d(
+                    pdata["r"],
+                    pdata["U"],
+                    bounds_error=False,
+                    fill_value=0.0,
+                    assume_sorted=True,
+                )
 
-    return B2, integrated_strength
+                u_ij = beta * interp_u(r)
+                u[i, j, :] = u_ij
+                u[j, i, :] = u_ij
+
+        # -----------------------------
+        # Lambda grid
+        # -----------------------------
+        lam = np.linspace(0.1, 1.0, n_lambda)
+        dlam = lam[1] - lam[0]
+
+        # -----------------------------
+        # Allocate results
+        # -----------------------------
+        B2 = np.zeros((n, n))
+        integrated_strength = np.zeros((n, n))
+
+        # -----------------------------
+        # Core computation
+        # -----------------------------
+        for i in range(n):
+            for j in range(i, n):
+
+                uij = u[i, j]
+
+                # ---- Second virial coefficient ----
+                f = np.exp(-uij) - 1.0
+                integrand = 4.0 * np.pi * r**2 * f
+                B2_ij = -0.5 * np.trapz(integrand, r)
+
+                # ---- Integrated strength (thermodynamic integration) ----
+                # g_lambda(r) = exp(-lambda * beta u)
+                gl = np.exp(-lam[:, None] * uij[None, :])
+                lambda_integrand = gl * uij[None, :]
+                lambda_integrated = np.trapz(lambda_integrand, lam, axis=0)
+
+                strength_integrand = 4.0 * np.pi * r**2 * lambda_integrated
+                I_ij = np.trapz(strength_integrand, r)
+
+                # Symmetric assignment
+                B2[i, j] = B2[j, i] = B2_ij
+                integrated_strength[i, j] = integrated_strength[j, i] = I_ij
+
+        # -----------------------------
+        # Export results
+        # -----------------------------
+        if export:
+            out = Path(ctx.scratch_dir)
+            out.mkdir(parents=True, exist_ok=True)
+
+            data = {
+                "metadata": {
+                    "species": species,
+                    "beta": beta,
+                    "r_max": r_max,
+                    "nr": nr,
+                    "n_lambda": n_lambda,
+                },
+                "pairs": {},
+            }
+
+            for i, si in enumerate(species):
+                for j, sj in enumerate(species):
+                    key = f"{si}{sj}"
+                    data["pairs"][key] = {
+                        "B2": float(B2[i, j]),
+                        "integrated_strength": float(integrated_strength[i, j]),
+                    }
+
+            path = out / f"{filename_prefix}.json"
+            with open(path, "w") as f:
+                json.dump(data, f, indent=4)
+
+            print(f"✅ Second virial + integrated strength exported → {path}")
+
+        return B2, integrated_strength
 
