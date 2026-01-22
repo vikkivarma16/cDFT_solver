@@ -1830,12 +1830,12 @@ def boltzmann_inversion_standard(
                 for state, arr in delta_c_sigma_opt.items()
             },
             
-            "delta_c_sigma_bh_pure: {
+            "delta_c_sigma_bh_pure": {
                 state: arr.tolist()
                 for state, arr in delta_c_sigma_bh_pure.items()
             },
             
-            "delta_c_sigma_opt_pure: {
+            "delta_c_sigma_opt_pure": {
                 state: arr.tolist()
                 for state, arr in delta_c_sigma_opt_pure.items()
             },
