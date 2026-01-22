@@ -54,21 +54,21 @@ def second_virial(
         ctx=ctx,
         input_data=virial_config,
         grid_points=nr,
-        export_files=False,
+        export_files=True,
     )
 
     mf_data = meanfield_potentials(
         ctx=ctx,
         input_data=virial_config,
         grid_points=nr,
-        export_files=False,
+        export_files=True,
     )
 
     total_data = total_potentials(
         ctx=ctx,
         hc_source=hc_data,
         mf_source=mf_data,
-        export_files=False,
+        export_files=True,
     )
     raw_data = raw_potentials(
         ctx=ctx,
