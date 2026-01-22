@@ -122,7 +122,7 @@ def second_virial(
     # -----------------------------
     # Lambda grid
     # -----------------------------
-    lam = np.linspace(0.000000001, 1.0, n_lambda)
+    lam = np.linspace(0.1, 1.0, n_lambda)
     dlam = lam[1] - lam[0]
 
     # -----------------------------
