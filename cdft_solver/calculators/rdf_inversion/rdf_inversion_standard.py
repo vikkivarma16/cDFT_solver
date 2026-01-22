@@ -1782,25 +1782,10 @@ def boltzmann_inversion_standard(
         # ------------------------------------------------------------
         
         
-        c_real = {
-                k: v["c_pred"].tolist() for k, v in final_oz_results.items()
-            }
-
-        c_ref_hard = {
-            state: np.asarray(arr)
-            for state, arr in reference_package["c_ref_hard"].items()
-        }
-
-        c_rep_sigma_bh = {
-            state: np.asarray(arr)
-            for state, arr in reference_package["c_rep_sigma_bh"].items()
-        }
-
-        c_rep_sigma_opt = {
-            state: np.asarray(arr)
-            for state, arr in reference_package["c_rep_sigma_opt"].items()
-        }
-        
+        c_real = { k: v["c_pred"].tolist() for k, v in final_oz_results.items() }
+        c_ref_hard = { state: np.asarray(arr) for state, arr in reference_package["c_ref_hard"].items() }
+        c_rep_sigma_bh = { state: np.asarray(arr) for state, arr in reference_package["c_rep_sigma_bh"].items() }
+        c_rep_sigma_opt = { state: np.asarray(arr) for state, arr in reference_package["c_rep_sigma_opt"].items() }
         c_sigma_opt =  { state : np.asarray(arr) for state, arr in attractive_package["sigma_opt_results"]["c_ur"].items () } 
         c_sigma_bh =  { state : np.asarray(arr) for state, arr in attractive_package["sigma_bh_results"]["c_ur"].items () } 
         
@@ -1843,6 +1828,16 @@ def boltzmann_inversion_standard(
             "delta_c_sigma_opt": {
                 state: arr.tolist()
                 for state, arr in delta_c_sigma_opt.items()
+            },
+            
+            "delta_c_sigma_bh_pure: {
+                state: arr.tolist()
+                for state, arr in delta_c_sigma_bh_pure.items()
+            },
+            
+            "delta_c_sigma_opt_pure: {
+                state: arr.tolist()
+                for state, arr in delta_c_sigma_opt_pure.items()
             },
 
             "metadata": {
