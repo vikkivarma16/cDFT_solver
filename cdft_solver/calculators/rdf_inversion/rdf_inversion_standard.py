@@ -1730,7 +1730,7 @@ def boltzmann_inversion_standard(
                     u_attractive[i, j] = u_att
                     u_attractive[j, i] = u_att
                     
-         G_r_real, G_u_r_real = compute_G_of_r(
+        G_r_real, G_u_r_real = compute_G_of_r(
             u_repulsive=u_ref,
             u_attractive=u_attractive,
             states=states,
