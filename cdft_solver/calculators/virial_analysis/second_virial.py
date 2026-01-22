@@ -69,8 +69,9 @@ def second_virial(
     # Select potential
     # -----------------------------
     if on == "total":
-        potential_dict = mf["potentials"]
+        potential_dict = mf_data["potentials"]
     else:
+        print ("not implemented properly")
         potential_dict = raw_data["potentials"]
 
     u_attr = np.zeros((n, n, nr))
