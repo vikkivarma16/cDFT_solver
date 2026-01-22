@@ -1549,6 +1549,7 @@ def boltzmann_inversion_standard(
 
             return {
                 "u_attractive": u_attr_trial,
+                "u_repulsive": u_repulsive
                 "u_total": u_final,
                 "g_ur": g_ur,
                 "c_ur": c_ur,
@@ -1616,8 +1617,120 @@ def boltzmann_inversion_standard(
            
                 
                         
-                
-                 
+    
+    print ("Integrated strength kernel analysis is going on !!!!!!!")
+    
+    
+    
+    
+    # ============================================================
+    # Compute G(r) via λ-integration for each pair and state
+    # ============================================================
+
+    def compute_G_of_r(u_repulsive, u_attractive, states, r, pair_closures, beta_ref, N, n_alpha=20):
+        """
+        Computes G(r) = ∫_0^1 g_alpha(r) dα
+        where u_alpha = u_repulsive + α * u_attractive
+        """
+
+        alpha_grid = np.linspace(0.0, 1.0, n_alpha)
+        dalpha = alpha_grid[1] - alpha_grid[0]
+
+        G_r_dict = {sname: np.zeros_like(u_attractive) for sname in states.keys()}
+
+        # Loop over states
+        for sname, sdata in states.items():
+            beta_s = sdata["beta"]
+            rho_s = np.asarray(sdata["densities"], float)
+
+            G_accum = np.zeros_like(u_attractive)
+
+            # Loop over λ (α)
+            for alpha in alpha_grid:
+                # Total potential for this α
+                u_alpha = u_repulsive + alpha * u_attractive
+
+                # Solve OZ for this u_alpha
+                _, _, g_alpha = multi_component_oz_solver_alpha(
+                    r=r,
+                    pair_closures=pair_closures,
+                    densities=rho_s,
+                    u_matrix=beta_s * u_alpha / beta_ref,
+                    sigma_matrix=np.zeros((N, N)),
+                    n_iter=n_iter,
+                    tol=tolerance,
+                    alpha_rdf_max=alpha_max,
+                )
+
+                # Accumulate for integration
+                for i in range(N):
+                    for j in range(N):
+                        G_accum[i, j] += g_alpha[i, j] * dalpha
+
+            # Store G(r) for this state
+            G_r_dict[sname] = G_accum
+
+        return G_r_dict
+
+    # ============================================================
+    # Run G(r) computation for σ_opt
+    # ============================================================
+    G_r_sigma_opt = compute_G_of_r(
+        u_repulsive=results_sigma_opt ["u_repulsive"],
+        u_attractive=results_sigma_opt["u_attractive"],
+        states=states,
+        r=r,
+        pair_closures=pair_closures,
+        beta_ref=beta_ref,
+        N=N,
+        n_alpha=20
+    )
+
+    # ============================================================
+    # Run G(r) computation for σ_BH
+    # ============================================================
+    G_r_sigma_bh = compute_G_of_r(
+        u_repulsive=results_sigma_bh["u_repulsive"],
+        u_attractive=results_sigma_bh["u_attractive"],
+        states=states,
+        r=r,
+        pair_closures=pair_closures,
+        beta_ref=beta_ref,
+        N=N,
+        n_alpha=20
+    )
+
+    # ============================================================
+    # Export results along with u_attractive
+    # ============================================================
+    attractive_package = {
+        "sigma_opt": sigma_opt.tolist(),
+        "sigma_bh": bh_sigma.tolist(),
+        "r": r.tolist(),
+        
+        "G_r_sigma_opt": {k: v.tolist() for k, v in G_r_sigma_opt.items()},
+        "G_r_sigma_bh":  {k: v.tolist() for k, v in G_r_sigma_bh.items()},
+        
+        "u_attractive_sigma_opt": results_sigma_opt["u_attractive"].tolist(),
+        "u_attractive_sigma_bh": results_sigma_bh["u_attractive"].tolist()
+    }
+
+    out = Path(ctx.scratch_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    json_file = out / "result_G_of_r.json"
+
+    with open(json_file, "w") as f:
+        json.dump(attractive_package, f, indent=4)
+
+    print("✅ G(r) and u_attractive exported →", json_file)
+
+    
+    
+    
+    
+    
+    
+    
         
     if export_json:
         out = Path(ctx.scratch_dir)
