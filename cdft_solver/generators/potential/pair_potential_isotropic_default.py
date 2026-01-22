@@ -192,7 +192,7 @@ def wca(p):
 
 
 register_isotropic_pair_potential("wca", wca)
-
+register_isotropic_pair_potential("salj", wca)
 
 
 # ============================================================
