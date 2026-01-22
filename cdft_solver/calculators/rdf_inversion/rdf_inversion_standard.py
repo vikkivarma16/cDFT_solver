@@ -1064,12 +1064,14 @@ def boltzmann_inversion_standard(
         # -------------------------------------------------
 
         g_ref = {}
+        c_ref = {}
+        gamma_ref = {}
         for sname, sdata in states.items():
 
             beta_s = sdata["beta"]
             rho_s = sdata["densities"]
             print(f"\nComputing reference RDF for state {sname}")
-            _, _, g_ref_state = multi_component_oz_solver_alpha(
+            c_ref_state, gamma_ref_state, g_ref_state = multi_component_oz_solver_alpha(
                 r=r,
                 pair_closures=pair_closures,
                 densities=np.asarray(rho_s, float),
@@ -1081,6 +1083,8 @@ def boltzmann_inversion_standard(
             )
 
             g_ref[sname] = g_ref_state
+            c_ref[sname] = c_ref_state
+            gamma_ref[sname] = gamma_ref_state  
 
         # -------------------------------------------------
         # PHASE D: Collective sigma optimization
@@ -1158,10 +1162,12 @@ def boltzmann_inversion_standard(
             Compute RDFs using ONLY hard-core repulsion defined by sigma_mat.
             """
             g_store = {}
+            c_store = {}
+            gamma_store = {}
             u_rep = build_hard_core_u_from_sigma(sigma_mat)
 
             for sname, sdata in states.items():
-                _, _, g_state = multi_component_oz_solver_alpha(
+                c_state, gamma_state, g_state = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(sdata["densities"], float),
@@ -1172,14 +1178,16 @@ def boltzmann_inversion_standard(
                     alpha_rdf_max=alpha_max,
                 )
                 g_store[sname] = g_state
+                c_store[sname] = c_state
+                gamma_store[sname] = gamma_state
 
-            return g_store
+            return g_store, c_store, gamma_store
 
 
         # Repulsive RDFs using optimized sigma
-        g_rep_sigma_opt = compute_repulsive_gr(sigma_opt)
+        g_rep_sigma_opt, c_rep_sigma_opt, gamma_rep_sigma_opt = compute_repulsive_gr(sigma_opt)
         # Repulsive RDFs using Barker–Henderson sigma
-        g_rep_sigma_bh = compute_repulsive_gr(bh_sigma)
+        g_rep_sigma_bh, c_rep_sigma_bh, gamma_rep_sigma_bh = compute_repulsive_gr(bh_sigma)
         # ============================================================
         # PHASE 7 — Save reference package (JSON)
         # ============================================================
@@ -1199,20 +1207,28 @@ def boltzmann_inversion_standard(
 
             # --- reference RDFs ---
             "r" : r.tolist(), 
-            "g_ref_wca": {k: v.tolist() for k, v in g_ref.items()},
+            "g_ref_hard": {k: v.tolist() for k, v in g_ref.items()},
+            "c_ref_hard": {k: v.tolist() for k, v in c_ref.items()},
+            "gamma_ref_hard": {k: v.tolist() for k, v in gamma_ref.items()},
+            
             "g_rep_sigma_opt": {k: v.tolist() for k, v in g_rep_sigma_opt.items()},
+            "c_rep_sigma_opt": {k: v.tolist() for k, v in c_rep_sigma_opt.items()},
+            "gamma_rep_sigma_opt": {k: v.tolist() for k, v in gamma_rep_sigma_opt.items()},
+            
             "g_rep_sigma_bh": {k: v.tolist() for k, v in g_rep_sigma_bh.items()},
+            "c_rep_sigma_bh": {k: v.tolist() for k, v in c_rep_sigma_bh.items()},
+            "gamma_rep_sigma_bh": {k: v.tolist() for k, v in gamma_rep_sigma_bh.items()},
 
             # --- target RDFs ---
-            "g_target": {
+            "g_real": {
                 k: v["g_pred"].tolist() for k, v in final_oz_results.items()
             },
             
-            "c_target": {
+            "c_real": {
                 k: v["c_pred"].tolist() for k, v in final_oz_results.items()
             },
             
-             "gamma_target": {
+             "gamma_real": {
                 k: v["gamma_pred"].tolist() for k, v in final_oz_results.items()
             },
         }
@@ -1273,8 +1289,10 @@ def boltzmann_inversion_standard(
 
             # ---- Compute RDFs for all states ----
             g_wca = {}
+            c_wca = {}
+            gamma_wca = {}
             for sname, sdata in states.items():
-                _, _, g_state = multi_component_oz_solver_alpha(
+                c_state, gamma_state, g_state = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(sdata["densities"], float),
@@ -1285,16 +1303,18 @@ def boltzmann_inversion_standard(
                     alpha_rdf_max=alpha_max,
                 )
                 g_wca[sname] = g_state
+                c_wca[sname] = c_state
+                gamma_wca[sname] = gamma_state
 
-            return g_wca, r_minima, u_repulsive, u_attractive
+            return g_wca, c_wca, gamma_wca, r_minima, u_repulsive, u_attractive
 
 
         # ------------------------------------------------------------
         # Compute WCA RDFs for both sigma definitions
         # ------------------------------------------------------------
 
-        g_wca_sigma_bh, rmin_bh, u_repulsive_bh, u_attractive_bh  = compute_wca_gr(bh_sigma)
-        g_wca_sigma_opt, rmin_opt, u_repulsive_opt, u_attractive_opt = compute_wca_gr(sigma_opt)
+        g_wca_sigma_bh, c_wca_sigma_bh,, gamma_wca_sigma_bh, rmin_bh, u_repulsive_bh, u_attractive_bh  = compute_wca_gr(bh_sigma)
+        g_wca_sigma_opt, c_wca_sigma_opt,, gamma_wca_sigma_opt, rmin_opt, u_repulsive_opt, u_attractive_opt = compute_wca_gr(sigma_opt)
 
 
         # ============================================================
@@ -1315,16 +1335,23 @@ def boltzmann_inversion_standard(
             "u_repulsive_opt" : u_repulsive_opt.tolist(),
             "u_total" : u_matrix.tolist(),
             "g_wca_sigma_bh": {k: v.tolist() for k, v in g_wca_sigma_bh.items()},
+            "c_wca_sigma_bh": {k: v.tolist() for k, v in c_wca_sigma_bh.items()},
+            "gamma_wca_sigma_bh": {k: v.tolist() for k, v in gamma_wca_sigma_bh.items()},
+            
+            
             "g_wca_sigma_opt": {k: v.tolist() for k, v in g_wca_sigma_opt.items()},
-            "g_total": {
+            "c_wca_sigma_opt": {k: v.tolist() for k, v in c_wca_sigma_opt.items()},
+            "gamma_wca_sigma_opt": {k: v.tolist() for k, v in gamma_wca_sigma_opt.items()},
+            
+            "g_real": {
                 k: v["g_pred"].tolist() for k, v in final_oz_results.items()
             },
             
-            "c_total": {
+            "c_real": {
                 k: v["c_pred"].tolist() for k, v in final_oz_results.items()
             },
             
-             "gamma_total": {
+             "gamma_real": {
                 k: v["gamma_pred"].tolist() for k, v in final_oz_results.items()
             },
         }
@@ -1547,8 +1574,16 @@ def boltzmann_inversion_standard(
             
             "r" : r.tolist(), 
 
-            "g_pred": {
+            "g_real": {
                 k: v["g_pred"].tolist() for k, v in final_oz_results.items()
+            },
+            
+            "c_real": {
+                k: v["c_pred"].tolist() for k, v in final_oz_results.items()
+            },
+            
+            "gamma_real": {
+                k: v["gamma_pred"].tolist() for k, v in final_oz_results.items()
             },
 
             "sigma_opt_results": {
