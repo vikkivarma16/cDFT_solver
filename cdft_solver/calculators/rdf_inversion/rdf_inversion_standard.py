@@ -1549,7 +1549,7 @@ def boltzmann_inversion_standard(
 
             return {
                 "u_attractive": u_attr_trial,
-                "u_repulsive": u_repulsive
+                "u_repulsive": u_repulsive,
                 "u_total": u_final,
                 "g_ur": g_ur,
                 "c_ur": c_ur,
