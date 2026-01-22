@@ -95,7 +95,7 @@ def second_virial(
     if (on == "total"):
         potential_dict = total_data["total_potentials"]
     else:
-        potential_dict =  raw_data ["raw_potentials"]
+        potential_dict =  raw_data ["potentials"]
         
     
     u = np.zeros((n, n, nr))
