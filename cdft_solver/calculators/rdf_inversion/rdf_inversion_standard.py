@@ -1857,7 +1857,7 @@ def boltzmann_inversion_standard(
             
             "G_u_r_sigma_opt": {k: v.tolist() for k, v in G_u_r_sigma_opt.items()},
             "G_u_r_sigma_bh":  {k: v.tolist() for k, v in G_u_r_sigma_bh.items()},
-            "G_u_r_real":  {k: v.tolist() for k, v in G_u_r_sigma_bh.items()},
+            "G_u_r_real":  {k: v.tolist() for k, v in G_u_r_real.items()},
             
             "u_attractive_sigma_opt": results_sigma_opt["u_attractive"].tolist(),
             "u_attractive_sigma_bh": results_sigma_bh["u_attractive"].tolist()
