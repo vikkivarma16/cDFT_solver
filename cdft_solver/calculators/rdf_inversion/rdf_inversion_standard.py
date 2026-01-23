@@ -1638,7 +1638,6 @@ def boltzmann_inversion_standard(
             pair_closures,
             beta_ref,
             N,
-            ctx,
             n_alpha=20,
         ):
             """
