@@ -1735,6 +1735,27 @@ def boltzmann_inversion_standard(
 
                 G_r_dict[sname] = G_accum
                 G_u_r_dict[sname] = G_u
+                
+                for i in range(N):
+                    for j in range(i, N):
+
+                        plt.figure(figsize=(7, 5))
+                        plt.plot(r, G_u[i, j], lw=2, label=r"$g_u_{ij}^{(\alpha)}(r)$")
+                        plt.axhline(0.0, color="k", lw=0.5)
+                        plt.xlabel("r")
+                        #plt.ylim(-0.3, 2.5)
+                        plt.ylabel("Value")
+                        plt.title(f"{sname} | pair ({i},{j}) | α = {alpha:.2f}")
+                        plt.legend()
+                        plt.tight_layout()
+
+                        fname = (
+                            f"debug_g_u_{sname}_pair_{i}_{j}.png"
+                        )
+                        plt.savefig(plots_dir / fname, dpi=150)
+                        plt.close()
+                
+                
 
             print(f"✅ Debug plots saved to: {plots_dir}")
             return G_r_dict, G_u_r_dict
