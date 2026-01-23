@@ -1716,6 +1716,7 @@ def boltzmann_inversion_standard(
 
                             plt.axhline(0.0, color="k", lw=0.5)
                             plt.xlabel("r")
+                            plt.ylim(-0.3, 2.5)
                             plt.ylabel("Value")
                             plt.title(f"{sname} | pair ({i},{j}) | α = {alpha:.2f}")
                             plt.legend()
