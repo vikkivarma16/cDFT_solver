@@ -1627,32 +1627,58 @@ def boltzmann_inversion_standard(
         # Compute G(r) via λ-integration for each pair and state
         # ============================================================
 
-        def compute_G_of_r(u_repulsive, u_attractive, states, r, pair_closures, beta_ref, N, n_alpha=20):
+        
+        
+        
+        def compute_G_of_r(
+            u_repulsive,
+            u_attractive,
+            states,
+            r,
+            pair_closures,
+            beta_ref,
+            N,
+            ctx,
+            n_alpha=20,
+        ):
             """
             Computes G(r) = ∫_0^1 g_alpha(r) dα
-            where u_alpha = u_repulsive + α * u_attractive
+            with debug plots of g_alpha, u_repulsive, and alpha*u_attractive
             """
+
+            import numpy as np
+            import matplotlib.pyplot as plt
+            from pathlib import Path
 
             alpha_grid = np.linspace(0.0, 1.0, n_alpha)
             dalpha = alpha_grid[1] - alpha_grid[0]
 
-            G_r_dict = {}
-            G_u_r_dict  = {}
-            
+            # ------------------------------------------------------------
+            # Plot directory
+            # ------------------------------------------------------------
+            plots_dir = getattr(ctx, "plots_dir", ctx.scratch_dir)
+            plots_dir = Path(plots_dir)
+            plots_dir.mkdir(parents=True, exist_ok=True)
 
+            G_r_dict = {}
+            G_u_r_dict = {}
+
+            # ------------------------------------------------------------
             # Loop over states
+            # ------------------------------------------------------------
             for sname, sdata in states.items():
                 beta_s = sdata["beta"]
                 rho_s = np.asarray(sdata["densities"], float)
 
                 G_accum = np.zeros_like(u_attractive)
 
-                # Loop over λ (α)
+                # --------------------------------------------------------
+                # Loop over α
+                # --------------------------------------------------------
                 for alpha in alpha_grid:
-                    # Total potential for this α
+
                     u_alpha = u_repulsive + alpha * u_attractive
 
-                    # Solve OZ for this u_alpha
                     _, _, g_alpha = multi_component_oz_solver_alpha(
                         r=r,
                         pair_closures=pair_closures,
@@ -1664,21 +1690,66 @@ def boltzmann_inversion_standard(
                         alpha_rdf_max=alpha_max,
                     )
 
-                    # Accumulate for integration
+                    # Accumulate G(r)
+                    G_accum += g_alpha * dalpha
+
+                    # ----------------------------------------------------
+                    # DEBUG PLOTS PER PAIR
+                    # ----------------------------------------------------
                     for i in range(N):
-                        for j in range(N):
-                            G_accum[i, j] += g_alpha[i, j] * dalpha
-                            
-                G_u = np.zeros_like(u_matrix)
-                for i in range(N):
-                        for j in range(N):
-                            G_u[i, j] = G_accum[i, j] *  beta_s * u_attractive[i, j] / beta_ref
+                        for j in range(i, N):
 
-                # Store G(r) for this state
+                            plt.figure(figsize=(7, 5))
+
+                            plt.plot(r, g_alpha[i, j], lw=2, label=r"$g_{ij}^{(\alpha)}(r)$")
+                            plt.plot(
+                                r,
+                                beta_s * u_repulsive[i, j] / beta_ref,
+                                "--",
+                                label=r"$\beta u^{\mathrm{rep}}$",
+                            )
+                            plt.plot(
+                                r,
+                                beta_s * alpha * u_attractive[i, j] / beta_ref,
+                                "--",
+                                label=r"$\beta \alpha u^{\mathrm{att}}$",
+                            )
+
+                            plt.axhline(0.0, color="k", lw=0.5)
+                            plt.xlabel("r")
+                            plt.ylabel("Value")
+                            plt.title(f"{sname} | pair ({i},{j}) | α = {alpha:.2f}")
+                            plt.legend()
+                            plt.tight_layout()
+
+                            fname = (
+                                f"debug_g_alpha_{sname}_pair_{i}_{j}_alpha_{alpha:.2f}.png"
+                            )
+                            plt.savefig(plots_dir / fname, dpi=150)
+                            plt.close()
+
+                # --------------------------------------------------------
+                # Compute G_u(r)
+                # --------------------------------------------------------
+                G_u = beta_s * G_accum * u_attractive / beta_ref
+
                 G_r_dict[sname] = G_accum
-                G_u_r_dict[sname] =  G_u
+                G_u_r_dict[sname] = G_u
 
+            print(f"✅ Debug plots saved to: {plots_dir}")
             return G_r_dict, G_u_r_dict
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
         # ============================================================
         # Run G(r) computation for σ_opt
