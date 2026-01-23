@@ -1739,22 +1739,28 @@ def boltzmann_inversion_standard(
                 for i in range(N):
                     for j in range(i, N):
 
-                        plt.figure(figsize=(7, 5))
-                        plt.plot(r, G_u[i, j], lw=2, label=r"$g_u_{ij}^{(\alpha)}(r)$")
-                        plt.axhline(0.0, color="k", lw=0.5)
-                        plt.xlabel("r")
-                        #plt.ylim(-0.3, 2.5)
-                        plt.ylabel("Value")
-                        plt.title(f"{sname} | pair ({i},{j}) | α = {alpha:.2f}")
-                        plt.legend()
-                        plt.tight_layout()
+                        fig, ax = plt.subplots(figsize=(7, 5))
 
-                        fname = (
-                            f"debug_g_u_{sname}_pair_{i}_{j}.png"
+                        ax.plot(
+                            r,
+                            G_u[i, j],
+                            lw=2,
+                            label=rf"$g^u_{{{i}{j}}}(\alpha; r)$",
                         )
-                        plt.savefig(plots_dir / fname, dpi=150)
-                        plt.close()
-                
+
+                        ax.axhline(0.0, color="k", lw=0.5)
+                        ax.set_xlabel("r")
+                        ax.set_ylabel("Value")
+                        ax.set_title(f"{sname} | pair ({i},{j}) | α = {alpha:.2f}")
+                        ax.legend(frameon=False)
+
+                        # IMPORTANT: use fig.tight_layout(), not plt.tight_layout()
+                        fig.tight_layout()
+
+                        fname = f"debug_g_u_{sname}_pair_{i}_{j}_alpha_{alpha:.2f}.png"
+                        fig.savefig(plots_dir / fname, dpi=150)
+                        plt.close(fig)
+
                 
 
             print(f"✅ Debug plots saved to: {plots_dir}")
