@@ -966,7 +966,7 @@ def boltzmann_inversion_standard(
         Barker–Henderson radius with integration truncated
         at the first zero of u(r).
         """
-        idx_zero = np.where(u_r <= 0.001)[0]
+        idx_zero = np.where(u_r <= 0.01)[0]
         
         r_tab = r
 
@@ -1482,9 +1482,9 @@ def boltzmann_inversion_standard(
                         mask_r = r > sigma_mat[i, j]
                         delta = np.zeros_like(r)
 
-                        delta[mask_r_super] = (beta_ref/beta_s) * np.log(
-                            g_trial[i, j, mask_r_super]
-                            / final_oz_results[sname]["g_pred"][i, j, mask_r_super]
+                        delta = (beta_ref/beta_s) * np.log(
+                            g_trial[i, j]
+                            / final_oz_results[sname]["g_pred"][i, j]
                         )
 
                         delta_u_accum[i, j] += delta
@@ -1507,7 +1507,7 @@ def boltzmann_inversion_standard(
                     u_attr_trial[i, j] += alpha_attr * delta_u_accum[i, j]
 
                     r_m, u_m = detect_first_minimum_near_core(
-                        r, u_matrix[i, j], sigma=sigma_mat[i, j]
+                        r, u_attr_trial[i, j], sigma=sigma_mat[i, j]
                     )
 
                     u_att = np.zeros_like(r)
