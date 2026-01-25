@@ -1482,7 +1482,10 @@ def boltzmann_inversion_standard(
                         mask_r = r > sigma_mat[i, j]
                         delta = np.zeros_like(r)
 
-                        delta = (beta_ref/beta_s) *  (np.log(g_trial[i, j] / final_oz_results[sname]["g_pred"][i, j]) - np.log( g_trial[i, i] / final_oz_results[sname]["g_pred"][i, i])  - np.log( g_trial[j, j] / final_oz_results[sname]["g_pred"][j, j]) )
+                        delta = (beta_ref/beta_s) * np.log(
+                            g_trial[i, j]
+                            / final_oz_results[sname]["g_pred"][i, j]
+                        )
 
                         delta_u_accum[i, j] += delta
                         delta_u_accum[j, i] = delta_u_accum[i, j]
