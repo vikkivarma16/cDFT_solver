@@ -149,6 +149,7 @@ def multi_component_oz_solver_alpha(
     n_iter=10000,
     tol=1e-8,
     alpha_rdf_max=0.1,
+    gamma_initial = None,
 ):
     """
     Multi-component OZ solver with adaptive alpha-mixing
@@ -164,7 +165,11 @@ def multi_component_oz_solver_alpha(
     # -----------------------------
     # Initialize arrays
     # -----------------------------
-    gamma_r = np.zeros((N, N, Nr))
+    if gamma_initial ==  None:
+    
+        gamma_r = np.zeros((N, N, Nr))
+    else :
+        gamma_r = gamma_initial
 
     if c_initial is not None:
         c_r = c_initial.copy()
@@ -770,6 +775,11 @@ def boltzmann_inversion_advance(
     # Storage for final OZ results (used later for sigma)
     # -------------------------------------------------
     final_oz_results = {}
+    gamma_initial = np.zeros((N, N, Nr))
+    gamma_inputs  =  {}
+    for sname, sdata in states.items():
+        gamma_inputs[sname] = gamma_initial
+    
     for it in range(1, n_iter_ibi + 1):
 
         delta_u_accum = np.zeros_like(u_matrix)
@@ -796,9 +806,11 @@ def boltzmann_inversion_advance(
                 n_iter=n_iter,
                 tol=tolerance,
                 alpha_rdf_max=alpha_max,
+                gamma_initial =  gamma_inputs[sname],
             )
 
             g_pred_safe = np.maximum(g_pred, g_floor)
+            gamma_inputs[sname] =  gamma_r
             g_target_safe = np.maximum(g_target, g_floor)
 
             for i in range(N):
@@ -1110,7 +1122,10 @@ def boltzmann_inversion_advance(
                 k += 1
             return sigma_mat
 
-        
+        gamma_initial = np.zeros((N, N, Nr))
+        gamma_inputs  =  {}
+        for sname, sdata in states.items():
+            gamma_inputs[sname] = gamma_initial
 
         def sigma_objective(sigma_vec):
             sigma_mat = unpack_sigma_vector(sigma_vec)
@@ -1123,6 +1138,8 @@ def boltzmann_inversion_advance(
                 "sigma_vector": sigma_vec.tolist(),
                 "states": {}
             }
+            
+            
 
             for sname, sdata in states.items():
                 beta_s = sdata["beta"]
@@ -1137,7 +1154,9 @@ def boltzmann_inversion_advance(
                     n_iter=n_iter,
                     tol=tolerance,
                     alpha_rdf_max=alpha_max,
+                    gamma_initial=gamma_inputs[sname]
                 )
+                gamma_inputs[sname] =  gamma_trial.copy()
 
                 # ---- accumulate loss ----
                 for (i, j) in total_pair:
