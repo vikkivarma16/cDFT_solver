@@ -1208,12 +1208,16 @@ def boltzmann_inversion_advance(
 
         sigma_init_vec = np.array([sigma_guess[i, j] for (i, j) in hard_core_pairs])
         print("\nOptimizing sigma collectively across all states and pairs...")
+        from scipy.optimize import minimize
+
         result = minimize(
             sigma_objective,
             sigma_init_vec,
-            method="Powell",
-            options={"xtol": 1e-6, "ftol": 1e-6, "disp": True},
+            method="L-BFGS-B",
+            bounds=[(0.5, 2.0)] * len(sigma_init_vec),  # example bounds
+            options={"ftol": 1e-8, "maxiter": 500, "disp": True},
         )
+
         sigma_opt = unpack_sigma_vector(result.x)
         
         
