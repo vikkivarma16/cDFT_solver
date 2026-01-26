@@ -529,7 +529,7 @@ def plot_u_matrix(r, u_matrix, species, outdir, filename="u_matrix.png"):
     
     
     
-def boltzmann_inversion_advanced(
+def boltzmann_inversion_advance(
     ctx,
     rdf_config,
     supplied_data,
