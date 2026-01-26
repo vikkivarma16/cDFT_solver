@@ -529,7 +529,7 @@ def plot_u_matrix(r, u_matrix, species, outdir, filename="u_matrix.png"):
     
     
     
-def boltzmann_inversion_standard(
+def boltzmann_inversion_advanced(
     ctx,
     rdf_config,
     supplied_data,
@@ -1039,6 +1039,31 @@ def boltzmann_inversion_standard(
                 u[r < sigma] = U0
                 return u
 
+    def build_total_u_from_sigma(sigma_mat):
+        u = np.zeros_like(u_matrix)
+        for i in range(N):
+            for j in range(i, N):
+                if has_core[i, j]:
+                    u[i, j] = hard_core_potential(r, sigma_mat[i, j])
+                    r_m, u_m = detect_first_minimum_near_core(
+                        r,
+                        u_matrix[i, j],
+                        sigma=sigma_mat[i, j],
+                    )
+                    r_minima[(i, j)] = r_m
+                    u_att = np.zeros_like(r)
+                    mask_rep = r <= r_m
+                    mask_att = r > r_m
+                    # WCA attractive tail
+                    u_att[mask_rep] = u_m
+                    u_att[mask_att] = u_matrix[i, j][mask_att]
+                    u[i, j] += u_att
+                else:
+                    u[i, j] = u_matrix[i, j].copy()
+                u[j, i] =  u[i, j]
+        return u
+        
+        
     def build_hard_core_u_from_sigma(sigma_mat):
         u = np.zeros_like(u_matrix)
         for i in range(N):
@@ -1067,34 +1092,76 @@ def boltzmann_inversion_standard(
     if hard_core_pairs:
 
         print("\n🔧 Starting sigma calibration stage...")
+        
+        
+        
+        def unpack_sigma_vector(sigma_vec):
+            sigma_mat = np.zeros((N, N))
+            k = 0
+            for (i, j) in hard_core_pairs:
+                sigma_mat[i, j] = sigma_mat[j, i] = sigma_vec[k]
+                k += 1
+            return sigma_mat
+
+        
+
+        def sigma_objective(sigma_vec):
+            sigma_mat = unpack_sigma_vector(sigma_vec)
+            u_trial = build_total_u_from_sigma(sigma_mat)
+            loss = 0.0
+
+            for sname, sdata in states.items():
+                beta_s = sdata["beta"]
+                rho_s = sdata["densities"]
+                _, _, g_trial = multi_component_oz_solver_alpha(
+                    r=r,
+                    pair_closures=pair_closures,
+                    densities=np.asarray(rho_s, float),
+                    u_matrix=beta_s * u_trial / beta_ref,
+                    sigma_matrix=np.zeros((N, N)),
+                    n_iter=n_iter,
+                    tol=tolerance,
+                    alpha_rdf_max=alpha_max,
+                )
+
+                for (i, j) in total_pair:
+                    diff = g_trial[i, j] - final_oz_results[sname]["g_pred"][i, j]
+                    loss += np.sum(diff * diff)
+
+            return loss
+
         # -------------------------------------------------
-        # PHASE B: Build WCA-repulsive reference potential, which could be computed on the same basis where it was derived to be the same number of particles... now the computatoin for
+        # Run optimizer
         # -------------------------------------------------
+
+        sigma_init_vec = np.array([sigma_guess[i, j] for (i, j) in hard_core_pairs])
+        print("\nOptimizing sigma collectively across all states and pairs...")
+        result = minimize(
+            sigma_objective,
+            sigma_init_vec,
+            method="Powell",
+            options={"xtol": 1e-6, "ftol": 1e-6, "disp": True},
+        )
+        sigma_opt = unpack_sigma_vector(result.x)
         
         
-        u_ref = np.zeros_like(u_matrix)   
-        for i in range(N):
-            for j in range(N):
-                if has_core[i, j]:
-                    u_ref[i, j] = wca_split(r, u_matrix[i, j])
-                    # u_r =  u_matrix[i, j]
-                    # bh , r0 =  compute_bh_radius_truncated(r, u_r, beta_ref)
-                    # mask  =  r < r0
-                    # u_ref[i ,j] =  np.zeros_like(r)
-                    # u_ref[i, j, mask] =  u_matrix[i, j, mask]
-                else:
-                    u_ref[i, j] = u_matrix[i, j].copy()
         
         
-        # -------------------------------------------------
-        # PHASE C: Compute reference RDFs for ALL states
-        # -------------------------------------------------
         
         
+        
+        
+        
+        
+        print ("Sigma analysis is about to begin !!!! \n")
         
         g_ref = {}
         c_ref = {}
         gamma_ref = {}
+        
+        u_ref = np.zeros_like(u_matrix)
+        u_ref = build_hard_core_u_from_sigma(sigma_mat)
+
         for sname, sdata in states.items():
 
             beta_s = sdata["beta"]
@@ -1118,59 +1185,6 @@ def boltzmann_inversion_standard(
         # -------------------------------------------------
         # PHASE D: Collective sigma optimization
         # -------------------------------------------------
-
-        def unpack_sigma_vector(sigma_vec):
-            sigma_mat = np.zeros((N, N))
-            k = 0
-            for (i, j) in hard_core_pairs:
-                sigma_mat[i, j] = sigma_mat[j, i] = sigma_vec[k]
-                k += 1
-            return sigma_mat
-
-        
-
-        def sigma_objective(sigma_vec):
-            sigma_mat = unpack_sigma_vector(sigma_vec)
-            u_trial = build_hard_core_u_from_sigma(sigma_mat)
-            loss = 0.0
-
-            for sname, sdata in states.items():
-                beta_s = sdata["beta"]
-                rho_s = sdata["densities"]
-                _, _, g_trial = multi_component_oz_solver_alpha(
-                    r=r,
-                    pair_closures=pair_closures,
-                    densities=np.asarray(rho_s, float),
-                    u_matrix=beta_s * u_trial / beta_ref,
-                    sigma_matrix=np.zeros((N, N)),
-                    n_iter=n_iter,
-                    tol=tolerance,
-                    alpha_rdf_max=alpha_max,
-                )
-
-                for (i, j) in total_pair:
-                    diff = g_trial[i, j] - g_ref[sname][i, j]
-                    loss += np.sum(diff * diff)
-
-            return loss
-
-        # -------------------------------------------------
-        # Run optimizer
-        # -------------------------------------------------
-
-        sigma_init_vec = np.array([sigma_guess[i, j] for (i, j) in hard_core_pairs])
-        print("\nOptimizing sigma collectively across all states and pairs...")
-        result = minimize(
-            sigma_objective,
-            sigma_init_vec,
-            method="Powell",
-            options={"xtol": 1e-6, "ftol": 1e-6, "disp": True},
-        )
-        sigma_opt = unpack_sigma_vector(result.x)
-        
-        
-        
-        
         
         bh_zero = {}
         bh_sigma  =  np.zeros_like(sigma_opt)
@@ -1246,7 +1260,6 @@ def boltzmann_inversion_standard(
             "g_rep_sigma_bh": {k: v.tolist() for k, v in g_rep_sigma_bh.items()},
             "c_rep_sigma_bh": {k: v.tolist() for k, v in c_rep_sigma_bh.items()},
             "gamma_rep_sigma_bh": {k: v.tolist() for k, v in gamma_rep_sigma_bh.items()},
-
             # --- target RDFs ---
             "g_real": {
                 k: v["g_pred"].tolist() for k, v in final_oz_results.items()
@@ -1278,6 +1291,11 @@ def boltzmann_inversion_standard(
         # ============================================================
         # PHASE 8 — WCA splitting RDFs (σ_BH vs σ_opt)
         # ============================================================
+        
+        
+        
+        
+        print ("WCA analysis is about to begin:")
 
         def compute_wca_gr(sigma_mat):
             """
@@ -1340,7 +1358,6 @@ def boltzmann_inversion_standard(
         # ------------------------------------------------------------
         # Compute WCA RDFs for both sigma definitions
         # ------------------------------------------------------------
-
         g_wca_sigma_bh, c_wca_sigma_bh, gamma_wca_sigma_bh, rmin_bh, u_repulsive_bh, u_attractive_bh  = compute_wca_gr(bh_sigma)
         g_wca_sigma_opt, c_wca_sigma_opt, gamma_wca_sigma_opt, rmin_opt, u_repulsive_opt, u_attractive_opt = compute_wca_gr(sigma_opt)
 
@@ -1354,44 +1371,35 @@ def boltzmann_inversion_standard(
             "sigma_opt": sigma_opt.tolist(),
             
             "r" : r.tolist(),
-
             "rmin_bh": {f"{i},{j}": float(v) for (i, j), v in rmin_bh.items()},
             "rmin_opt": {f"{i},{j}": float(v) for (i, j), v in rmin_opt.items()},
+            
             "u_attractive_bh" : u_attractive_bh.tolist(),
             "u_repulsive_bh" : u_repulsive_bh.tolist(),
             "u_attractive_opt" : u_attractive_opt.tolist(),
             "u_repulsive_opt" : u_repulsive_opt.tolist(),
-            "u_total" : u_matrix.tolist(),
+            "u_real" : u_matrix.tolist(),
+            
             "g_wca_sigma_bh": {k: v.tolist() for k, v in g_wca_sigma_bh.items()},
             "c_wca_sigma_bh": {k: v.tolist() for k, v in c_wca_sigma_bh.items()},
             "gamma_wca_sigma_bh": {k: v.tolist() for k, v in gamma_wca_sigma_bh.items()},
-            
             
             "g_wca_sigma_opt": {k: v.tolist() for k, v in g_wca_sigma_opt.items()},
             "c_wca_sigma_opt": {k: v.tolist() for k, v in c_wca_sigma_opt.items()},
             "gamma_wca_sigma_opt": {k: v.tolist() for k, v in gamma_wca_sigma_opt.items()},
             
-            "g_real": {
-                k: v["g_pred"].tolist() for k, v in final_oz_results.items()
-            },
+            "g_real": { k: v["g_pred"].tolist() for k, v in final_oz_results.items() },
+            "c_real": { k: v["c_pred"].tolist() for k, v in final_oz_results.items()},
+            "gamma_real": { k: v["gamma_pred"].tolist() for k, v in final_oz_results.items()},
             
-            "c_real": {
-                k: v["c_pred"].tolist() for k, v in final_oz_results.items()
-            },
-            
-            "gamma_real": {
-                k: v["gamma_pred"].tolist() for k, v in final_oz_results.items()
-            },
         }
 
 
         out = Path(ctx.scratch_dir)
         out.mkdir(parents=True, exist_ok=True)
         json_file = out / "result_wca_gr_comparison.json"
-
         with open(json_file, "w") as f:
             json.dump(wca_package, f, indent=4)
-
         print("✅ Saved wca_gr_comparison_package.json")
 
                 
@@ -1603,17 +1611,11 @@ def boltzmann_inversion_standard(
             
             "r" : r.tolist(), 
 
-            "g_real": {
-                k: v["g_pred"].tolist() for k, v in final_oz_results.items()
-            },
+            "g_real": { k: v["g_pred"].tolist() for k, v in final_oz_results.items() },
             
-            "c_real": {
-                k: v["c_pred"].tolist() for k, v in final_oz_results.items()
-            },
+            "c_real": { k: v["c_pred"].tolist() for k, v in final_oz_results.items() },
             
-            "gamma_real": {
-                k: v["gamma_pred"].tolist() for k, v in final_oz_results.items()
-            },
+            "gamma_real": { k: v["gamma_pred"].tolist() for k, v in final_oz_results.items()},
 
             "sigma_opt_results": {
                 "g_ur": {k: v.tolist() for k, v in results_sigma_opt["g_ur"].items()},
@@ -1924,14 +1926,14 @@ def boltzmann_inversion_standard(
         # ------------------------------------------------------------
         # Compute Δc(r)
         # ------------------------------------------------------------
-        delta_c_hard = {}
+        delta_c_real = {}
         delta_c_sigma_bh = {}
         delta_c_sigma_opt = {}
         delta_c_sigma_bh_pure = {}
         delta_c_sigma_opt_pure = {}
 
         for state in new_states:
-            delta_c_hard[state] = c_real[state] - c_ref_hard[state]
+            delta_c_real[state] = c_real[state] - c_ref_hard[state]
             delta_c_sigma_bh[state] = c_real[state] - c_rep_sigma_bh[state]
             delta_c_sigma_opt[state] = c_real[state] - c_rep_sigma_opt[state]
             delta_c_sigma_bh_pure[state] = c_sigma_bh[state] - c_rep_sigma_bh[state]
@@ -1943,9 +1945,9 @@ def boltzmann_inversion_standard(
         delta_c_package = {
             "r": r.tolist(),
 
-            "delta_c_hard": {
+            "delta_c_real": {
                 state: arr.tolist()
-                for state, arr in delta_c_hard.items()
+                for state, arr in delta_c_real.items()
             },
 
             "delta_c_sigma_bh": {
@@ -1991,19 +1993,7 @@ def boltzmann_inversion_standard(
 
         print(f"✅ Δc(r) by state exported → {out_file}")
 
-            
-            
-            
-    
-    
-    
-    
-
-        
-    
-    
-    
-        
+             
     if export_json:
         out = Path(ctx.scratch_dir)
         out.mkdir(parents=True, exist_ok=True)
