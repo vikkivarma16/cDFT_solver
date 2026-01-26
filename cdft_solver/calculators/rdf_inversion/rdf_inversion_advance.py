@@ -778,10 +778,6 @@ def boltzmann_inversion_advance(
     final_oz_results = {}
     N = pair_closures.shape[0]
     Nr = len(r)
-    gamma_initial = np.zeros((N, N, Nr))
-    gamma_inputs  =  {}
-    for sname, sdata in states.items():
-        gamma_inputs[sname] = gamma_initial
     
     for it in range(1, n_iter_ibi + 1):
 
@@ -812,7 +808,6 @@ def boltzmann_inversion_advance(
             )
 
             g_pred_safe = np.maximum(g_pred, g_floor)
-            gamma_inputs[sname] =  gamma_r
             g_target_safe = np.maximum(g_target, g_floor)
 
             for i in range(N):
