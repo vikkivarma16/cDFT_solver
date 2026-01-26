@@ -963,34 +963,54 @@ def boltzmann_inversion_standard(
         
     def compute_bh_radius_truncated(r, u_r, beta):
         """
-        Barker–Henderson radius with integration truncated
-        at the first zero of u(r).
+        Barker–Henderson radius computed by integrating
+        only over the FIRST contiguous positive region
+        of the integrand:
+        
+            integrand = 1 - exp(-beta u(r))
         """
-        idx_zero = np.where(u_r <= 0.001)[0]
-        
-        r_tab = r
 
-        if len(idx_zero) > 0:
-            # Take the first r where potential becomes zero
-            r_max = r_tab[idx_zero[0]]
-        else:
-            # fallback if potential never crosses zero
-            r_max = r_tab.max()
-        r0 =  r_max
-        mask = r <= r_max
-        integrand = 1.0 - np.exp(-beta * u_r[mask])
-        
-        print (u_r[mask])
-        print (integrand)
-        print ( r0)
-        print (np.trapz(integrand, r[mask]))
-        
-        print ("hehehehe \n\n\n\n\n\n")
+        # --- Compute integrand
+        integrand = 1.0 - np.exp(-beta * u_r)
 
+        # --- Mask positive integrand
+        positive = integrand > 0.0
 
-     
-        return np.trapz(integrand, r[mask]), r0
+        if not np.any(positive):
+            # No repulsive core at all
+            return 0.0, r[0]
+
+        # --- Find first contiguous positive block
+        idx = np.where(positive)[0]
+
+        start = idx[0]
+        end = start
+
+        for k in idx[1:]:
+            if k == end + 1:
+                end = k
+            else:
+                break
+
+        # --- Truncate to first positive region
+        r_seg = r[start:end + 1]
+        integrand_seg = integrand[start:end + 1]
+
+        # --- Integrate
+        d_bh = np.trapz(integrand_seg, r_seg)
+        r0 = r_seg[-1]
         
+        print (integrand_seg)
+        
+        print (d_bh)
+        
+        print  (r0)
+        
+        
+        print ("heheheheh \n\n\n\n\n")
+        
+        return d_bh, r0
+
     
 
     sigma_guess = np.zeros((N, N))
