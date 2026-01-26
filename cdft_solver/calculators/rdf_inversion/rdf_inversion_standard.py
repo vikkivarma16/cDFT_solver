@@ -966,7 +966,7 @@ def boltzmann_inversion_standard(
         Barker–Henderson radius with integration truncated
         at the first zero of u(r).
         """
-        idx_zero = np.where(u_r <= 0.01)[0]
+        idx_zero = np.where(u_r <= 0.001)[0]
         
         r_tab = r
 
@@ -979,7 +979,14 @@ def boltzmann_inversion_standard(
         r0 =  r_max
         mask = r <= r_max
         integrand = 1.0 - np.exp(-beta * u_r[mask])
+        
+        print (u_r[mask])
+        print (integrand)
+        print ( r0)
+        print (np.trapz(integrand, r[mask]))
 
+
+        exit (0)
         return np.trapz(integrand, r[mask]), r0
         
     
