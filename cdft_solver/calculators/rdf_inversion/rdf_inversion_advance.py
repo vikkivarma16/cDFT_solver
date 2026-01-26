@@ -1161,6 +1161,19 @@ def boltzmann_inversion_advance(
                         f"{i},{j}": gamma_trial[i, j].tolist()
                         for (i, j) in total_pair
                     },
+                    
+                    "g_ref": {
+                        f"{i},{j}": final_oz_results[sname]["g_pred"][i, j].tolist()
+                        for (i, j) in total_pair
+                    },
+                    "c_ref": {
+                        f"{i},{j}": final_oz_results[sname]["g_pred"][i, j].tolist()
+                        for (i, j) in total_pair
+                    },
+                    "gamma_ref": {
+                        f"{i},{j}": final_oz_results[sname]["g_pred"][i, j].tolist()
+                        for (i, j) in total_pair
+                    },
                 }
 
             # ---- write JSON (overwrite-safe) ----
@@ -1582,10 +1595,6 @@ def boltzmann_inversion_advance(
             with debug plots of g_alpha, u_repulsive, and alpha*u_attractive
             """
 
-            import numpy as np
-            import matplotlib.pyplot as plt
-            from pathlib import Path
-
             alpha_grid = np.linspace(0.0, 1.0, n_alpha)
             dalpha = alpha_grid[1] - alpha_grid[0]
 
@@ -1628,42 +1637,6 @@ def boltzmann_inversion_advance(
 
                     # Accumulate G(r)
                     G_accum += g_alpha * dalpha
-
-                    # ----------------------------------------------------
-                    # DEBUG PLOTS PER PAIR
-                    # ----------------------------------------------------
-                    for i in range(N):
-                        for j in range(i, N):
-
-                            plt.figure(figsize=(7, 5))
-
-                            plt.plot(r, g_alpha[i, j], lw=2, label=r"$g_{ij}^{(\alpha)}(r)$")
-                            plt.plot(
-                                r,
-                                beta_s * u_repulsive[i, j] / beta_ref,
-                                "--",
-                                label=r"$\beta u^{\mathrm{rep}}$",
-                            )
-                            plt.plot(
-                                r,
-                                beta_s * alpha * u_attractive[i, j] / beta_ref,
-                                "--",
-                                label=r"$\beta \alpha u^{\mathrm{att}}$",
-                            )
-
-                            plt.axhline(0.0, color="k", lw=0.5)
-                            plt.xlabel("r")
-                            plt.ylim(-0.3, 2.5)
-                            plt.ylabel("Value")
-                            plt.title(f"{sname} | pair ({i},{j}) | α = {alpha:.2f}")
-                            plt.legend()
-                            plt.tight_layout()
-
-                            fname = (
-                                f"debug_g_alpha_{sname}_pair_{i}_{j}_alpha_{alpha:.2f}.png"
-                            )
-                            plt.savefig(plots_dir / fname, dpi=150)
-                            plt.close()
 
                 # --------------------------------------------------------
                 # Compute G_u(r)
