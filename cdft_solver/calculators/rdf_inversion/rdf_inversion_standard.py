@@ -1002,6 +1002,8 @@ def boltzmann_inversion_standard(
         
         print (integrand_seg)
         
+        print (r_seg)
+        
         print (d_bh)
         
         print  (r0)
