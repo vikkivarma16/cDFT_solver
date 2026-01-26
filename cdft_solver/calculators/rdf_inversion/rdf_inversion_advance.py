@@ -1093,7 +1093,15 @@ def boltzmann_inversion_advance(
         print("\n🔧 Starting sigma calibration stage...")
         
         
+        out = Path(ctx.scratch_dir) / "sigma_optimization"
+        out.mkdir(parents=True, exist_ok=True)
         
+        def sigma_to_filename(sigma_vec):
+            # example: sigma_1.000_0.950_1.050.json
+            parts = [f"{s:.6f}" for s in sigma_vec]
+            return "sigma_" + "_".join(parts) + ".json"
+
+
         def unpack_sigma_vector(sigma_vec):
             sigma_mat = np.zeros((N, N))
             k = 0
@@ -1109,10 +1117,18 @@ def boltzmann_inversion_advance(
             u_trial = build_total_u_from_sigma(sigma_mat)
             loss = 0.0
 
+            sigma_file = out / sigma_to_filename(sigma_vec)
+
+            save_data = {
+                "sigma_vector": sigma_vec.tolist(),
+                "states": {}
+            }
+
             for sname, sdata in states.items():
                 beta_s = sdata["beta"]
                 rho_s = sdata["densities"]
-                _, _, g_trial = multi_component_oz_solver_alpha(
+
+                c_trial, gamma_trial, g_trial = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(rho_s, float),
@@ -1123,9 +1139,33 @@ def boltzmann_inversion_advance(
                     alpha_rdf_max=alpha_max,
                 )
 
+                # ---- accumulate loss ----
                 for (i, j) in total_pair:
                     diff = g_trial[i, j] - final_oz_results[sname]["g_pred"][i, j]
                     loss += np.sum(diff * diff)
+
+                # ---- save data ----
+                save_data["states"][sname] = {
+                    "beta": beta_s,
+                    "densities": rho_s,
+                    "r": r.tolist(),
+                    "g": {
+                        f"{i},{j}": g_trial[i, j].tolist()
+                        for (i, j) in total_pair
+                    },
+                    "c": {
+                        f"{i},{j}": c_trial[i, j].tolist()
+                        for (i, j) in total_pair
+                    },
+                    "gamma": {
+                        f"{i},{j}": gamma_trial[i, j].tolist()
+                        for (i, j) in total_pair
+                    },
+                }
+
+            # ---- write JSON (overwrite-safe) ----
+            with open(sigma_file, "w") as f:
+                json.dump(save_data, f, indent=2)
 
             return loss
 
@@ -1798,7 +1838,7 @@ def boltzmann_inversion_advance(
             
             "delta_c_sigma_opt_sigma_opt": {
                 state: arr.tolist()
-                for state, arr in delta_c_sigma_opt_pure.items()
+                for state, arr in delta_c_sigma_opt_sigma_opt.items()
             },
         }
 
