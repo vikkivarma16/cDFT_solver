@@ -775,6 +775,8 @@ def boltzmann_inversion_advance(
     # Storage for final OZ results (used later for sigma)
     # -------------------------------------------------
     final_oz_results = {}
+    N = pair_closures.shape[0]
+    Nr = len(r)
     gamma_initial = np.zeros((N, N, Nr))
     gamma_inputs  =  {}
     for sname, sdata in states.items():
