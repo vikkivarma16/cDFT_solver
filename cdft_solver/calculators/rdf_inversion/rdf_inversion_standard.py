@@ -986,7 +986,7 @@ def boltzmann_inversion_standard(
         print (np.trapz(integrand, r[mask]))
 
 
-        exit (0)
+     
         return np.trapz(integrand, r[mask]), r0
         
     
@@ -1162,7 +1162,7 @@ def boltzmann_inversion_standard(
             bh_sigma[i, j] = d_bh
             bh_sigma[j, i] =  bh_sigma[i, j]
             
-        
+        exit (0)
         
         def compute_repulsive_gr(sigma_mat):
             """
