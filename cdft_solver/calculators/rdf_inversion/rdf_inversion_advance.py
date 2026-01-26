@@ -808,7 +808,6 @@ def boltzmann_inversion_advance(
                 n_iter=n_iter,
                 tol=tolerance,
                 alpha_rdf_max=alpha_max,
-                gamma_initial =  gamma_inputs[sname],
             )
 
             g_pred_safe = np.maximum(g_pred, g_floor)
