@@ -1147,7 +1147,7 @@ def boltzmann_inversion_advance(
                 # ---- save data ----
                 save_data["states"][sname] = {
                     "beta": beta_s,
-                    "densities": rho_s,
+                    "densities": rho_s.tolist(),
                     "r": r.tolist(),
                     "g": {
                         f"{i},{j}": g_trial[i, j].tolist()
@@ -1165,7 +1165,7 @@ def boltzmann_inversion_advance(
 
             # ---- write JSON (overwrite-safe) ----
             with open(sigma_file, "w") as f:
-                json.dump(save_data, f, indent=2)
+                json.dump(save_data, f, indent=4)
 
             return loss
 
