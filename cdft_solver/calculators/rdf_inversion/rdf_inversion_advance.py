@@ -192,8 +192,7 @@ def multi_component_oz_solver_alpha(
     # -----------------------------
     # Iteration loop
     # -----------------------------
-    
-    print ()
+    conversion_flag  =  False
     for step in range(n_iter):
 
         # --- Closure update (ONLY where allowed)
@@ -227,6 +226,7 @@ def multi_component_oz_solver_alpha(
 
         if diff < tol:
             print(f"\n✅ Converged in {step+1} iterations.")
+            conversion_flag = True
             break
 
         prev_diff = diff
@@ -240,7 +240,7 @@ def multi_component_oz_solver_alpha(
     h_r = gamma_r + c_r
     g_r = h_r + 1.0
 
-    return c_r, gamma_r, g_r
+    return c_r, gamma_r, g_r, conversion_flag
 
 
 def wca_split(r, u):
@@ -796,7 +796,7 @@ def boltzmann_inversion_advance(
 
             print("\ntemperature in state", sname, ":", beta_s)
 
-            c_r, gamma_r, g_pred = multi_component_oz_solver_alpha(
+            c_r, gamma_r, g_pred , conversion_flag = multi_component_oz_solver_alpha(
                 r=r,
                 pair_closures=pair_closures,
                 densities=np.asarray(densities_s, float),
@@ -880,7 +880,7 @@ def boltzmann_inversion_advance(
                 beta_s = sdata["beta"]
                 densities_s = sdata["densities"]
                 
-                c_pred, gamma_pred, g_pred = multi_component_oz_solver_alpha(
+                c_pred, gamma_pred, g_pred, conversion_flag = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(densities_s, float),
@@ -1142,7 +1142,7 @@ def boltzmann_inversion_advance(
                 beta_s = sdata["beta"]
                 rho_s = sdata["densities"]
 
-                c_trial, gamma_trial, g_trial = multi_component_oz_solver_alpha(
+                c_trial, gamma_trial, g_trial, conversion_flag = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(rho_s, float),
@@ -1153,7 +1153,8 @@ def boltzmann_inversion_advance(
                     alpha_rdf_max=alpha_max,
                     gamma_initial=gamma_inputs[sname]
                 )
-                gamma_inputs[sname] =  gamma_trial.copy()
+                if conversion_flag:
+                    gamma_inputs[sname] =  gamma_trial.copy()
 
                 # ---- accumulate loss ----
                 for (i, j) in total_pair:
@@ -1245,7 +1246,7 @@ def boltzmann_inversion_advance(
             beta_s = sdata["beta"]
             rho_s = sdata["densities"]
             print(f"\nComputing reference RDF for state {sname}")
-            c_ref_state, gamma_ref_state, g_ref_state = multi_component_oz_solver_alpha(
+            c_ref_state, gamma_ref_state, g_ref_state, conversion_flag = multi_component_oz_solver_alpha(
                 r=r,
                 pair_closures=pair_closures,
                 densities=np.asarray(rho_s, float),
@@ -1287,7 +1288,7 @@ def boltzmann_inversion_advance(
             u_rep = build_hard_core_u_from_sigma(sigma_mat)
 
             for sname, sdata in states.items():
-                c_state, gamma_state, g_state = multi_component_oz_solver_alpha(
+                c_state, gamma_state, g_state, conversion_flag = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(sdata["densities"], float),
@@ -1454,7 +1455,7 @@ def boltzmann_inversion_advance(
                         u_total[j, i] = u_total[i, j]
 
                     # Compute RDF
-                    _, _, g_trial = multi_component_oz_solver_alpha(
+                    _, _, g_trial, conversion_flag= multi_component_oz_solver_alpha(
                         r=r,
                         pair_closures=pair_closures,
                         densities=np.asarray(rho_s, float),
@@ -1524,7 +1525,7 @@ def boltzmann_inversion_advance(
 
             for sname, sdata in states.items():
             
-                c_state, gamma_state, g_state = multi_component_oz_solver_alpha(
+                c_state, gamma_state, g_state, conversion_flag = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(sdata["densities"], float),
@@ -1640,7 +1641,7 @@ def boltzmann_inversion_advance(
 
                     u_alpha = u_repulsive + alpha * u_attractive
 
-                    _, _, g_alpha = multi_component_oz_solver_alpha(
+                    _, _, g_alpha , conversion_flag= multi_component_oz_solver_alpha(
                         r=r,
                         pair_closures=pair_closures,
                         densities=rho_s,
