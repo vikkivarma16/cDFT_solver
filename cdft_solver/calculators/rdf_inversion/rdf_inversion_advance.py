@@ -1050,7 +1050,6 @@ def boltzmann_inversion_advance(
                         u_matrix[i, j],
                         sigma=sigma_mat[i, j],
                     )
-                    r_minima[(i, j)] = r_m
                     u_att = np.zeros_like(r)
                     mask_rep = r <= r_m
                     mask_att = r > r_m
@@ -1153,7 +1152,7 @@ def boltzmann_inversion_advance(
         
         
         
-        print ("Sigma analysis is about to begin !!!! \n")
+        print ("Sigma reference system analysis !!!! \n")
         
         g_ref = {}
         c_ref = {}
@@ -1295,7 +1294,7 @@ def boltzmann_inversion_advance(
         
         
         
-        print ("WCA analysis is about to begin:")
+        print ("WCA analysis (repulsive reference + attractive part) !!!!!!!!")
 
         def compute_wca_gr(sigma_mat):
             """
@@ -1397,7 +1396,7 @@ def boltzmann_inversion_advance(
 
         out = Path(ctx.scratch_dir)
         out.mkdir(parents=True, exist_ok=True)
-        json_file = out / "result_wca_gr_comparison.json"
+        json_file = out / "result_wca_analysis.json"
         with open(json_file, "w") as f:
             json.dump(wca_package, f, indent=4)
         print("✅ Saved wca_gr_comparison_package.json")
@@ -1638,7 +1637,7 @@ def boltzmann_inversion_advance(
 
         out = Path(ctx.scratch_dir)
         out.mkdir(parents=True, exist_ok=True)
-        json_file = out / "result_attractive_calibration.json"
+        json_file = out / "result_attractive_tail_analysis.json"
 
         with open(json_file, "w") as f:
             json.dump(attractive_package, f, indent=4)
