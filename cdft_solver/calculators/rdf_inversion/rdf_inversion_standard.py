@@ -996,6 +996,12 @@ def boltzmann_inversion_standard(
         r_seg = r[start:end + 1]
         integrand_seg = integrand[start:end + 1]
 
+        # --- Ensure r = 0 anchor exists (BH core condition)
+        if r_seg[0] != 0.0:
+            r_seg = np.insert(r_seg, 0, 0.0)
+            integrand_seg = np.insert(integrand_seg, 0, 1.0)
+
+
         # --- Integrate
         d_bh = np.trapz(integrand_seg, r_seg)
         r0 = r_seg[-1]
