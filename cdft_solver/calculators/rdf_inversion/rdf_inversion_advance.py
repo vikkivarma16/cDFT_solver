@@ -165,11 +165,11 @@ def multi_component_oz_solver_alpha(
     # -----------------------------
     # Initialize arrays
     # -----------------------------
-    if gamma_initial ==  None:
-    
-        gamma_r = np.zeros((N, N, Nr))
-    else :
+    if gamma_initial.any():
         gamma_r = gamma_initial
+    else:
+        gamma_r = np.zeros((N, N, Nr))
+        
 
     if c_initial is not None:
         c_r = c_initial.copy()
