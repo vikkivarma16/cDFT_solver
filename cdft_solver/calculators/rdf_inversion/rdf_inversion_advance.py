@@ -1137,7 +1137,7 @@ def boltzmann_inversion_advance(
             }
             
             
-
+            flag_save  =  True
             for sname, sdata in states.items():
                 beta_s = sdata["beta"]
                 rho_s = sdata["densities"]
@@ -1155,6 +1155,8 @@ def boltzmann_inversion_advance(
                 )
                 if conversion_flag:
                     gamma_inputs[sname] =  gamma_trial.copy()
+                else:
+                    flag_save  =  False
 
                 # ---- accumulate loss ----
                 for (i, j) in total_pair:
@@ -1194,8 +1196,9 @@ def boltzmann_inversion_advance(
                 }
 
             # ---- write JSON (overwrite-safe) ----
-            with open(sigma_file, "w") as f:
-                json.dump(save_data, f, indent=4)
+            if flag_save :
+                with open(sigma_file, "w") as f:
+                    json.dump(save_data, f, indent=4)
 
             return loss
 
