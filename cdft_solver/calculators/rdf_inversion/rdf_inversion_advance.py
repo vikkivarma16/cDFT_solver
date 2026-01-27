@@ -1490,7 +1490,7 @@ def boltzmann_inversion_advance(
                             g_trial[i, j] / final_oz_results[sname]["g_pred"][i, j]
                         )
 
-                        delta_u_accum[i, j, mask_r] += delta[mask_r]
+                        delta_u_accum[i, j] += delta
                         delta_u_accum[j, i] = delta_u_accum[i, j]
 
                         max_diff = max(
