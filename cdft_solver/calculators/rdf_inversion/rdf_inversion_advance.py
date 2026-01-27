@@ -1208,16 +1208,12 @@ def boltzmann_inversion_advance(
 
         sigma_init_vec = np.array([sigma_guess[i, j] for (i, j) in hard_core_pairs])
         print("\nOptimizing sigma collectively across all states and pairs...")
-        from scipy.optimize import minimize
-
         result = minimize(
             sigma_objective,
             sigma_init_vec,
-            method="L-BFGS-B",
-            bounds=[(0.5, 2.0)] * len(sigma_init_vec),  # example bounds
-            options={"ftol": 1e-8, "maxiter": 500, "disp": True},
+            method="Powell",
+            options={"xtol": 1e-6, "ftol": 1e-6, "disp": True},
         )
-
         sigma_opt = unpack_sigma_vector(result.x)
         
         
@@ -1370,35 +1366,40 @@ def boltzmann_inversion_advance(
                 
         
         
-        
-        
-        
-        
+
         # ============================================================
-        # PHASE 10 — Attractive calibration (σ_opt vs σ_BH)
+        # Export attractive-calibration package
         # ============================================================
 
-        def run_attractive_calibration(sigma_mat, label):
-            """
-            Run attractive-part calibration for a given sigma definition.
-            Returns final attractive potential, total potential, and RDFs.
-            """
-
-            print(f"\n🔧 Starting attractive calibration using {label}")
-
-            # -------------------------------------------------
-            # Select sigma-fixed attractive pairs
-            # -------------------------------------------------
-            attractive_pairs = [
+        attractive_pairs = [
                 (i, j)
                 for i in range(N)
                 for j in range(i, N)
                 if has_core[i, j] and np.any(u_matrix[i, j] < -1e-4)
             ]
+        
+        
+        # ============================================================
+        # Compute G(r) via λ-integration for each pair and state
+        # ============================================================
+        def run_attractive_calibration(sigma_mat, label):
+            """
+            Run attractive-part calibration for a given sigma definition.
+
+            Returns:
+                dict with calibrated potentials, RDFs, and a scalar
+                core-attraction mismatch score for sigma selection.
+            """
+
+            print(f"\n🔧 Starting attractive calibration using {label}")
+
+            # -------------------------------------------------
+            # Select attractive hard-core pairs
+            # -------------------------------------------------
+           
 
             if not attractive_pairs:
-                print("No hard-core attractive pairs found.")
-                return None
+                raise RuntimeError("No hard-core attractive pairs found.")
 
             # -------------------------------------------------
             # Repulsive hard-core part
@@ -1441,7 +1442,7 @@ def boltzmann_inversion_advance(
             alpha_attr = 0.1
             u_attr_trial = u_attractive.copy()
 
-            for it in range(1, n_iter_ibi):
+            for it in range(1, n_iter_ibi + 1):
 
                 max_diff = 0.0
                 delta_u_accum = np.zeros_like(u_attr_trial)
@@ -1462,7 +1463,7 @@ def boltzmann_inversion_advance(
                         u_total[j, i] = u_total[i, j]
 
                     # Compute RDF
-                    _, _, g_trial, conversion_flag= multi_component_oz_solver_alpha(
+                    _, _, g_trial, converged = multi_component_oz_solver_alpha(
                         r=r,
                         pair_closures=pair_closures,
                         densities=np.asarray(rho_s, float),
@@ -1473,36 +1474,38 @@ def boltzmann_inversion_advance(
                         alpha_rdf_max=alpha_max,
                     )
 
+                    if not converged:
+                        continue
+
                     # Accumulate corrections
                     for (i, j) in attractive_pairs:
-                    
-                        r_m, u_m = detect_first_minimum_near_core( r, u_matrix[i, j], sigma=sigma_mat[i, j])
-                        mask_r_super  = r > r_m 
-                        mask_r = r > sigma_mat[i, j]
-                        delta = np.zeros_like(r)
 
-                        delta = (beta_ref/beta_s) * np.log(
-                            g_trial[i, j]
-                            / final_oz_results[sname]["g_pred"][i, j]
+                        r_m, _ = detect_first_minimum_near_core(
+                            r, u_attr_trial[i, j], sigma=sigma_mat[i, j]
                         )
 
-                        delta_u_accum[i, j] += delta
+                        mask_r = r > r_m
+
+                        delta = (beta_ref / beta_s) * np.log(
+                            g_trial[i, j] / final_oz_results[sname]["g_pred"][i, j]
+                        )
+
+                        delta_u_accum[i, j, mask_r] += delta[mask_r]
                         delta_u_accum[j, i] = delta_u_accum[i, j]
 
                         max_diff = max(
                             max_diff,
                             np.max(
                                 np.abs(
-                                    g_trial[i, j, mask_r_super]
-                                    - final_oz_results[sname]["g_pred"][i, j, mask_r_super]
+                                    g_trial[i, j, mask_r]
+                                    - final_oz_results[sname]["g_pred"][i, j, mask_r]
                                 )
                             ),
                         )
-                    
-                    
 
                 # Apply update + enforce WCA continuity
                 for (i, j) in attractive_pairs:
+
                     u_attr_trial[i, j] += alpha_attr * delta_u_accum[i, j]
 
                     r_m, u_m = detect_first_minimum_near_core(
@@ -1516,23 +1519,30 @@ def boltzmann_inversion_advance(
                     u_attr_trial[i, j] = u_att
                     u_attr_trial[j, i] = u_att
 
-                print(f"[{label}] Attractive IBI iter {it:3d} | max|Δg| = {max_diff:10.3e}")
+                print(
+                    f"[{label}] Attractive IBI iter {it:3d} | max|Δg| = {max_diff:10.3e}"
+                )
 
                 if max_diff < ibi_tolerance:
                     print(f"✅ Attractive IBI converged for {label}")
                     break
 
             # -------------------------------------------------
+            # Physical sigma score: core-attraction consistency
+            # -------------------------------------------------
+
+            # -------------------------------------------------
             # Final RDFs with calibrated potential
             # -------------------------------------------------
             u_final = u_repulsive + u_attr_trial
+
             g_ur = {}
             c_ur = {}
             gamma_ur = {}
 
             for sname, sdata in states.items():
-            
-                c_state, gamma_state, g_state, conversion_flag = multi_component_oz_solver_alpha(
+
+                c_state, gamma_state, g_state, converged = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(sdata["densities"], float),
@@ -1542,9 +1552,10 @@ def boltzmann_inversion_advance(
                     tol=tolerance,
                     alpha_rdf_max=alpha_max,
                 )
+
                 g_ur[sname] = g_state
                 c_ur[sname] = c_state
-                gamma_ur[sname] =  gamma_state
+                gamma_ur[sname] = gamma_state
 
             return {
                 "u_attractive": u_attr_trial,
@@ -1555,17 +1566,82 @@ def boltzmann_inversion_advance(
                 "gamma_ur": gamma_ur,
             }
 
+        def sigma_plus_attraction_objective(sigma_vec):
+            """
+            Objective: minimize mismatch between
+            u_attractive(core) and true potential minimum
+            AFTER attractive calibration.
+            """
 
-        # ============================================================
-        # Run for both sigma definitions
-        # ============================================================
+            sigma_mat = unpack_sigma_vector(sigma_vec)
 
-        results_sigma_opt = run_attractive_calibration(sigma_opt, "sigma_opt")
+            try:
+                result = run_attractive_calibration(
+                    sigma_mat=sigma_mat,
+                    label="sigma_attr_opt",
+                )
 
-        # ============================================================
-        # Export attractive-calibration package
-        # ============================================================
+                if result is None:
+                    return 1e8
 
+                u_attr = result["u_attractive"]
+
+                core_mismatch = 0.0
+                n_pairs = 0
+
+                for (i, j) in attractive_pairs:
+                    r_m, u_min_true = detect_first_minimum_near_core(
+                        r, u_matrix[i, j], sigma=sigma_mat[i, j]
+                    )
+
+                    idx = np.argmin(np.abs(r - sigma_mat[i, j]))
+                    u_core_attr = u_attr[i, j, idx]
+
+                    core_mismatch += (u_core_attr - u_min_true) ** 2
+                    n_pairs += 1
+
+                core_mismatch /= max(n_pairs, 1)
+
+                print(f"🔎 Core mismatch = {core_mismatch:.6e}")
+                return core_mismatch
+
+            except Exception as e:
+                print("❌ Optimization failure:", e)
+                return 1e8
+
+        
+        sigma_opt_vec = np.array([sigma_opt[i, j] for (i, j) in hard_core_pairs])
+
+        delta = 0.05  # adjustable window
+
+        bounds = [
+            (s - delta, s + delta)
+            for s in sigma_opt_vec
+        ]
+        
+        print("\n🚀 Starting coupled sigma + attraction optimization")
+
+        result_sigma_attr = minimize(
+            sigma_plus_attraction_objective,
+            sigma_opt_vec,
+            method="L-BFGS-B",
+            bounds=bounds,
+            options={
+                "ftol": 1e-6,
+                "maxiter": 50,
+                "disp": True,
+            },
+        )
+
+        sigma_opt = unpack_sigma_vector(result_sigma_attr.x)
+
+        result_sigma_opt = run_attractive_calibration(
+                    sigma_mat=sigma_opt,
+                    label="sigma_data_export",
+                )
+
+
+        
         attractive_package = {
             "sigma_opt": sigma_opt.tolist(),
             "r" : r.tolist(), 
@@ -1597,10 +1673,12 @@ def boltzmann_inversion_advance(
         
         
         
-        # ============================================================
-        # Compute G(r) via λ-integration for each pair and state
-        # ============================================================
-
+        
+        
+        
+        
+        
+        
         
         
         
