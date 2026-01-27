@@ -1635,7 +1635,7 @@ def boltzmann_inversion_advance(
 
         sigma_opt = unpack_sigma_vector(result_sigma_attr.x)
 
-        result_sigma_opt = run_attractive_calibration(
+        results_sigma_opt = run_attractive_calibration(
                     sigma_mat=sigma_opt,
                     label="sigma_data_export",
                 )
