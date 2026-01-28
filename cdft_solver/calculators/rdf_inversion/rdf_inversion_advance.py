@@ -1586,77 +1586,78 @@ def boltzmann_inversion_advance(
 
             sigma_mat = unpack_sigma_vector(sigma_vec)
 
-            try:
-                result = run_attractive_calibration(
-                    sigma_mat=sigma_mat,
-                    label=f"sigma_attr_opt_eval_{eval_id}",
+        
+            result = run_attractive_calibration(
+                sigma_mat=sigma_mat,
+                label=f"sigma_attr_opt_eval_{eval_id}",
+            )
+
+            if result is None:
+                return 1e8
+
+            u_attr = result["u_attractive"]  # shape (N, N, Nr)
+
+            core_mismatch = 0.0
+            n_pairs = 0
+
+            print("\n\n\nσ evaluation #", eval_id)
+            print("σ matrix:\n", sigma_mat, "\n\n")
+
+            pair_records = []
+
+            for (i, j) in attractive_pairs:
+
+                _, u_min_true = detect_first_minimum_near_core(
+                    r, u_matrix[i, j], sigma=sigma_mat[i, j]
                 )
 
-                if result is None:
-                    return 1e8
+                idx = np.argmin(np.abs(r - sigma_mat[i, j]))
+                u_core_attr = u_attr[i, j, 3]   # (your chosen core index)
 
-                u_attr = result["u_attractive"]  # shape (N, N, Nr)
+                diff = abs(u_core_attr - u_min_true)
 
-                core_mismatch = 0.0
-                n_pairs = 0
+                core_mismatch += diff
+                n_pairs += 1
 
-                print("\n\n\nσ evaluation #", eval_id)
-                print("σ matrix:\n", sigma_mat, "\n\n")
+                print(
+                    f"🔎 Pair ({i},{j}) | "
+                    f"|Δu| = {diff:.6e} | "
+                    f"u_core_attr = {u_core_attr:.6e} | "
+                    f"u_min_true = {u_min_true:.6e}"
+                )
 
-                pair_records = []
+                pair_records.append({
+                    "pair": [i, j],
+                    "sigma": float(sigma_mat[i, j]),
+                    "u_core_attr": float(u_core_attr),
+                    "u_min_true": float(u_min_true),
+                    "abs_diff": float(diff),
+                })
 
-                for (i, j) in attractive_pairs:
+            core_mismatch /= max(n_pairs, 1)
 
-                    _, u_min_true = detect_first_minimum_near_core(
-                        r, u_matrix[i, j], sigma=sigma_mat[i, j]
-                    )
+            # --------------------------------------------------
+            # Save EVERYTHING for this evaluation
+            # --------------------------------------------------
+            save_payload = {
+                "eval_id": eval_id,
+                "sigma_vec": sigma_vec.tolist(),
+                "sigma_mat": sigma_mat.tolist(),
+                "core_mismatch": core_mismatch,
+                "n_pairs": n_pairs,
+                "pairs": pair_records,
 
-                    idx = np.argmin(np.abs(r - sigma_mat[i, j]))
-                    u_core_attr = u_attr[i, j, 3]   # (your chosen core index)
+                # 🔥 NEW: save attractive potential
+                "r": r.tolist(),
+                "u_attractive": u_attr.tolist(),
+            }
 
-                    diff = abs(u_core_attr - u_min_true)
+            fname = attr_debug_dir / f"sigma_eval_{eval_id:04d}.json"
+            with open(fname, "w") as f:
+                json.dump(save_payload, f, indent=4)
 
-                    core_mismatch += diff
-                    n_pairs += 1
-
-                    print(
-                        f"🔎 Pair ({i},{j}) | "
-                        f"|Δu| = {diff:.6e} | "
-                        f"u_core_attr = {u_core_attr:.6e} | "
-                        f"u_min_true = {u_min_true:.6e}"
-                    )
-
-                    pair_records.append({
-                        "pair": [i, j],
-                        "sigma": float(sigma_mat[i, j]),
-                        "u_core_attr": float(u_core_attr),
-                        "u_min_true": float(u_min_true),
-                        "abs_diff": float(diff),
-                    })
-
-                core_mismatch /= max(n_pairs, 1)
-
-                # --------------------------------------------------
-                # Save EVERYTHING for this evaluation
-                # --------------------------------------------------
-                save_payload = {
-                    "eval_id": eval_id,
-                    "sigma_vec": sigma_vec.tolist(),
-                    "sigma_mat": sigma_mat.tolist(),
-                    "core_mismatch": core_mismatch,
-                    "n_pairs": n_pairs,
-                    "pairs": pair_records,
-
-                    # 🔥 NEW: save attractive potential
-                    "r": r.tolist(),
-                    "u_attractive": u_attr.tolist(),
-                }
-
-                fname = attr_debug_dir / f"sigma_eval_{eval_id:04d}.json"
-                with open(fname, "w") as f:
-                    json.dump(save_payload, f, indent=4)
-
-                return core_mismatch
+            return core_mismatch
+                
         
         sigma_opt_vec = np.array([sigma_opt[i, j] for (i, j) in hard_core_pairs])
 
