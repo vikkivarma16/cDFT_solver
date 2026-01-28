@@ -1599,7 +1599,8 @@ def boltzmann_inversion_advance(
                     idx = np.argmin(np.abs(r - sigma_mat[i, j]))
                     u_core_attr = u_attr[i, j, 3]
 
-                    diff2 = (u_core_attr - u_min_true) ** 2
+                    diff2 = abs(u_core_attr - u_min_true)
+
                     core_mismatch += diff2
 
                     print(
