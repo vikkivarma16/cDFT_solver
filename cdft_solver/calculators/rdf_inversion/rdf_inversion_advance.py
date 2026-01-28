@@ -1288,7 +1288,7 @@ def boltzmann_inversion_advance(
             g_store = {}
             c_store = {}
             gamma_store = {}
-            u_rep = build_hard_core_u_from_sigma(sigma_mat)
+            u_rep = build_total_u_from_sigma(sigma_mat)
 
             for sname, sdata in states.items():
                 c_state, gamma_state, g_state, conversion_flag = multi_component_oz_solver_alpha(
@@ -1661,7 +1661,7 @@ def boltzmann_inversion_advance(
         
         sigma_opt_vec = np.array([sigma_opt[i, j] for (i, j) in hard_core_pairs])
 
-        delta = 0.05  # adjustable window
+        delta = 0.1  # adjustable window
 
         bounds = [
             (s - delta, s + delta)
