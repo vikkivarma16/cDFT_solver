@@ -1585,24 +1585,34 @@ def boltzmann_inversion_advance(
                     return 1e8
 
                 u_attr = result["u_attractive"]
-
                 core_mismatch = 0.0
                 n_pairs = 0
 
+                print("\n\n\nsigma value:", sigma_mat, "\n\n\n")
+
                 for (i, j) in attractive_pairs:
-                    r_m, u_min_true = detect_first_minimum_near_core(
+
+                    _, u_min_true = detect_first_minimum_near_core(
                         r, u_matrix[i, j], sigma=sigma_mat[i, j]
                     )
 
                     idx = np.argmin(np.abs(r - sigma_mat[i, j]))
-                    u_core_attr = u_attr[i, j, idx]
+                    u_core_attr = u_attr[i, j, 3]
 
-                    core_mismatch += (u_core_attr - u_min_true) ** 2
+                    diff2 = (u_core_attr - u_min_true) ** 2
+                    core_mismatch += diff2
+
+                    print(
+                        f"🔎 Core mismatch = {diff2:.6e}, "
+                        f"u_core_attr = {u_core_attr:.6e}, "
+                        f"u_min_true = {u_min_true:.6e}"
+                    )
+
                     n_pairs += 1
 
                 core_mismatch /= max(n_pairs, 1)
 
-                print(f"🔎 Core mismatch = {core_mismatch:.6e}")
+                
                 return core_mismatch
 
             except Exception as e:
