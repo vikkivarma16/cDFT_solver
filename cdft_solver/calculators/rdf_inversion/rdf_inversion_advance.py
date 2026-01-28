@@ -1526,7 +1526,7 @@ def boltzmann_inversion_advance(
             "G_u_r_sigma_opt": {k: v.tolist() for k, v in G_u_r_sigma_opt.items()},
             "G_u_r_real":  {k: v.tolist() for k, v in G_u_r_real.items()},
             
-            "u_attractive_sigma_opt": results_sigma_opt["u_attractive"].tolist(),
+            
             "u_attractive_real": u_attractive.tolist()
         }
 
@@ -1548,11 +1548,41 @@ def boltzmann_inversion_advance(
         # State-resolved c(r)
         # ------------------------------------------------------------
         
+        def compute_repulsive_gr(sigma_mat):
+            """
+            Compute RDFs using ONLY hard-core repulsion defined by sigma_mat.
+            """
+            g_store = {}
+            c_store = {}
+            gamma_store = {}
+            u_rep = build_hard_core_u_from_sigma(sigma_mat)
+
+            for sname, sdata in states.items():
+                c_state, gamma_state, g_state, conversion_flag = multi_component_oz_solver_alpha(
+                    r=r,
+                    pair_closures=pair_closures,
+                    densities=np.asarray(sdata["densities"], float),
+                    u_matrix=sdata["beta"] * u_rep / beta_ref,
+                    sigma_matrix=np.zeros((N, N)),
+                    n_iter=n_iter,
+                    tol=tolerance,
+                    alpha_rdf_max=alpha_max,
+                )
+                g_store[sname] = g_state
+                c_store[sname] = c_state
+                gamma_store[sname] = gamma_state
+
+            return g_store, c_store, gamma_store
+
+
+        # Repulsive RDFs using optimized sigma
+        g_hard_sigma_opt, c_hard_sigma_opt, gamma_hard_sigma_opt = compute_repulsive_gr(sigma_opt)
+        
         
         c_real = { k: v["c_pred"].tolist() for k, v in final_oz_results.items() }
-        c_ref_hard = { state: np.asarray(arr) for state, arr in reference_package["c_ref_hard"].items() }
-        c_rep_sigma_opt = { state: np.asarray(arr) for state, arr in reference_package["c_rep_sigma_opt"].items() }
-        c_sigma_opt =  { state : np.asarray(arr) for state, arr in attractive_package["sigma_opt_results"]["c_ur"].items () } 
+        c_ref_hard = { state: np.asarray(arr) for state, arr in c_ref.items() }
+        c_sigma_opt = { state: np.asarray(arr) for state, arr in reference_package["c_rep_sigma_opt"].items() }
+        c_rep_sigma_opt =  { state : np.asarray(arr) for state, arr in c_hard_sigma_opt.items () } 
         
 
         new_states = list(c_real.keys())
@@ -1566,14 +1596,18 @@ def boltzmann_inversion_advance(
         delta_c_sigma_opt_sigma_opt = {}
 
         for state in new_states:
-            delta_c_real_ref[state] = c_real[state] - c_ref_hard[state]
-            delta_c_real_sigma_opt[state] = c_real[state] - c_rep_sigma_opt[state]
-            delta_c_sigma_opt_ref[state] = c_sigma_opt[state] - c_ref_hard[state]
-            delta_c_sigma_opt_sigma_opt[state] = c_sigma_opt[state] - c_rep_sigma_opt[state]
+            delta_c_real_ref[state] =   - (c_real[state] - c_ref_hard[state] )
+            delta_c_real_sigma_opt[state] =  - (c_real[state] - c_rep_sigma_opt[state] )
+            delta_c_sigma_opt_ref[state] =  - (c_sigma_opt[state] - c_ref_hard[state] )
+            delta_c_sigma_opt_sigma_opt[state] =  - (c_sigma_opt[state] - c_rep_sigma_opt[state] )
 
         # -----------------------------------------------------------
         # Export package
         # ------------------------------------------------------------
+        
+        
+        
+        
         delta_c_package = {
             "r": r.tolist(),
 
