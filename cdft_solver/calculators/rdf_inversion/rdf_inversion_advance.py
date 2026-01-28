@@ -1623,15 +1623,17 @@ def boltzmann_inversion_advance(
 
         result_sigma_attr = minimize(
             sigma_plus_attraction_objective,
-            sigma_opt_vec,
-            method="L-BFGS-B",
-            bounds=bounds,
+            sigma_opt_vec,               # start from sigma-only optimum
+            method="Powell",
+            bounds=bounds,               # bounds around sigma_opt
             options={
-                "ftol": 1e-6,
-                "maxiter": 50,
+                "xtol": 1e-6,             # tolerance in sigma space
+                "ftol": 1e-6,             # tolerance in objective
+                "maxiter": 200,            # usually enough for 2 params
                 "disp": True,
             },
         )
+
 
         sigma_opt = unpack_sigma_vector(result_sigma_attr.x)
 
