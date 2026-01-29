@@ -226,27 +226,48 @@ def wca(p):
 
 register_isotropic_pair_potential("wca", wca)
 
-def salj(p):
-    sigma = p.get("sigma", 1.0)
-    epsilon = p.get("epsilon", 1.0)
-    cutoff = p.get("cutoff", 5.0)
 
-    r_cutoff = 2 ** (1 / 6) * sigma
+def salj(p):
+    sigma   = p.get("sigma", 1.0)
+    epsilon = p.get("epsilon", 1.0)
+    cutoff  = p.get("cutoff", 5.0)
+
+    # Grid to detect minimum
+    r_grid = np.linspace(1e-6, cutoff, 5000)
+
+    # Raw LJ
+    def lj_raw(r):
+        return 4 * epsilon * ((sigma / r)**12 - (sigma / r)**6)
+
+    # --- Shift so V(cutoff) = 0 ---
+    v_cut = lj_raw(cutoff)
+    v_shifted = lj_raw(r_grid) - v_cut
+
+    # --- Find minimum ---
+    idx_min = np.argmin(v_shifted)
+    r_min   = r_grid[idx_min]
+    v_min   = v_shifted[idx_min]
 
     def V(r):
-        r = np.asarray(r)
+        r = np.asarray(r, dtype=float)
         v = np.zeros_like(r)
 
-        v[r < r_cutoff] = -epsilon
+        # Inside cutoff
+        mask = r <= cutoff
+        r_eff = r[mask]
 
-        mask = (r >= r_cutoff) & (r < cutoff)
-        v[mask] = 4 * epsilon * (
-            (sigma / r[mask]) ** 12 -  (sigma / r[mask]) ** 6
-        )
+        v_eff = lj_raw(r_eff) - v_cut
 
+        # --- Flatten below minimum ---
+        v_eff[r_eff < r_min] = v_min
+
+        v[mask] = v_eff
+
+        # r > cutoff → zero (already)
         return v
 
     return V
+
 
 register_isotropic_pair_potential("salj", salj)
 
