@@ -1167,17 +1167,21 @@ def boltzmann_inversion_advance(
         print("\nOptimizing sigma collectively across all states and pairs...")
         
         result = minimize(
-            sigma_objective,
-            sigma_init_vec,
-            method="Powell",
-            bounds=bounds,
-            options={
-                "xtol": 1e-6,
-                "ftol": 1e-6,
-                "disp": True
-            },
-        )
+                sigma_objective,
+                sigma_init_vec,
+                method="Powell",
+                bounds=bounds,
+                options={
+                    "xtol": 1e-6,        # tighter convergence
+                    "ftol": 1e-6,
+                    "maxiter": 500,    # <-- MORE ITERATIONS
+                    "maxfev": 20000,    # <-- MORE FUNCTION CALLS
+                    "disp": True
+                },
+            )
+
         sigma_opt = unpack_sigma_vector(result.x)
+
         
         
         
