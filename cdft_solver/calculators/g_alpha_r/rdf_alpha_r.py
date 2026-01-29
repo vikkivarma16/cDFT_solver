@@ -1047,16 +1047,11 @@ def rdf_radial(
             alpha_grid = np.linspace(0.0, 1.0, n_alpha)
             dalpha = alpha_grid[1] - alpha_grid[0]
 
-            # ------------------------------------------------------------
-            # Plot directory
-            # ------------------------------------------------------------
-            plots_dir = getattr(ctx, "plots_dir", ctx.scratch_dir)
-            plots_dir = Path(plots_dir)
-            plots_dir.mkdir(parents=True, exist_ok=True)
-
+           
         
 
             G_accum = np.zeros_like(u_attractive)
+            gamma_inputs =  np.zeros_like(u_attractive)
 
             # --------------------------------------------------------
             # Loop over α
@@ -1064,8 +1059,8 @@ def rdf_radial(
             for alpha in alpha_grid:
 
                 u_alpha = u_repulsive + alpha * u_attractive
-
-                _, _, g_alpha , conversion_flag= multi_component_oz_solver_alpha(
+                
+                _, gamma_trial, g_alpha , conversion_flag= multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=rho_s,
@@ -1074,7 +1069,12 @@ def rdf_radial(
                     n_iter=n_iter,
                     tol=tolerance,
                     alpha_rdf_max=alpha_max,
+                    gamma_initial=gamma_inputs
                 )
+                
+                if conversion_flag:
+                    gamma_inputs =  gamma_trial.copy()
+                
 
                 # Accumulate G(r)
                 G_accum += g_alpha * dalpha
@@ -1083,35 +1083,7 @@ def rdf_radial(
             # --------------------------------------------------------
             G_u = beta_s * G_accum * u_attractive
             
-            for i in range(N):
-                for j in range(i, N):
-
-                    fig, ax = plt.subplots(figsize=(7, 5))
-
-                    ax.plot(
-                        r,
-                        G_u[i, j],
-                        lw=2,
-                        label=rf"$g^u_{{{i}{j}}}(\alpha; r)$",
-                    )
-
-                    ax.axhline(0.0, color="k", lw=0.5)
-                    ax.set_xlabel("r")
-                    ax.set_ylabel("Value")
-                    ax.set_title(f"{sname} | pair ({i},{j}) | α = {alpha:.2f}")
-                    ax.legend(frameon=False)
-
-                    # IMPORTANT: use fig.tight_layout(), not plt.tight_layout()
-                    fig.tight_layout()
-
-                    fname = f"debug_g_u_{sname}_pair_{i}_{j}_alpha_{alpha:.2f}.png"
-                    fig.savefig(plots_dir / fname, dpi=150)
-                    plt.close(fig)
-
-                
-
-            print(f"✅ Debug plots saved to: {plots_dir}")
-            return G_u
+            return G_u, G_accum
 
         
         u_attractive = np.zeros_like(u_matrix)
@@ -1141,9 +1113,9 @@ def rdf_radial(
         # ============================================================
         # Run G(r) computation for σ_opt
         # ============================================================
-        G_u, G_u_r_sigma_opt = compute_G_of_r(
-            u_repulsive=  build_hard_core_u_from_sigma(sigma_opt),
-            u_attractive=u_attractive,
+        G_u, G_accume = compute_G_of_r(
+            u_repulsive = build_hard_core_u_from_sigma(sigma_opt),
+            u_attractive = u_attractive,
             states=states,
             r=r,
             pair_closures=pair_closures,
@@ -1152,5 +1124,5 @@ def rdf_radial(
             n_alpha=20
         )
 
-    return G_u
+    return G_u, G_accume
 

@@ -1139,12 +1139,14 @@ def boltzmann_inversion_advance(
                 )
                 if conversion_flag:
                     gamma_inputs[sname] =  gamma_trial.copy()
-                
-
+                    for (i, j) in total_pair:
+                        diff = g_trial[i, j] - final_oz_results[sname]["g_pred"][i, j]
+                        loss += np.sum(diff * diff)
+                        
+                else :
+                    loss =  10
                 # ---- accumulate loss ----
-                for (i, j) in total_pair:
-                    diff = g_trial[i, j] - final_oz_results[sname]["g_pred"][i, j]
-                    loss += np.sum(diff * diff)
+                
 
             return loss
 
@@ -1329,13 +1331,7 @@ def boltzmann_inversion_advance(
             alpha_grid = np.linspace(0.0, 1.0, n_alpha)
             dalpha = alpha_grid[1] - alpha_grid[0]
 
-            # ------------------------------------------------------------
-            # Plot directory
-            # ------------------------------------------------------------
-            plots_dir = getattr(ctx, "plots_dir", ctx.scratch_dir)
-            plots_dir = Path(plots_dir)
-            plots_dir.mkdir(parents=True, exist_ok=True)
-
+            
             G_r_dict = {}
             G_u_r_dict = {}
 
@@ -1377,30 +1373,6 @@ def boltzmann_inversion_advance(
                 G_r_dict[sname] = G_accum
                 G_u_r_dict[sname] = G_u
                 
-                for i in range(N):
-                    for j in range(i, N):
-
-                        fig, ax = plt.subplots(figsize=(7, 5))
-
-                        ax.plot(
-                            r,
-                            G_u[i, j],
-                            lw=2,
-                            label=rf"$g^u_{{{i}{j}}}(\alpha; r)$",
-                        )
-
-                        ax.axhline(0.0, color="k", lw=0.5)
-                        ax.set_xlabel("r")
-                        ax.set_ylabel("Value")
-                        ax.set_title(f"{sname} | pair ({i},{j}) | α = {alpha:.2f}")
-                        ax.legend(frameon=False)
-
-                        # IMPORTANT: use fig.tight_layout(), not plt.tight_layout()
-                        fig.tight_layout()
-
-                        fname = f"debug_g_u_{sname}_pair_{i}_{j}_alpha_{alpha:.2f}.png"
-                        fig.savefig(plots_dir / fname, dpi=150)
-                        plt.close(fig)
 
                 
 
