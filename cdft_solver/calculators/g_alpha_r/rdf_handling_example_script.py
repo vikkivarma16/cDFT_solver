@@ -1494,7 +1494,7 @@ def boltzmann_inversion_advance(
         # State-resolved c(r)
         # ------------------------------------------------------------
         
-        def compute_repulsive_gr_hard(sigma_mat):
+        def compute_repulsive_gr(sigma_mat):
             """
             Compute RDFs using ONLY hard-core repulsion defined by sigma_mat.
             """
@@ -1502,8 +1502,6 @@ def boltzmann_inversion_advance(
             c_store = {}
             gamma_store = {}
             u_rep = build_hard_core_u_from_sigma(sigma_mat)
-            
-            print("\n\n\n", sigma_mat, "\n\n\n")
 
             for sname, sdata in states.items():
                 c_state, gamma_state, g_state, conversion_flag = multi_component_oz_solver_alpha(
@@ -1524,7 +1522,7 @@ def boltzmann_inversion_advance(
 
 
         # Repulsive RDFs using optimized sigma
-        g_hard_sigma_opt, c_hard_sigma_opt, gamma_hard_sigma_opt = compute_repulsive_gr_hard(sigma_opt)
+        g_hard_sigma_opt, c_hard_sigma_opt, gamma_hard_sigma_opt = compute_repulsive_gr(sigma_opt)
         
 
         # ------------------------------------------------------------
