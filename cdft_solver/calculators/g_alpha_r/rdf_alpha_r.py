@@ -986,28 +986,32 @@ def rdf_alpha_r(
                 sigma_mat[i, j] = sigma_mat[j, i] = sigma_vec[k]
                 k += 1
             return sigma_mat
+            
+            
+            
+        gamma_inputs = np.zeros((N, N, Nr))
+        gamma_holder = {"gamma": gamma_inputs}
 
-        gamma_inputs = np.zeros_like((N, N, Nr))
         def sigma_objective(sigma_vec):
             sigma_mat = unpack_sigma_vector(sigma_vec)
             u_trial = build_total_u_from_sigma(sigma_mat)
             loss = 0.0
+
             c_trial, gamma_trial, g_trial, conversion_flag = multi_component_oz_solver_alpha(
                 r=r,
                 pair_closures=pair_closures,
                 densities=np.asarray(densities, float),
-                u_matrix= u_trial ,
+                u_matrix=u_trial,
                 sigma_matrix=np.zeros((N, N)),
                 n_iter=n_iter,
                 tol=tol,
                 alpha_rdf_max=alpha_max,
-                gamma_initial=gamma_inputs
+                gamma_initial=gamma_holder["gamma"]
             )
-            if conversion_flag:
-                gamma_inputs =  gamma_trial.copy()
-            
 
-            # ---- accumulate loss ----
+            if conversion_flag:
+                gamma_holder["gamma"] = gamma_trial.copy()
+
             for (i, j) in total_pair:
                 diff = g_trial[i, j] - g_ref[i, j]
                 loss += np.sum(diff * diff)
