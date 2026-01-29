@@ -50,7 +50,7 @@ def lj(p):
         (sigma / r_cut)**12 - (sigma / r_cut)**6
     )
     
-    print( " \n\n\n\n", r_cut, "\n\n\n\n")
+    #print( " \n\n\n\n", r_cut, "\n\n\n\n")
 
     def V(r):
         r = np.asarray(r, dtype=float)
@@ -74,7 +74,7 @@ def lj(p):
         v[mask] = v_shifted
 
         # r > r_cut already zero
-        print (v)
+        #print (v)
         
         return v
 
