@@ -1160,6 +1160,6 @@ def rdf_alpha_r(
             N=N,
             n_alpha=20
         )
-
+    
     return G_u, G_accume
 
