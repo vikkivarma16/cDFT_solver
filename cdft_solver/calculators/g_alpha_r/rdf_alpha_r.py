@@ -999,7 +999,7 @@ def rdf_alpha_r(
                 u_matrix= u_trial ,
                 sigma_matrix=np.zeros((N, N)),
                 n_iter=n_iter,
-                tol=tolerance,
+                tol=tol,
                 alpha_rdf_max=alpha_max,
                 gamma_initial=gamma_inputs
             )
@@ -1069,7 +1069,7 @@ def rdf_alpha_r(
                     u_matrix=beta_s * u_alpha / beta_ref,
                     sigma_matrix=np.zeros((N, N)),
                     n_iter=n_iter,
-                    tol=tolerance,
+                    tol=tol,
                     alpha_rdf_max=alpha_max,
                     gamma_initial=gamma_inputs
                 )
