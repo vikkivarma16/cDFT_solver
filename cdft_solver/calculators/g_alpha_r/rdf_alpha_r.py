@@ -1059,7 +1059,6 @@ def rdf_alpha_r(
             u_attractive,
             r,
             pair_closures,
-            beta_ref,
             N,
             n_alpha=20,
         ):
@@ -1156,7 +1155,6 @@ def rdf_alpha_r(
             u_attractive = u_attractive,
             r=r,
             pair_closures=pair_closures,
-            beta_ref=beta_ref,
             N=N,
             n_alpha=20
         )
