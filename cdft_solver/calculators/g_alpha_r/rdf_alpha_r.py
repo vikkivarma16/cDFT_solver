@@ -1011,6 +1011,8 @@ def rdf_alpha_r(
 
             if conversion_flag:
                 gamma_holder["gamma"] = gamma_trial.copy()
+            else:
+                loss = 10
 
             for (i, j) in total_pair:
                 diff = g_trial[i, j] - g_ref[i, j]
@@ -1023,13 +1025,30 @@ def rdf_alpha_r(
         # -------------------------------------------------
 
         sigma_init_vec = np.array([sigma_guess[i, j] for (i, j) in hard_core_pairs])
+        lower_factor = 0.8
+        upper_factor = 1.2
+
+        bounds = [
+            (lower_factor * s0, upper_factor * s0)
+            for s0 in sigma_init_vec
+        ]
+
         print("\nOptimizing sigma collectively across all states and pairs...")
+        
         result = minimize(
-            sigma_objective,
-            sigma_init_vec,
-            method="Powell",
-            options={"xtol": 1e-6, "ftol": 1e-6, "disp": True},
-        )
+                sigma_objective,
+                sigma_init_vec,
+                method="Powell",
+                bounds=bounds,
+                options={
+                    "xtol": 1e-6,        # tighter convergence
+                    "ftol": 1e-6,
+                    "maxiter": 500,    # <-- MORE ITERATIONS
+                    "maxfev": 20000,    # <-- MORE FUNCTION CALLS
+                    "disp": True
+                },
+            )
+
         sigma_opt = unpack_sigma_vector(result.x)
         
         
