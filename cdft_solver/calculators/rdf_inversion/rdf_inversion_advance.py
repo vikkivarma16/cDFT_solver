@@ -1055,7 +1055,107 @@ def boltzmann_inversion_advance(
                 if has_core[i, j]:
                     u[i, j] = hard_core_potential(r, sigma_mat[i, j])
                     r_m, u_m = detect_first_minimum_near_core(
-                        r,
+                        r,import json
+import numpy as np
+from pathlib import Path
+
+# ------------------------------------------------------------
+# Collect c(r)
+# ------------------------------------------------------------
+c_real = {state: np.asarray(v["c_pred"])
+          for state, v in final_oz_results.items()}
+
+c_ref_hard = {state: np.asarray(arr)
+              for state, arr in c_ref.items()}
+
+c_sigma_opt = {state: np.asarray(arr)
+               for state, arr in reference_package["c_rep_sigma_opt"].items()}
+
+c_rep_sigma_opt = {state: np.asarray(arr)
+                   for state, arr in c_hard_sigma_opt.items()}
+
+new_states = list(c_real.keys())
+
+# ------------------------------------------------------------
+# Compute Δc(r)
+# ------------------------------------------------------------
+delta_c_real_ref = {}
+delta_c_real_sigma_opt = {}
+delta_c_sigma_opt_ref = {}
+delta_c_sigma_opt_sigma_opt = {}
+
+for state in new_states:
+    delta_c_real_ref[state] = -(
+        c_real[state] - c_ref_hard[state]
+    )
+
+    delta_c_real_sigma_opt[state] = -(
+        c_real[state] - c_rep_sigma_opt[state]
+    )
+
+    delta_c_sigma_opt_ref[state] = -(
+        c_sigma_opt[state] - c_ref_hard[state]
+    )
+
+    delta_c_sigma_opt_sigma_opt[state] = -(
+        c_sigma_opt[state] - c_rep_sigma_opt[state]
+    )
+
+# ------------------------------------------------------------
+# Export package (RAW + Δc)
+# ------------------------------------------------------------
+delta_c_package = {
+    "r": r.tolist(),
+
+    # -------- raw c(r) --------
+    "c_real": {
+        state: arr.tolist()
+        for state, arr in c_real.items()
+    },
+    "c_ref_hard": {
+        state: arr.tolist()
+        for state, arr in c_ref_hard.items()
+    },
+    "c_sigma_opt": {
+        state: arr.tolist()
+        for state, arr in c_sigma_opt.items()
+    },
+    "c_rep_sigma_opt": {
+        state: arr.tolist()
+        for state, arr in c_rep_sigma_opt.items()
+    },
+
+    # -------- Δc(r) --------
+    "delta_c_real_ref": {
+        state: arr.tolist()
+        for state, arr in delta_c_real_ref.items()
+    },
+    "delta_c_real_sigma_opt": {
+        state: arr.tolist()
+        for state, arr in delta_c_real_sigma_opt.items()
+    },
+    "delta_c_sigma_opt_ref": {
+        state: arr.tolist()
+        for state, arr in delta_c_sigma_opt_ref.items()
+    },
+    "delta_c_sigma_opt_sigma_opt": {
+        state: arr.tolist()
+        for state, arr in delta_c_sigma_opt_sigma_opt.items()
+    },
+}
+
+# ------------------------------------------------------------
+# Write JSON
+# ------------------------------------------------------------
+out = Path(ctx.scratch_dir)
+out.mkdir(parents=True, exist_ok=True)
+
+out_file = out / "delta_c_by_state.json"
+with open(out_file, "w") as f:
+    json.dump(delta_c_package, f, indent=4)
+
+print(f"✅ c(r) + Δc(r) by state exported → {out_file}")
+
                         u_matrix[i, j],
                         sigma=sigma_mat[i, j],
                     )
@@ -1578,12 +1678,21 @@ def boltzmann_inversion_advance(
         # Repulsive RDFs using optimized sigma
         g_hard_sigma_opt, c_hard_sigma_opt, gamma_hard_sigma_opt = compute_repulsive_gr(sigma_opt)
         
-        
-        c_real = { k: v["c_pred"].tolist() for k, v in final_oz_results.items() }
-        c_ref_hard = { state: np.asarray(arr) for state, arr in c_ref.items() }
-        c_sigma_opt = { state: np.asarray(arr) for state, arr in reference_package["c_rep_sigma_opt"].items() }
-        c_rep_sigma_opt =  { state : np.asarray(arr) for state, arr in c_hard_sigma_opt.items () } 
-        
+
+        # ------------------------------------------------------------
+        # Collect c(r)
+        # ------------------------------------------------------------
+        c_real = {state: np.asarray(v["c_pred"])
+                  for state, v in final_oz_results.items()}
+
+        c_ref_hard = {state: np.asarray(arr)
+                      for state, arr in c_ref.items()}
+
+        c_sigma_opt = {state: np.asarray(arr)
+                       for state, arr in reference_package["c_rep_sigma_opt"].items()}
+
+        c_rep_sigma_opt = {state: np.asarray(arr)
+                           for state, arr in c_hard_sigma_opt.items()}
 
         new_states = list(c_real.keys())
 
@@ -1596,21 +1705,47 @@ def boltzmann_inversion_advance(
         delta_c_sigma_opt_sigma_opt = {}
 
         for state in new_states:
-            delta_c_real_ref[state] =   - (c_real[state] - c_ref_hard[state] )
-            delta_c_real_sigma_opt[state] =  - (c_real[state] - c_rep_sigma_opt[state] )
-            delta_c_sigma_opt_ref[state] =  - (c_sigma_opt[state] - c_ref_hard[state] )
-            delta_c_sigma_opt_sigma_opt[state] =  - (c_sigma_opt[state] - c_rep_sigma_opt[state] )
+            delta_c_real_ref[state] = -(
+                c_real[state] - c_ref_hard[state]
+            )
 
-        # -----------------------------------------------------------
-        # Export package
+            delta_c_real_sigma_opt[state] = -(
+                c_real[state] - c_rep_sigma_opt[state]
+            )
+
+            delta_c_sigma_opt_ref[state] = -(
+                c_sigma_opt[state] - c_ref_hard[state]
+            )
+
+            delta_c_sigma_opt_sigma_opt[state] = -(
+                c_sigma_opt[state] - c_rep_sigma_opt[state]
+            )
+
         # ------------------------------------------------------------
-        
-        
-        
-        
+        # Export package (RAW + Δc)
+        # ------------------------------------------------------------
         delta_c_package = {
             "r": r.tolist(),
 
+            # -------- raw c(r) --------
+            "c_real": {
+                state: arr.tolist()
+                for state, arr in c_real.items()
+            },
+            "c_ref_hard": {
+                state: arr.tolist()
+                for state, arr in c_ref_hard.items()
+            },
+            "c_sigma_opt": {
+                state: arr.tolist()
+                for state, arr in c_sigma_opt.items()
+            },
+            "c_rep_sigma_opt": {
+                state: arr.tolist()
+                for state, arr in c_rep_sigma_opt.items()
+            },
+
+            # -------- Δc(r) --------
             "delta_c_real_ref": {
                 state: arr.tolist()
                 for state, arr in delta_c_real_ref.items()
@@ -1619,12 +1754,10 @@ def boltzmann_inversion_advance(
                 state: arr.tolist()
                 for state, arr in delta_c_real_sigma_opt.items()
             },
-            
             "delta_c_sigma_opt_ref": {
                 state: arr.tolist()
                 for state, arr in delta_c_sigma_opt_ref.items()
             },
-            
             "delta_c_sigma_opt_sigma_opt": {
                 state: arr.tolist()
                 for state, arr in delta_c_sigma_opt_sigma_opt.items()
@@ -1641,7 +1774,8 @@ def boltzmann_inversion_advance(
         with open(out_file, "w") as f:
             json.dump(delta_c_package, f, indent=4)
 
-        print(f"✅ Δc(r) by state exported → {out_file}")
+        print(f"✅ c(r) + Δc(r) by state exported → {out_file}")
+
 
              
     if export_json:
