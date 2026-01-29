@@ -438,7 +438,7 @@ def process_supplied_rdf_multistate(supplied_data, species, r_grid):
                     g_sup,
                     kind="linear",
                     bounds_error=False,
-                    fill_value=(g_sup[0], g_sup[-1]),
+                    fill_value=(g_sup[0], 1.0),
                 )
                 g_interp = interp(r_grid)
 

@@ -6,4 +6,4 @@ for running isochores DFT minimization.
 """
 
 
-from .rdf_inversion_advance import boltzmann_inversion_advance
+from .rdf_alpha_r import rdf_alpha_r

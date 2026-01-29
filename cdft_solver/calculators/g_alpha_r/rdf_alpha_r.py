@@ -149,6 +149,7 @@ def multi_component_oz_solver_alpha(
     n_iter=10000,
     tol=1e-8,
     alpha_rdf_max=0.1,
+    gamma_initial = None,
 ):
     """
     Multi-component OZ solver with adaptive alpha-mixing
@@ -164,7 +165,12 @@ def multi_component_oz_solver_alpha(
     # -----------------------------
     # Initialize arrays
     # -----------------------------
-    gamma_r = np.zeros((N, N, Nr))
+    if gamma_initial is not None:
+        gamma_r = gamma_initial
+    else:
+        gamma_r = np.zeros((N, N, Nr))
+
+        
 
     if c_initial is not None:
         c_r = c_initial.copy()
@@ -186,8 +192,7 @@ def multi_component_oz_solver_alpha(
     # -----------------------------
     # Iteration loop
     # -----------------------------
-    
-    print ()
+    conversion_flag  =  False
     for step in range(n_iter):
 
         # --- Closure update (ONLY where allowed)
@@ -221,6 +226,7 @@ def multi_component_oz_solver_alpha(
 
         if diff < tol:
             print(f"\n✅ Converged in {step+1} iterations.")
+            conversion_flag = True
             break
 
         prev_diff = diff
@@ -234,7 +240,7 @@ def multi_component_oz_solver_alpha(
     h_r = gamma_r + c_r
     g_r = h_r + 1.0
 
-    return c_r, gamma_r, g_r
+    return c_r, gamma_r, g_r, conversion_flag
 
 
 def wca_split(r, u):
@@ -522,17 +528,26 @@ def plot_u_matrix(r, u_matrix, species, outdir, filename="u_matrix.png"):
 
 
 
-
-
-
-
-    
-    
-    
-def boltzmann_inversion_standard(
+def rdf_radial(
     ctx,
     rdf_config,
-    supplied_data,
+    densities,
+    supplied_data=None,
+    export=False,
+    plot=True,
+    filename_prefix="rdf",
+):
+
+
+
+    
+    
+    
+def rdf_alpha_r(
+    ctx,
+    rdf_config,
+    densities,
+    supplied_data = None,
     filename_prefix="multistate",
     export_plot=True,
     export_json=True
@@ -749,16 +764,6 @@ def boltzmann_inversion_standard(
     plot_u_matrix( r=r, u_matrix=u_matrix, species=species, outdir=plots, filename="pair_potentials_before_ibi.png",)
     
     
-    # -------------------------------------------------
-    # Adaptive IBI parameters
-    # -------------------------------------------------
-    alpha_ibi = 0.01
-
-    alpha_min_ibi = 1e-4
-    alpha_max_ibi = alpha_ibi_max   # keep your existing max
-    alpha_power = 0.5               # controls adaptation strength
-
-    max_diff_prev = np.inf
     sigma_ref  =  sigma_matrix.copy()
     # -------------------------------------------------
     # Multistate IBI loop
@@ -770,6 +775,11 @@ def boltzmann_inversion_standard(
     # Storage for final OZ results (used later for sigma)
     # -------------------------------------------------
     final_oz_results = {}
+    N = pair_closures.shape[0]
+    Nr = len(r)
+    
+    densities  =  densities
+    
     for it in range(1, n_iter_ibi + 1):
 
         delta_u_accum = np.zeros_like(u_matrix)
@@ -787,7 +797,7 @@ def boltzmann_inversion_standard(
 
             print("\ntemperature in state", sname, ":", beta_s)
 
-            c_r, gamma_r, g_pred = multi_component_oz_solver_alpha(
+            c_r, gamma_r, g_pred , conversion_flag = multi_component_oz_solver_alpha(
                 r=r,
                 pair_closures=pair_closures,
                 densities=np.asarray(densities_s, float),
@@ -871,7 +881,7 @@ def boltzmann_inversion_standard(
                 beta_s = sdata["beta"]
                 densities_s = sdata["densities"]
                 
-                c_pred, gamma_pred, g_pred = multi_component_oz_solver_alpha(
+                c_pred, gamma_pred, g_pred, conversion_flag = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(densities_s, float),
@@ -1039,6 +1049,30 @@ def boltzmann_inversion_standard(
                 u[r < sigma] = U0
                 return u
 
+    def build_total_u_from_sigma(sigma_mat):
+        u = np.zeros_like(u_matrix)
+        for i in range(N):
+            for j in range(i, N):
+                if has_core[i, j]:
+                    u[i, j] = hard_core_potential(r, sigma_mat[i, j])
+                    r_m, u_m = detect_first_minimum_near_core(
+                        r,
+                        u_matrix[i, j],
+                        sigma=sigma_mat[i, j],
+                    )
+                    u_att = np.zeros_like(r)
+                    mask_rep = r <= r_m
+                    mask_att = r > r_m
+                    # WCA attractive tail
+                    u_att[mask_rep] = u_m
+                    u_att[mask_att] = u_matrix[i, j][mask_att]
+                    u[i, j] += u_att
+                else:
+                    u[i, j] = u_matrix[i, j].copy()
+                u[j, i] =  u[i, j]
+        return u
+        
+        
     def build_hard_core_u_from_sigma(sigma_mat):
         u = np.zeros_like(u_matrix)
         for i in range(N):
@@ -1067,57 +1101,16 @@ def boltzmann_inversion_standard(
     if hard_core_pairs:
 
         print("\n🔧 Starting sigma calibration stage...")
-        # -------------------------------------------------
-        # PHASE B: Build WCA-repulsive reference potential, which could be computed on the same basis where it was derived to be the same number of particles... now the computatoin for
-        # -------------------------------------------------
         
         
-        u_ref = np.zeros_like(u_matrix)   
-        for i in range(N):
-            for j in range(N):
-                if has_core[i, j]:
-                    u_ref[i, j] = wca_split(r, u_matrix[i, j])
-                    # u_r =  u_matrix[i, j]
-                    # bh , r0 =  compute_bh_radius_truncated(r, u_r, beta_ref)
-                    # mask  =  r < r0
-                    # u_ref[i ,j] =  np.zeros_like(r)
-                    # u_ref[i, j, mask] =  u_matrix[i, j, mask]
-                else:
-                    u_ref[i, j] = u_matrix[i, j].copy()
+        out = Path(ctx.scratch_dir) / "sigma_optimization"
+        out.mkdir(parents=True, exist_ok=True)
         
-        
-        # -------------------------------------------------
-        # PHASE C: Compute reference RDFs for ALL states
-        # -------------------------------------------------
-        
-        
-        
-        g_ref = {}
-        c_ref = {}
-        gamma_ref = {}
-        for sname, sdata in states.items():
+        def sigma_to_filename(sigma_vec):
+            # example: sigma_1.000_0.950_1.050.json
+            parts = [f"{s:.6f}" for s in sigma_vec]
+            return "sigma_" + "_".join(parts) + ".json"
 
-            beta_s = sdata["beta"]
-            rho_s = sdata["densities"]
-            print(f"\nComputing reference RDF for state {sname}")
-            c_ref_state, gamma_ref_state, g_ref_state = multi_component_oz_solver_alpha(
-                r=r,
-                pair_closures=pair_closures,
-                densities=np.asarray(rho_s, float),
-                u_matrix=beta_s * u_ref / beta_ref,
-                sigma_matrix=np.zeros((N, N)),
-                n_iter=n_iter,
-                tol=tolerance,
-                alpha_rdf_max=alpha_max,
-            )
-
-            g_ref[sname] = g_ref_state
-            c_ref[sname] = c_ref_state
-            gamma_ref[sname] = gamma_ref_state  
-
-        # -------------------------------------------------
-        # PHASE D: Collective sigma optimization
-        # -------------------------------------------------
 
         def unpack_sigma_vector(sigma_vec):
             sigma_mat = np.zeros((N, N))
@@ -1127,17 +1120,30 @@ def boltzmann_inversion_standard(
                 k += 1
             return sigma_mat
 
-        
+        gamma_initial = np.zeros((N, N, Nr))
+        gamma_inputs  =  {}
+        for sname, sdata in states.items():
+            gamma_inputs[sname] = gamma_initial
 
         def sigma_objective(sigma_vec):
             sigma_mat = unpack_sigma_vector(sigma_vec)
-            u_trial = build_hard_core_u_from_sigma(sigma_mat)
+            u_trial = build_total_u_from_sigma(sigma_mat)
             loss = 0.0
 
+            sigma_file = out / sigma_to_filename(sigma_vec)
+
+            save_data = {
+                "sigma_vector": sigma_vec.tolist(),
+                "states": {}
+            }
+            
+            
+            flag_save  =  True
             for sname, sdata in states.items():
                 beta_s = sdata["beta"]
                 rho_s = sdata["densities"]
-                _, _, g_trial = multi_component_oz_solver_alpha(
+
+                c_trial, gamma_trial, g_trial, conversion_flag = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(rho_s, float),
@@ -1146,11 +1152,54 @@ def boltzmann_inversion_standard(
                     n_iter=n_iter,
                     tol=tolerance,
                     alpha_rdf_max=alpha_max,
+                    gamma_initial=gamma_inputs[sname]
                 )
+                if conversion_flag:
+                    gamma_inputs[sname] =  gamma_trial.copy()
+                else:
+                    flag_save  =  False
 
+                # ---- accumulate loss ----
                 for (i, j) in total_pair:
-                    diff = g_trial[i, j] - g_ref[sname][i, j]
+                    diff = g_trial[i, j] - final_oz_results[sname]["g_pred"][i, j]
                     loss += np.sum(diff * diff)
+
+                # ---- save data ----
+                save_data["states"][sname] = {
+                    "beta": beta_s,
+                    "densities": rho_s.tolist(),
+                    "r": r.tolist(),
+                    "g": {
+                        f"{i},{j}": g_trial[i, j].tolist()
+                        for (i, j) in total_pair
+                    },
+                    "c": {
+                        f"{i},{j}": c_trial[i, j].tolist()
+                        for (i, j) in total_pair
+                    },
+                    "gamma": {
+                        f"{i},{j}": gamma_trial[i, j].tolist()
+                        for (i, j) in total_pair
+                    },
+                    
+                    "g_ref": {
+                        f"{i},{j}": final_oz_results[sname]["g_pred"][i, j].tolist()
+                        for (i, j) in total_pair
+                    },
+                    "c_ref": {
+                        f"{i},{j}": final_oz_results[sname]["g_pred"][i, j].tolist()
+                        for (i, j) in total_pair
+                    },
+                    "gamma_ref": {
+                        f"{i},{j}": final_oz_results[sname]["g_pred"][i, j].tolist()
+                        for (i, j) in total_pair
+                    },
+                }
+
+            # ---- write JSON (overwrite-safe) ----
+            if flag_save :
+                with open(sigma_file, "w") as f:
+                    json.dump(save_data, f, indent=4)
 
             return loss
 
@@ -1172,6 +1221,54 @@ def boltzmann_inversion_standard(
         
         
         
+        
+        
+        
+        
+        
+        print ("Sigma reference system analysis !!!! \n")
+        
+        g_ref = {}
+        c_ref = {}
+        gamma_ref = {}
+        
+        u_ref = np.zeros_like(u_matrix)   
+        for i in range(N):
+            for j in range(N):
+                if has_core[i, j]:
+                    u_ref[i, j] = wca_split(r, u_matrix[i, j])
+                    # u_r =  u_matrix[i, j]
+                    # bh , r0 =  compute_bh_radius_truncated(r, u_r, beta_ref)
+                    # mask  =  r < r0
+                    # u_ref[i ,j] =  np.zeros_like(r)
+                    # u_ref[i, j, mask] =  u_matrix[i, j, mask]
+                else:
+                    u_ref[i, j] = u_matrix[i, j].copy()
+
+        for sname, sdata in states.items():
+
+            beta_s = sdata["beta"]
+            rho_s = sdata["densities"]
+            print(f"\nComputing reference RDF for state {sname}")
+            c_ref_state, gamma_ref_state, g_ref_state, conversion_flag = multi_component_oz_solver_alpha(
+                r=r,
+                pair_closures=pair_closures,
+                densities=np.asarray(rho_s, float),
+                u_matrix=beta_s * u_ref / beta_ref,
+                sigma_matrix=np.zeros((N, N)),
+                n_iter=n_iter,
+                tol=tolerance,
+                alpha_rdf_max=alpha_max,
+            )
+
+            g_ref[sname] = g_ref_state
+            c_ref[sname] = c_ref_state
+            gamma_ref[sname] = gamma_ref_state  
+
+        # -------------------------------------------------
+        # PHASE D: Collective sigma optimization
+        # -------------------------------------------------
+        
         bh_zero = {}
         bh_sigma  =  np.zeros_like(sigma_opt)
         for (i, j) in hard_core_pairs:
@@ -1192,10 +1289,10 @@ def boltzmann_inversion_standard(
             g_store = {}
             c_store = {}
             gamma_store = {}
-            u_rep = build_hard_core_u_from_sigma(sigma_mat)
+            u_rep = build_total_u_from_sigma(sigma_mat)
 
             for sname, sdata in states.items():
-                c_state, gamma_state, g_state = multi_component_oz_solver_alpha(
+                c_state, gamma_state, g_state, conversion_flag = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(sdata["densities"], float),
@@ -1246,7 +1343,6 @@ def boltzmann_inversion_standard(
             "g_rep_sigma_bh": {k: v.tolist() for k, v in g_rep_sigma_bh.items()},
             "c_rep_sigma_bh": {k: v.tolist() for k, v in c_rep_sigma_bh.items()},
             "gamma_rep_sigma_bh": {k: v.tolist() for k, v in gamma_rep_sigma_bh.items()},
-
             # --- target RDFs ---
             "g_real": {
                 k: v["g_pred"].tolist() for k, v in final_oz_results.items()
@@ -1260,8 +1356,6 @@ def boltzmann_inversion_standard(
                 k: v["gamma_pred"].tolist() for k, v in final_oz_results.items()
             },
         }
-
-
         out = Path(ctx.scratch_dir)
         out.mkdir(parents=True, exist_ok=True)
         json_file = out / "result_sigma_analysis.json"
@@ -1271,392 +1365,6 @@ def boltzmann_inversion_standard(
         print("✅ Saved Sigma_package.json")
 
                 
-        
-        
-        
-        
-        # ============================================================
-        # PHASE 8 — WCA splitting RDFs (σ_BH vs σ_opt)
-        # ============================================================
-
-        def compute_wca_gr(sigma_mat):
-            """
-            Compute RDFs after WCA splitting using a given hard-core sigma.
-            Repulsive part: hard core from sigma_mat
-            Attractive part: shifted tail beyond first minimum
-            """
-            u_repulsive = build_hard_core_u_from_sigma(sigma_mat)
-            u_attractive = np.zeros_like(u_matrix)
-            u_wca_total = np.zeros_like(u_matrix)
-            r_minima = {}
-            attractive_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] and np.any(u_matrix[i, j] < -1e-4) ]
-            for i in range(N):
-                for j in range(i, N):
-                    if (i, j) in attractive_pairs:
-                        # Detect first minimum close to the hard core
-                        r_m, u_m = detect_first_minimum_near_core(
-                            r,
-                            u_matrix[i, j],
-                            sigma=sigma_mat[i, j],
-                        )
-                        r_minima[(i, j)] = r_m
-                        u_att = np.zeros_like(r)
-                        mask_rep = r <= r_m
-                        mask_att = r > r_m
-                        # WCA attractive tail
-                        u_att[mask_rep] = u_m
-                        u_att[mask_att] = u_matrix[i, j][mask_att]
-                        u_attractive[i, j] = u_att
-                        u_attractive[j, i] = u_att
-                        u_wca_total[i, j] = u_repulsive[i, j] + u_att
-                        u_wca_total[j, i] = u_wca_total[i, j]
-                    else:
-                        # No hard core → keep original interaction
-                        u_wca_total[i, j] = u_matrix[i, j]
-                        u_wca_total[j, i] = u_matrix[j, i]
-
-            # ---- Compute RDFs for all states ----
-            g_wca = {}
-            c_wca = {}
-            gamma_wca = {}
-            for sname, sdata in states.items():
-                c_state, gamma_state, g_state = multi_component_oz_solver_alpha(
-                    r=r,
-                    pair_closures=pair_closures,
-                    densities=np.asarray(sdata["densities"], float),
-                    u_matrix=sdata["beta"] * u_wca_total / beta_ref,
-                    sigma_matrix=np.zeros((N, N)),
-                    n_iter=n_iter,
-                    tol=tolerance,
-                    alpha_rdf_max=alpha_max,
-                )
-                g_wca[sname] = g_state
-                c_wca[sname] = c_state
-                gamma_wca[sname] = gamma_state
-
-            return g_wca, c_wca, gamma_wca, r_minima, u_repulsive, u_attractive
-
-
-        # ------------------------------------------------------------
-        # Compute WCA RDFs for both sigma definitions
-        # ------------------------------------------------------------
-
-        g_wca_sigma_bh, c_wca_sigma_bh, gamma_wca_sigma_bh, rmin_bh, u_repulsive_bh, u_attractive_bh  = compute_wca_gr(bh_sigma)
-        g_wca_sigma_opt, c_wca_sigma_opt, gamma_wca_sigma_opt, rmin_opt, u_repulsive_opt, u_attractive_opt = compute_wca_gr(sigma_opt)
-
-
-        # ============================================================
-        # PHASE 9 — Export WCA diagnostics to JSON
-        # ============================================================
-
-        wca_package = {
-            "sigma_bh": bh_sigma.tolist(),
-            "sigma_opt": sigma_opt.tolist(),
-            
-            "r" : r.tolist(),
-
-            "rmin_bh": {f"{i},{j}": float(v) for (i, j), v in rmin_bh.items()},
-            "rmin_opt": {f"{i},{j}": float(v) for (i, j), v in rmin_opt.items()},
-            "u_attractive_bh" : u_attractive_bh.tolist(),
-            "u_repulsive_bh" : u_repulsive_bh.tolist(),
-            "u_attractive_opt" : u_attractive_opt.tolist(),
-            "u_repulsive_opt" : u_repulsive_opt.tolist(),
-            "u_total" : u_matrix.tolist(),
-            "g_wca_sigma_bh": {k: v.tolist() for k, v in g_wca_sigma_bh.items()},
-            "c_wca_sigma_bh": {k: v.tolist() for k, v in c_wca_sigma_bh.items()},
-            "gamma_wca_sigma_bh": {k: v.tolist() for k, v in gamma_wca_sigma_bh.items()},
-            
-            
-            "g_wca_sigma_opt": {k: v.tolist() for k, v in g_wca_sigma_opt.items()},
-            "c_wca_sigma_opt": {k: v.tolist() for k, v in c_wca_sigma_opt.items()},
-            "gamma_wca_sigma_opt": {k: v.tolist() for k, v in gamma_wca_sigma_opt.items()},
-            
-            "g_real": {
-                k: v["g_pred"].tolist() for k, v in final_oz_results.items()
-            },
-            
-            "c_real": {
-                k: v["c_pred"].tolist() for k, v in final_oz_results.items()
-            },
-            
-            "gamma_real": {
-                k: v["gamma_pred"].tolist() for k, v in final_oz_results.items()
-            },
-        }
-
-
-        out = Path(ctx.scratch_dir)
-        out.mkdir(parents=True, exist_ok=True)
-        json_file = out / "result_wca_gr_comparison.json"
-
-        with open(json_file, "w") as f:
-            json.dump(wca_package, f, indent=4)
-
-        print("✅ Saved wca_gr_comparison_package.json")
-
-                
-        
-        
-        
-        
-        
-        
-        
-        
-        # ============================================================
-        # PHASE 10 — Attractive calibration (σ_opt vs σ_BH)
-        # ============================================================
-
-        def run_attractive_calibration(sigma_mat, label):
-            """
-            Run attractive-part calibration for a given sigma definition.
-            Returns final attractive potential, total potential, and RDFs.
-            """
-
-            print(f"\n🔧 Starting attractive calibration using {label}")
-
-            # -------------------------------------------------
-            # Select sigma-fixed attractive pairs
-            # -------------------------------------------------
-            attractive_pairs = [
-                (i, j)
-                for i in range(N)
-                for j in range(i, N)
-                if has_core[i, j] and np.any(u_matrix[i, j] < -1e-4)
-            ]
-
-            if not attractive_pairs:
-                print("No hard-core attractive pairs found.")
-                return None
-
-            # -------------------------------------------------
-            # Repulsive hard-core part
-            # -------------------------------------------------
-            u_repulsive = build_hard_core_u_from_sigma(sigma_mat)
-
-            # -------------------------------------------------
-            # Initial attractive estimate (linearized OZ)
-            # -------------------------------------------------
-            u_attractive = np.zeros_like(u_matrix, dtype=float)
-
-            eps = 1e-12
-            num_state = 0
-
-            for sname, sdata in states.items():
-                beta_s = float(sdata["beta"])
-                g_ref_state  = g_ref[sname]
-                g_pred_state = final_oz_results[sname]["g_pred"]
-
-                for (i, j) in attractive_pairs:
-                    mask_r = r > sigma_mat[i, j]
-                    safe_g_ref = np.maximum(g_ref_state[i, j], eps)
-
-                    delta_u = (
-                        beta_ref
-                        * (g_ref_state[i, j] - g_pred_state[i, j])
-                        / (safe_g_ref * beta_s)
-                    )
-
-                    u_attractive[i, j, mask_r] = delta_u[mask_r]
-                    u_attractive[j, i, mask_r] = u_attractive[i, j, mask_r]
-
-                num_state += 1
-
-            u_attractive /= num_state
-
-            # -------------------------------------------------
-            # IBI refinement of attractive tail
-            # -------------------------------------------------
-            alpha_attr = 0.1
-            u_attr_trial = u_attractive.copy()
-
-            for it in range(1, n_iter_ibi):
-
-                max_diff = 0.0
-                delta_u_accum = np.zeros_like(u_attr_trial)
-
-                for sname, sdata in states.items():
-                    beta_s = sdata["beta"]
-                    rho_s  = sdata["densities"]
-
-                    # Build total potential
-                    u_total = u_matrix.copy()
-
-                    for (i, j) in hard_core_pairs:
-                        u_total[i, j] = u_repulsive[i, j]
-                        u_total[j, i] = u_total[i, j]
-
-                    for (i, j) in attractive_pairs:
-                        u_total[i, j] += u_attr_trial[i, j]
-                        u_total[j, i] = u_total[i, j]
-
-                    # Compute RDF
-                    _, _, g_trial = multi_component_oz_solver_alpha(
-                        r=r,
-                        pair_closures=pair_closures,
-                        densities=np.asarray(rho_s, float),
-                        u_matrix=beta_s * u_total / beta_ref,
-                        sigma_matrix=np.zeros((N, N)),
-                        n_iter=n_iter,
-                        tol=tolerance,
-                        alpha_rdf_max=alpha_max,
-                    )
-
-                    # Accumulate corrections
-                    for (i, j) in attractive_pairs:
-                    
-                        r_m, u_m = detect_first_minimum_near_core( r, u_matrix[i, j], sigma=sigma_mat[i, j])
-                        mask_r_super  = r > r_m 
-                        mask_r = r > sigma_mat[i, j]
-                        delta = np.zeros_like(r)
-
-                        delta = (beta_ref/beta_s) * np.log(
-                            g_trial[i, j]
-                            / final_oz_results[sname]["g_pred"][i, j]
-                        )
-
-                        delta_u_accum[i, j] += delta
-                        delta_u_accum[j, i] = delta_u_accum[i, j]
-
-                        max_diff = max(
-                            max_diff,
-                            np.max(
-                                np.abs(
-                                    g_trial[i, j, mask_r_super]
-                                    - final_oz_results[sname]["g_pred"][i, j, mask_r_super]
-                                )
-                            ),
-                        )
-                    
-                    
-
-                # Apply update + enforce WCA continuity
-                for (i, j) in attractive_pairs:
-                    u_attr_trial[i, j] += alpha_attr * delta_u_accum[i, j]
-
-                    r_m, u_m = detect_first_minimum_near_core(
-                        r, u_attr_trial[i, j], sigma=sigma_mat[i, j]
-                    )
-
-                    u_att = np.zeros_like(r)
-                    u_att[r <= r_m] = u_m
-                    u_att[r >  r_m] = u_attr_trial[i, j][r > r_m]
-
-                    u_attr_trial[i, j] = u_att
-                    u_attr_trial[j, i] = u_att
-
-                print(f"[{label}] Attractive IBI iter {it:3d} | max|Δg| = {max_diff:10.3e}")
-
-                if max_diff < ibi_tolerance:
-                    print(f"✅ Attractive IBI converged for {label}")
-                    break
-
-            # -------------------------------------------------
-            # Final RDFs with calibrated potential
-            # -------------------------------------------------
-            u_final = u_repulsive + u_attr_trial
-            g_ur = {}
-            c_ur = {}
-            gamma_ur = {}
-
-            for sname, sdata in states.items():
-            
-                c_state, gamma_state, g_state = multi_component_oz_solver_alpha(
-                    r=r,
-                    pair_closures=pair_closures,
-                    densities=np.asarray(sdata["densities"], float),
-                    u_matrix=sdata["beta"] * u_final / beta_ref,
-                    sigma_matrix=np.zeros((N, N)),
-                    n_iter=n_iter,
-                    tol=tolerance,
-                    alpha_rdf_max=alpha_max,
-                )
-                g_ur[sname] = g_state
-                c_ur[sname] = c_state
-                gamma_ur[sname] =  gamma_state
-
-            return {
-                "u_attractive": u_attr_trial,
-                "u_repulsive": u_repulsive,
-                "u_total": u_final,
-                "g_ur": g_ur,
-                "c_ur": c_ur,
-                "gamma_ur": gamma_ur,
-            }
-
-
-        # ============================================================
-        # Run for both sigma definitions
-        # ============================================================
-
-        results_sigma_opt = run_attractive_calibration(sigma_opt, "sigma_opt")
-        results_sigma_bh  = run_attractive_calibration(bh_sigma,  "sigma_bh")
-
-
-        # ============================================================
-        # Export attractive-calibration package
-        # ============================================================
-
-        attractive_package = {
-            "sigma_opt": sigma_opt.tolist(),
-            "sigma_bh": bh_sigma.tolist(),
-            
-            "r" : r.tolist(), 
-
-            "g_real": {
-                k: v["g_pred"].tolist() for k, v in final_oz_results.items()
-            },
-            
-            "c_real": {
-                k: v["c_pred"].tolist() for k, v in final_oz_results.items()
-            },
-            
-            "gamma_real": {
-                k: v["gamma_pred"].tolist() for k, v in final_oz_results.items()
-            },
-
-            "sigma_opt_results": {
-                "g_ur": {k: v.tolist() for k, v in results_sigma_opt["g_ur"].items()},
-                "c_ur": {k: v.tolist() for k, v in results_sigma_opt["c_ur"].items()},
-                "gamma_ur": {k: v.tolist() for k, v in results_sigma_opt["gamma_ur"].items()},
-                "u_attractive": results_sigma_opt["u_attractive"].tolist(),
-                "u_splitted": results_sigma_opt["u_total"].tolist(),
-                "u_total": u_matrix.tolist(),
-            },
-
-            "sigma_bh_results": {
-                "g_ur": {k: v.tolist() for k, v in results_sigma_bh["g_ur"].items()},
-                "c_ur": {k: v.tolist() for k, v in results_sigma_bh["c_ur"].items()},
-                "gamma_ur": {k: v.tolist() for k, v in results_sigma_bh["gamma_ur"].items()},
-                "u_attractive": results_sigma_bh["u_attractive"].tolist(),
-                "u_splitted": results_sigma_bh["u_total"].tolist(),
-                "u_total": u_matrix.tolist(),
-            },
-        }
-
-        out = Path(ctx.scratch_dir)
-        out.mkdir(parents=True, exist_ok=True)
-        json_file = out / "result_attractive_calibration.json"
-
-        with open(json_file, "w") as f:
-            json.dump(attractive_package, f, indent=4)
-
-        print("✅ Saved attractive_calibration_comparison.json")
-           
-                
-                        
-    
-        print ("\n\n\n\n\n Integrated strength kernel analysis is going on !!!!!!! \n\n\n\n")
-        
-        
-        
-        
-        # ============================================================
-        # Compute G(r) via λ-integration for each pair and state
-        # ============================================================
-
-        
-        
         
         def compute_G_of_r(
             u_repulsive,
@@ -1672,10 +1380,6 @@ def boltzmann_inversion_standard(
             Computes G(r) = ∫_0^1 g_alpha(r) dα
             with debug plots of g_alpha, u_repulsive, and alpha*u_attractive
             """
-
-            import numpy as np
-            import matplotlib.pyplot as plt
-            from pathlib import Path
 
             alpha_grid = np.linspace(0.0, 1.0, n_alpha)
             dalpha = alpha_grid[1] - alpha_grid[0]
@@ -1706,7 +1410,7 @@ def boltzmann_inversion_standard(
 
                     u_alpha = u_repulsive + alpha * u_attractive
 
-                    _, _, g_alpha = multi_component_oz_solver_alpha(
+                    _, _, g_alpha , conversion_flag= multi_component_oz_solver_alpha(
                         r=r,
                         pair_closures=pair_closures,
                         densities=rho_s,
@@ -1719,42 +1423,6 @@ def boltzmann_inversion_standard(
 
                     # Accumulate G(r)
                     G_accum += g_alpha * dalpha
-
-                    # ----------------------------------------------------
-                    # DEBUG PLOTS PER PAIR
-                    # ----------------------------------------------------
-                    for i in range(N):
-                        for j in range(i, N):
-
-                            plt.figure(figsize=(7, 5))
-
-                            plt.plot(r, g_alpha[i, j], lw=2, label=r"$g_{ij}^{(\alpha)}(r)$")
-                            plt.plot(
-                                r,
-                                beta_s * u_repulsive[i, j] / beta_ref,
-                                "--",
-                                label=r"$\beta u^{\mathrm{rep}}$",
-                            )
-                            plt.plot(
-                                r,
-                                beta_s * alpha * u_attractive[i, j] / beta_ref,
-                                "--",
-                                label=r"$\beta \alpha u^{\mathrm{att}}$",
-                            )
-
-                            plt.axhline(0.0, color="k", lw=0.5)
-                            plt.xlabel("r")
-                            plt.ylim(-0.3, 2.5)
-                            plt.ylabel("Value")
-                            plt.title(f"{sname} | pair ({i},{j}) | α = {alpha:.2f}")
-                            plt.legend()
-                            plt.tight_layout()
-
-                            fname = (
-                                f"debug_g_alpha_{sname}_pair_{i}_{j}_alpha_{alpha:.2f}.png"
-                            )
-                            plt.savefig(plots_dir / fname, dpi=150)
-                            plt.close()
 
                 # --------------------------------------------------------
                 # Compute G_u(r)
@@ -1795,45 +1463,6 @@ def boltzmann_inversion_standard(
             return G_r_dict, G_u_r_dict
 
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-
-        # ============================================================
-        # Run G(r) computation for σ_opt
-        # ============================================================
-        G_r_sigma_opt, G_u_r_sigma_opt = compute_G_of_r(
-            u_repulsive=results_sigma_opt ["u_repulsive"],
-            u_attractive=results_sigma_opt["u_attractive"],
-            states=states,
-            r=r,
-            pair_closures=pair_closures,
-            beta_ref=beta_ref,
-            N=N,
-            n_alpha=20
-        )
-
-        # ============================================================
-        # Run G(r) computation for σ_BH
-        # ============================================================
-        G_r_sigma_bh, G_u_r_sigma_bh = compute_G_of_r(
-            u_repulsive=results_sigma_bh["u_repulsive"],
-            u_attractive=results_sigma_bh["u_attractive"],
-            states=states,
-            r=r,
-            pair_closures=pair_closures,
-            beta_ref=beta_ref,
-            N=N,
-            n_alpha=20
-        )
-        
         u_attractive = np.zeros_like(u_matrix)
         r_minima = {}
         attractive_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] and np.any(u_matrix[i, j] < -1e-4) ]
@@ -1857,7 +1486,21 @@ def boltzmann_inversion_standard(
                     u_attractive[j, i] = u_att
                     print ("\n\n\n\n\n\n\n", r_m, "\n\n\n\n\n\n")
                     print ("\n\n\n\n\n\n\n", u_m, "\n\n\n\n\n\n")
-                    
+
+        # ============================================================
+        # Run G(r) computation for σ_opt
+        # ============================================================
+        G_r_sigma_opt, G_u_r_sigma_opt = compute_G_of_r(
+            u_repulsive=  build_hard_core_u_from_sigma(sigma_opt),
+            u_attractive=u_attractive,
+            states=states,
+            r=r,
+            pair_closures=pair_closures,
+            beta_ref=beta_ref,
+            N=N,
+            n_alpha=20
+        )
+                  
         G_r_real, G_u_r_real = compute_G_of_r(
             u_repulsive=u_ref,
             u_attractive=u_attractive,
@@ -1876,19 +1519,16 @@ def boltzmann_inversion_standard(
         # ============================================================
         attractive_package_g = {
             "sigma_opt": sigma_opt.tolist(),
-            "sigma_bh": bh_sigma.tolist(),
             "r": r.tolist(),
             
             "G_r_sigma_opt": {k: v.tolist() for k, v in G_r_sigma_opt.items()},
-            "G_r_sigma_bh":  {k: v.tolist() for k, v in G_r_sigma_bh.items()},
             "G_r_real":  {k: v.tolist() for k, v in G_r_real.items()},
             
             "G_u_r_sigma_opt": {k: v.tolist() for k, v in G_u_r_sigma_opt.items()},
-            "G_u_r_sigma_bh":  {k: v.tolist() for k, v in G_u_r_sigma_bh.items()},
             "G_u_r_real":  {k: v.tolist() for k, v in G_u_r_real.items()},
             
-            "u_attractive_sigma_opt": results_sigma_opt["u_attractive"].tolist(),
-            "u_attractive_sigma_bh": results_sigma_bh["u_attractive"].tolist()
+            
+            "u_attractive_real": u_attractive.tolist()
         }
 
         out = Path(ctx.scratch_dir)
@@ -1909,74 +1549,120 @@ def boltzmann_inversion_standard(
         # State-resolved c(r)
         # ------------------------------------------------------------
         
+        def compute_repulsive_gr(sigma_mat):
+            """
+            Compute RDFs using ONLY hard-core repulsion defined by sigma_mat.
+            """
+            g_store = {}
+            c_store = {}
+            gamma_store = {}
+            u_rep = build_hard_core_u_from_sigma(sigma_mat)
+
+            for sname, sdata in states.items():
+                c_state, gamma_state, g_state, conversion_flag = multi_component_oz_solver_alpha(
+                    r=r,
+                    pair_closures=pair_closures,
+                    densities=np.asarray(sdata["densities"], float),
+                    u_matrix=sdata["beta"] * u_rep / beta_ref,
+                    sigma_matrix=np.zeros((N, N)),
+                    n_iter=n_iter,
+                    tol=tolerance,
+                    alpha_rdf_max=alpha_max,
+                )
+                g_store[sname] = g_state
+                c_store[sname] = c_state
+                gamma_store[sname] = gamma_state
+
+            return g_store, c_store, gamma_store
+
+
+        # Repulsive RDFs using optimized sigma
+        g_hard_sigma_opt, c_hard_sigma_opt, gamma_hard_sigma_opt = compute_repulsive_gr(sigma_opt)
         
-        c_real = { k: v["c_pred"].tolist() for k, v in final_oz_results.items() }
-        c_ref_hard = { state: np.asarray(arr) for state, arr in reference_package["c_ref_hard"].items() }
-        c_rep_sigma_bh = { state: np.asarray(arr) for state, arr in reference_package["c_rep_sigma_bh"].items() }
-        c_rep_sigma_opt = { state: np.asarray(arr) for state, arr in reference_package["c_rep_sigma_opt"].items() }
-        c_sigma_opt =  { state : np.asarray(arr) for state, arr in attractive_package["sigma_opt_results"]["c_ur"].items () } 
-        c_sigma_bh =  { state : np.asarray(arr) for state, arr in attractive_package["sigma_bh_results"]["c_ur"].items () } 
-        
-        
+
+        # ------------------------------------------------------------
+        # Collect c(r)
+        # ------------------------------------------------------------
+        c_real = {state: np.asarray(v["c_pred"])
+                  for state, v in final_oz_results.items()}
+
+        c_ref_hard = {state: np.asarray(arr)
+                      for state, arr in c_ref.items()}
+
+        c_sigma_opt = {state: np.asarray(arr)
+                       for state, arr in reference_package["c_rep_sigma_opt"].items()}
+
+        c_rep_sigma_opt = {state: np.asarray(arr)
+                           for state, arr in c_hard_sigma_opt.items()}
 
         new_states = list(c_real.keys())
 
         # ------------------------------------------------------------
         # Compute Δc(r)
         # ------------------------------------------------------------
-        delta_c_hard = {}
-        delta_c_sigma_bh = {}
-        delta_c_sigma_opt = {}
-        delta_c_sigma_bh_pure = {}
-        delta_c_sigma_opt_pure = {}
+        delta_c_real_ref = {}
+        delta_c_real_sigma_opt = {}
+        delta_c_sigma_opt_ref = {}
+        delta_c_sigma_opt_sigma_opt = {}
 
         for state in new_states:
-            delta_c_hard[state] = c_real[state] - c_ref_hard[state]
-            delta_c_sigma_bh[state] = c_real[state] - c_rep_sigma_bh[state]
-            delta_c_sigma_opt[state] = c_real[state] - c_rep_sigma_opt[state]
-            delta_c_sigma_bh_pure[state] = c_sigma_bh[state] - c_rep_sigma_bh[state]
-            delta_c_sigma_opt_pure[state] = c_sigma_opt[state] - c_rep_sigma_opt[state]
+            delta_c_real_ref[state] = -(
+                c_real[state] - c_ref_hard[state]
+            )
 
-        # -----------------------------------------------------------
-        # Export package
+            delta_c_real_sigma_opt[state] = -(
+                c_real[state] - c_rep_sigma_opt[state]
+            )
+
+            delta_c_sigma_opt_ref[state] = -(
+                c_sigma_opt[state] - c_ref_hard[state]
+            )
+
+            delta_c_sigma_opt_sigma_opt[state] = -(
+                c_sigma_opt[state] - c_rep_sigma_opt[state]
+            )
+
+        # ------------------------------------------------------------
+        # Export package (RAW + Δc)
         # ------------------------------------------------------------
         delta_c_package = {
             "r": r.tolist(),
 
-            "delta_c_hard": {
+            # -------- raw c(r) --------
+            "c_real": {
                 state: arr.tolist()
-                for state, arr in delta_c_hard.items()
+                for state, arr in c_real.items()
+            },
+            "c_ref_hard": {
+                state: arr.tolist()
+                for state, arr in c_ref_hard.items()
+            },
+            "c_sigma_opt": {
+                state: arr.tolist()
+                for state, arr in c_sigma_opt.items()
+            },
+            "c_rep_sigma_opt": {
+                state: arr.tolist()
+                for state, arr in c_rep_sigma_opt.items()
             },
 
-            "delta_c_sigma_bh": {
+            # -------- Δc(r) --------
+            "delta_c_real_ref": {
                 state: arr.tolist()
-                for state, arr in delta_c_sigma_bh.items()
+                for state, arr in delta_c_real_ref.items()
             },
-
-            "delta_c_sigma_opt": {
+            "delta_c_real_sigma_opt": {
                 state: arr.tolist()
-                for state, arr in delta_c_sigma_opt.items()
+                for state, arr in delta_c_real_sigma_opt.items()
             },
-            
-            "delta_c_sigma_bh_pure": {
+            "delta_c_sigma_opt_ref": {
                 state: arr.tolist()
-                for state, arr in delta_c_sigma_bh_pure.items()
+                for state, arr in delta_c_sigma_opt_ref.items()
             },
-            
-            "delta_c_sigma_opt_pure": {
+            "delta_c_sigma_opt_sigma_opt": {
                 state: arr.tolist()
-                for state, arr in delta_c_sigma_opt_pure.items()
+                for state, arr in delta_c_sigma_opt_sigma_opt.items()
             },
-
-            "metadata": {
-                "definition": "delta_c(state,i,j,r) = c_real - c_reference",
-                "references": {
-                    "hard": "c_ref_hard",
-                    "sigma_bh": "c_rep_sigma_bh",
-                    "sigma_opt": "c_rep_sigma_opt",
-                },
-                "array_shape": "[N, N, r]"
-            }
         }
 
         # ------------------------------------------------------------
@@ -1989,21 +1675,10 @@ def boltzmann_inversion_standard(
         with open(out_file, "w") as f:
             json.dump(delta_c_package, f, indent=4)
 
-        print(f"✅ Δc(r) by state exported → {out_file}")
+        print(f"✅ c(r) + Δc(r) by state exported → {out_file}")
 
-            
-            
-            
-    
-    
-    
-    
 
-        
-    
-    
-    
-        
+             
     if export_json:
         out = Path(ctx.scratch_dir)
         out.mkdir(parents=True, exist_ok=True)
