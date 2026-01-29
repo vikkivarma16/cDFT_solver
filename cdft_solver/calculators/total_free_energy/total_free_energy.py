@@ -211,7 +211,7 @@ def total_free_energy(
         merged["selected_model"] = "ideal + hybrid"
         return merged
 
-     if mode == "hybrid_lattice":
+    if mode == "hybrid_lattice":
         hyb_lattice = free_energy_lattice(
             ctx=ctx,
             hc_data=hc_data,
