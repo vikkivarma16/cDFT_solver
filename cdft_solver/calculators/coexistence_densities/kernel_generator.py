@@ -3,6 +3,7 @@
 import numpy as np
 from collections.abc import Mapping
 from cdft_solver.calculators.radial_distribution_function.rdf_radial import rdf_radial
+from cdft_solver.calculators.g_alpha_r.rdf_alpha_r import rdf_alpha_r
 
 
 def  build_strength_kernel(
@@ -116,7 +117,7 @@ def  build_strength_kernel(
         print("🔄 Computing RDF-based integrated strength kernel for densities:", densities)
 
         # Compute RDF output
-        rdf_out = rdf_radial(
+        _, rdf_out = rdf_alpha_r(
             ctx=ctx,
             rdf_config=config,
             densities=densities,

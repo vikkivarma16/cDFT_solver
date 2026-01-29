@@ -596,7 +596,7 @@ def find_key_recursive(d, key):
 # Main RDF driver
 # =============================
 
-def rdf_radial(
+def rdf_alpha_r(
     ctx,
     rdf_config,
     densities,
@@ -1084,6 +1084,20 @@ def rdf_radial(
             G_u = beta_s * G_accum * u_attractive
             
             return G_u, G_accum
+            
+            
+        u_ref = np.zeros_like(u_matrix)   
+        for i in range(N):
+            for j in range(N):
+                if has_core[i, j]:
+                    u_ref[i, j] = wca_split(r, u_matrix[i, j])
+                    # u_r =  u_matrix[i, j]
+                    # bh , r0 =  compute_bh_radius_truncated(r, u_r, beta_ref)
+                    # mask  =  r < r0
+                    # u_ref[i ,j] =  np.zeros_like(r)
+                    # u_ref[i, j, mask] =  u_matrix[i, j, mask]
+                else:
+                    u_ref[i, j] = u_matrix[i, j].copy()
 
         
         u_attractive = np.zeros_like(u_matrix)
@@ -1114,7 +1128,7 @@ def rdf_radial(
         # Run G(r) computation for σ_opt
         # ============================================================
         G_u, G_accume = compute_G_of_r(
-            u_repulsive = build_hard_core_u_from_sigma(sigma_opt),
+            u_repulsive = u_ref,
             u_attractive = u_attractive,
             states=states,
             r=r,
