@@ -11,6 +11,9 @@ from cdft_solver.generators.potential_splitter.hc import hard_core_potentials
 from cdft_solver.generators.potential_splitter.mf import meanfield_potentials 
 from cdft_solver.generators.potential_splitter.total import total_potentials
 from cdft_solver.generators.potential_splitter.raw import raw_potentials
+from scipy.optimize import minimize_scalar
+from scipy.optimize import minimize
+from collections.abc import Mapping
 
 import matplotlib.pyplot as plt
 import re
