@@ -50,7 +50,7 @@ def lj(p):
         (sigma / r_cut)**12 - (sigma / r_cut)**6
     )
     
-    print(r_cut)
+    print( " \n\n\n\n", r_cut, "\n\n\n\n")
 
     def V(r):
         r = np.asarray(r, dtype=float)
