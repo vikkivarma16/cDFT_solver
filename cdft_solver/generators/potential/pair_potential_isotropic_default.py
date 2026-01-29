@@ -36,17 +36,46 @@ for name in ["hard_core", "hard_sphere", "hc", "ghc"]:
 # ------------------------------------------------------------
 # LENNARD-JONES
 # ------------------------------------------------------------
+import numpy as np
+
+EPS = 1e-12
+
 def lj(p):
-    sigma = p.get("sigma", 1.0)
+    sigma   = p.get("sigma", 1.0)
     epsilon = p.get("epsilon", 1.0)
+    r_cut   = p.get("cutoff", 2.5 * sigma)  # standard LJ cutoff
+
+    # LJ value at cutoff (for shifting)
+    v_cut = 4 * epsilon * (
+        (sigma / r_cut)**12 - (sigma / r_cut)**6
+    )
+
     def V(r):
-        r = np.asarray(r)
+        r = np.asarray(r, dtype=float)
         v = np.zeros_like(r)
-        mask = r > EPS
-        v[mask] = 4 * epsilon * ((sigma / r[mask])**12 - (sigma / r[mask])**6)
-        v[~mask] = 2e8
+
+        # Hard-core protection
+        mask_core = r <= EPS
+        v[mask_core] = 2e8
+
+        # Active LJ region
+        mask = (r > EPS) & (r <= r_cut)
+        r_eff = r[mask]
+
+        v_lj = 4 * epsilon * (
+            (sigma / r_eff)**12 - (sigma / r_eff)**6
+        )
+
+        # Shifted LJ
+        v_shifted = v_lj - v_cut
+
+        v[mask] = v_shifted
+
+        # r > r_cut already zero
         return v
+
     return V
+
 
 register_isotropic_pair_potential("lj", lj)
 register_isotropic_pair_potential("lennard-jones", lj)
