@@ -1053,6 +1053,8 @@ def rdf_alpha_r(
         
         
         
+        print("\n\n\nSigma optimized is given as:", sigma_opt "\n\n\n")
+        
         
         def compute_G_of_r(
             u_repulsive,
@@ -1135,7 +1137,7 @@ def rdf_alpha_r(
                     r_m, u_m = detect_first_minimum_near_core(
                         r,
                         u_matrix[i, j],
-                        sigma=bh_sigma[i, j],
+                        sigma=sigma_opt[i, j],
                     )
                     r_minima[(i, j)] = r_m
                     u_att = np.zeros_like(r)
