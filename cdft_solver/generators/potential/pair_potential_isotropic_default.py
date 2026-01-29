@@ -74,6 +74,8 @@ def lj(p):
         v[mask] = v_shifted
 
         # r > r_cut already zero
+        print (v)
+        
         return v
 
     return V
