@@ -1053,7 +1053,7 @@ def rdf_alpha_r(
         
         
         
-        print("\n\n\nSigma optimized is given as:", sigma_opt "\n\n\n")
+        print("\n\n\nSigma optimized is given as:", sigma_opt , "\n\n\n")
         
         
         def compute_G_of_r(
