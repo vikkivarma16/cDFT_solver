@@ -1088,7 +1088,7 @@ def rdf_alpha_r(
                     r=r,
                     pair_closures=pair_closures,
                     densities=rho_s,
-                    u_matrix=beta_s * u_alpha / beta_ref,
+                    u_matrix= u_alpha ,
                     sigma_matrix=np.zeros((N, N)),
                     n_iter=n_iter,
                     tol=tol,
