@@ -665,7 +665,7 @@ def rdf_alpha_r(
         export_files=True
     )
     
-    sigma = hc_data["sigma"]
+    sigma = np.array ( hc_data["sigma"] )
     
 
     # -----------------------------
