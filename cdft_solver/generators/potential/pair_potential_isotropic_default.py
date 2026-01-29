@@ -49,6 +49,8 @@ def lj(p):
     v_cut = 4 * epsilon * (
         (sigma / r_cut)**12 - (sigma / r_cut)**6
     )
+    
+    print(r_cut)
 
     def V(r):
         r = np.asarray(r, dtype=float)
