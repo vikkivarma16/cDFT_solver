@@ -1388,10 +1388,6 @@ def boltzmann_inversion_advance(
                 G_r_dict[sname] = G_accum
                 G_u_r_dict[sname] = G_u
                 
-
-                
-
-            print(f"✅ Debug plots saved to: {plots_dir}")
             return G_r_dict, G_u_r_dict
 
         
