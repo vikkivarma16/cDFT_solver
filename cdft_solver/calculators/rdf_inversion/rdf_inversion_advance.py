@@ -693,7 +693,7 @@ def boltzmann_inversion_advance(
                 pdata["r"],
                 pdata["U"],
                 bounds_error=False,
-                fill_value=(pdata["U"][0], 0.0)
+                fill_value=(pdata["U"][0], 0.0),
                 assume_sorted=True,
             )
 
