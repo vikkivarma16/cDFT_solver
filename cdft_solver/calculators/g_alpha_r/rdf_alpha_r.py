@@ -987,7 +987,7 @@ def rdf_alpha_r(
                 k += 1
             return sigma_mat
 
-        gamma_inputs = np.zeros((N, N, Nr))
+        gamma_inputs = np.zeros_like((N, N, Nr))
         def sigma_objective(sigma_vec):
             sigma_mat = unpack_sigma_vector(sigma_vec)
             u_trial = build_total_u_from_sigma(sigma_mat)

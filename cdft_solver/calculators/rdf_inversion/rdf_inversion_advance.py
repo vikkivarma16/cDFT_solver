@@ -1111,7 +1111,7 @@ def boltzmann_inversion_advance(
                 k += 1
             return sigma_mat
 
-        gamma_initial = np.zeros((N, N, Nr))
+        gamma_initial = np.zeros_like((N, N, Nr))
         gamma_inputs  =  {}
         for sname, sdata in states.items():
             gamma_inputs[sname] = gamma_initial
