@@ -117,7 +117,7 @@ def  build_strength_kernel(
         print("🔄 Computing RDF-based integrated strength kernel for densities:", densities)
 
         # Compute RDF output
-        _, rdf_out = rdf_alpha_r(
+        rdf_out = rdf_alpha_r(
             ctx=ctx,
             rdf_config=config,
             densities=densities,

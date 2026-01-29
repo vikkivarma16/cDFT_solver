@@ -625,7 +625,7 @@ def rdf_alpha_r(
     N = len(species)
 
     beta = rdf_block.get("beta", 1.0)
-    tol = rdf_block.get("tolerance", 1e-6)
+    tol = rdf_block.get("tolerence", 1e-6)
     n_iter = find_key_recursive(rdf_config, "max_iteration")
     alpha_max = rdf_block.get("alpha_max", 0.05)
     
@@ -1158,6 +1158,15 @@ def rdf_alpha_r(
             N=N,
             n_alpha=20
         )
+        
+    G_out = {}
+    for i, si in enumerate(species):
+        for j, sj in enumerate(species):
+            G_out[(si, sj)] = {
+                "r": r,
+                "g_r": G_accume[i, j],
+                "g_u_r": G_u[i, j],
+            }
     
-    return G_u, G_accume
+    return G_out
 
