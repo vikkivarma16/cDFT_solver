@@ -15,7 +15,7 @@ from cdft_solver.generators.potential_splitter.raw import raw_potentials
 import matplotlib.pyplot as plt
 import re
 
-from .closure import closure_update_c_matrix
+from cdft_solver.calculators.radial_distribution_function.closure import closure_update_c_matrix
 
 import os
 import sys
