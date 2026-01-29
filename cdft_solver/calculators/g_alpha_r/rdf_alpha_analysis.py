@@ -599,7 +599,7 @@ def find_key_recursive(d, key):
 # Main RDF driver
 # =============================
 
-def rdf_alpha_r(
+def rdf_alpha_analysis(
     ctx,
     rdf_config,
     densities,
@@ -1034,7 +1034,7 @@ def rdf_alpha_r(
         ]
 
         print("\nOptimizing sigma collectively across all states and pairs...")
-        '''
+        
         result = minimize(
                 sigma_objective,
                 sigma_init_vec,
@@ -1050,7 +1050,7 @@ def rdf_alpha_r(
             )
 
         sigma_opt = unpack_sigma_vector(result.x)
-        '''
+        
         
         
         print("\n\n\nSigma optimized is given as:", sigma_opt , "\n\n\n")
@@ -1059,6 +1059,7 @@ def rdf_alpha_r(
         def compute_G_of_r(
             u_repulsive,
             u_attractive,
+            states,
             r,
             pair_closures,
             beta_ref,
@@ -1136,7 +1137,7 @@ def rdf_alpha_r(
                     r_m, u_m = detect_first_minimum_near_core(
                         r,
                         u_matrix[i, j],
-                        sigma=sigma[i, j],
+                        sigma=sigma_opt[i, j],
                     )
                     r_minima[(i, j)] = r_m
                     u_att = np.zeros_like(r)
@@ -1156,6 +1157,7 @@ def rdf_alpha_r(
         G_u, G_accume = compute_G_of_r(
             u_repulsive = u_ref,
             u_attractive = u_attractive,
+            states=states,
             r=r,
             pair_closures=pair_closures,
             beta_ref=beta_ref,
