@@ -984,11 +984,7 @@ def rdf_alpha_r(
                 k += 1
             return sigma_mat
 
-        gamma_initial = np.zeros((N, N, Nr))
-        gamma_inputs  =  {}
-        for sname, sdata in states.items():
-            gamma_inputs[sname] = gamma_initial
-
+        gamma_inputs = np.zeros((N, N, Nr))
         def sigma_objective(sigma_vec):
             sigma_mat = unpack_sigma_vector(sigma_vec)
             u_trial = build_total_u_from_sigma(sigma_mat)
@@ -1002,10 +998,10 @@ def rdf_alpha_r(
                 n_iter=n_iter,
                 tol=tolerance,
                 alpha_rdf_max=alpha_max,
-                gamma_initial=gamma_inputs[sname]
+                gamma_initial=gamma_inputs
             )
             if conversion_flag:
-                gamma_inputs[sname] =  gamma_trial.copy()
+                gamma_inputs =  gamma_trial.copy()
             
 
             # ---- accumulate loss ----
