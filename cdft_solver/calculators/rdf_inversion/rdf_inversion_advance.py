@@ -1101,14 +1101,6 @@ def boltzmann_inversion_advance(
 
         print("\n🔧 Starting sigma calibration stage...")
         
-        
-        out = Path(ctx.scratch_dir) / "sigma_optimization"
-        out.mkdir(parents=True, exist_ok=True)
-        
-        def sigma_to_filename(sigma_vec):
-            # example: sigma_1.000_0.950_1.050.json
-            parts = [f"{s:.6f}" for s in sigma_vec]
-            return "sigma_" + "_".join(parts) + ".json"
 
 
         def unpack_sigma_vector(sigma_vec):
@@ -1128,16 +1120,8 @@ def boltzmann_inversion_advance(
             sigma_mat = unpack_sigma_vector(sigma_vec)
             u_trial = build_total_u_from_sigma(sigma_mat)
             loss = 0.0
-
-            sigma_file = out / sigma_to_filename(sigma_vec)
-
-            save_data = {
-                "sigma_vector": sigma_vec.tolist(),
-                "states": {}
-            }
             
             
-            flag_save  =  True
             for sname, sdata in states.items():
                 beta_s = sdata["beta"]
                 rho_s = sdata["densities"]
@@ -1155,50 +1139,12 @@ def boltzmann_inversion_advance(
                 )
                 if conversion_flag:
                     gamma_inputs[sname] =  gamma_trial.copy()
-                else:
-                    flag_save  =  False
+                
 
                 # ---- accumulate loss ----
                 for (i, j) in total_pair:
                     diff = g_trial[i, j] - final_oz_results[sname]["g_pred"][i, j]
                     loss += np.sum(diff * diff)
-
-                # ---- save data ----
-                save_data["states"][sname] = {
-                    "beta": beta_s,
-                    "densities": rho_s.tolist(),
-                    "r": r.tolist(),
-                    "g": {
-                        f"{i},{j}": g_trial[i, j].tolist()
-                        for (i, j) in total_pair
-                    },
-                    "c": {
-                        f"{i},{j}": c_trial[i, j].tolist()
-                        for (i, j) in total_pair
-                    },
-                    "gamma": {
-                        f"{i},{j}": gamma_trial[i, j].tolist()
-                        for (i, j) in total_pair
-                    },
-                    
-                    "g_ref": {
-                        f"{i},{j}": final_oz_results[sname]["g_pred"][i, j].tolist()
-                        for (i, j) in total_pair
-                    },
-                    "c_ref": {
-                        f"{i},{j}": final_oz_results[sname]["g_pred"][i, j].tolist()
-                        for (i, j) in total_pair
-                    },
-                    "gamma_ref": {
-                        f"{i},{j}": final_oz_results[sname]["g_pred"][i, j].tolist()
-                        for (i, j) in total_pair
-                    },
-                }
-
-            # ---- write JSON (overwrite-safe) ----
-            if flag_save :
-                with open(sigma_file, "w") as f:
-                    json.dump(save_data, f, indent=4)
 
             return loss
 
