@@ -1086,7 +1086,7 @@ def rdf_alpha_r(
                 _, gamma_trial, g_alpha , conversion_flag= multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
-                    densities=rho_s,
+                    densities=densities,
                     u_matrix= u_alpha ,
                     sigma_matrix=np.zeros((N, N)),
                     n_iter=n_iter,
