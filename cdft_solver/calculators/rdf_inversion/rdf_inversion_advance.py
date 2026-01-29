@@ -1165,7 +1165,7 @@ def boltzmann_inversion_advance(
         ]
 
         print("\nOptimizing sigma collectively across all states and pairs...")
-
+        
         result = minimize(
             sigma_objective,
             sigma_init_vec,
