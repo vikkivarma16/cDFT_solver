@@ -789,18 +789,47 @@ def rdf_alpha_r(
     # ============================================================
     # STEP 1: Unconstrained OZ solve
     # ============================================================
-    c_ref, gamma_ref, g_ref, conversed = multi_component_oz_solver_alpha(
-        r=r,
-        pair_closures=pair_closures,
-        densities=np.asarray(densities, float),
-        u_matrix=u_matrix,
-        sigma_matrix=sigma_matrix,
-        n_iter=n_iter,
-        tol=tol,
-        alpha_rdf_max=alpha_max,
-    )
-    
-    
+    # -------------------------------------------------
+    # Density continuation for OZ convergence
+    # -------------------------------------------------
+
+    n_ramp = 10
+    densities_target = np.asarray(densities, float)
+
+    gamma_inputs = np.zeros_like(u_matrix)
+
+    for step in range(1, n_ramp + 1):
+        scale = step / n_ramp
+        densities_step = scale * densities_target
+
+        print(f"[OZ] Density ramp {step}/{n_ramp}  scale = {scale:.2f}")
+
+        c_ref, gamma_ref, g_ref, conversed = multi_component_oz_solver_alpha(
+            r=r,
+            pair_closures=pair_closures,
+            densities=densities_step,
+            u_matrix=u_matrix,
+            sigma_matrix=sigma_matrix,
+            n_iter=n_iter,
+            tol=tol,
+            alpha_rdf_max=alpha_max,
+            gamma_initial=gamma_inputs
+        )
+
+        if not conversed:
+            raise RuntimeError(
+                f"OZ solver failed to converge at density scale {scale:.2f}"
+            )
+
+        # Warm-start next step
+        gamma_inputs = gamma_ref.copy()
+
+    # Final converged solution at full density
+    c_ref_final   = c_ref
+    gamma_ref_final = gamma_ref
+    g_ref_final   = g_ref
+
+        
     
      
     #import numpy as np
@@ -989,7 +1018,7 @@ def rdf_alpha_r(
             
             
             
-        gamma_inputs = np.zeros((N, N, Nr))
+        
         gamma_holder = {"gamma": gamma_inputs}
 
         def sigma_objective(sigma_vec):
