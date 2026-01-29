@@ -1104,7 +1104,7 @@ def rdf_alpha_r(
             # --------------------------------------------------------
             # Compute G_u(r)
             # --------------------------------------------------------
-            G_u = beta_s * G_accum * u_attractive
+            G_u = G_accum * u_attractive
             
             return G_u, G_accum
             
