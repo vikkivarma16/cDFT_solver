@@ -1050,11 +1050,9 @@ def rdf_alpha_r(
             )
 
         sigma_opt = unpack_sigma_vector(result.x)
-        '''
-        
         
         print("\n\n\nSigma optimized is given as:", sigma_opt , "\n\n\n")
-        
+        '''
         
         def compute_G_of_r(
             u_repulsive,
