@@ -22,7 +22,7 @@ import ctypes
 from ctypes import c_double, c_int, POINTER
 
 
-hard_core_repulsion = 1e4
+hard_core_repulsion = 1e6
 
 # -------------------------------
 # Locate shared library reliably
@@ -1306,8 +1306,8 @@ def boltzmann_inversion_advance(
                     u_att[mask_att] = u_matrix[i, j][mask_att]
                     u_attractive[i, j] = u_att
                     u_attractive[j, i] = u_att
-                    print ("\n\n\n\n\n\n\n", r_m, "\n\n\n\n\n\n")
-                    print ("\n\n\n\n\n\n\n", u_m, "\n\n\n\n\n\n")
+                    #print ("\n\n\n\n\n\n\n", r_m, "\n\n\n\n\n\n")
+                    #print ("\n\n\n\n\n\n\n", u_m, "\n\n\n\n\n\n")
         
         
         
@@ -1661,7 +1661,10 @@ def boltzmann_inversion_advance(
                     plt.axvline(
                         sigma_matrix[i, j],
                         color="r",
-                        linestyle="--",
+                        linestyle="--",Vipul
+Sharma
+Assistant Professor, Materials Engineering
+Ph.D.
                         label="σ"
                     )
 
