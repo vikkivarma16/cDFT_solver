@@ -1279,9 +1279,39 @@ def boltzmann_inversion_advance(
         g_rep_sigma_opt, c_rep_sigma_opt, gamma_rep_sigma_opt = compute_repulsive_gr(sigma_opt)
         # Repulsive RDFs using Barker–Henderson sigma
         g_rep_sigma_bh, c_rep_sigma_bh, gamma_rep_sigma_bh = compute_repulsive_gr(bh_sigma)
+        
+        u_rep = build_total_u_from_sigma(sigma_opt)
         # ============================================================
         # PHASE 7 — Save reference package (JSON)
         # ============================================================
+        
+        
+        u_attractive = np.zeros_like(u_matrix)
+        r_minima = {}
+        attractive_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] and np.any(u_matrix[i, j] < -1e-4) ]
+        for i in range(N):
+            for j in range(i, N):
+                if (i, j) in attractive_pairs:
+                    # Detect first minimum close to the hard core
+                    r_m, u_m = detect_first_minimum_near_core(
+                        r,
+                        u_matrix[i, j],
+                        sigma=bh_sigma[i, j],
+                    )
+                    r_minima[(i, j)] = r_m
+                    u_att = np.zeros_like(r)
+                    mask_rep = r <= r_m
+                    mask_att = r > r_m
+                    # WCA attractive tail
+                    u_att[mask_rep] = u_m
+                    u_att[mask_att] = u_matrix[i, j][mask_att]
+                    u_attractive[i, j] = u_att
+                    u_attractive[j, i] = u_att
+                    print ("\n\n\n\n\n\n\n", r_m, "\n\n\n\n\n\n")
+                    print ("\n\n\n\n\n\n\n", u_m, "\n\n\n\n\n\n")
+        
+        
+        
         reference_package = {
             # --- sigmas ---
             "sigma_opt": sigma_opt.tolist(),
@@ -1298,6 +1328,10 @@ def boltzmann_inversion_advance(
 
             # --- reference RDFs ---
             "r" : r.tolist(), 
+            "u_ref" : u_ref.tolist(),
+            "u_real" : u_matrix.tolist(),
+            "u_attractive": u_attractive.tolist(),
+            "u_sigma_opt" : u_rep.tolist(),
             "g_ref_hard": {k: v.tolist() for k, v in g_ref.items()},
             "c_ref_hard": {k: v.tolist() for k, v in c_ref.items()},
             "gamma_ref_hard": {k: v.tolist() for k, v in gamma_ref.items()},
@@ -1395,29 +1429,7 @@ def boltzmann_inversion_advance(
             return G_r_dict, G_u_r_dict
 
         
-        u_attractive = np.zeros_like(u_matrix)
-        r_minima = {}
-        attractive_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] and np.any(u_matrix[i, j] < -1e-4) ]
-        for i in range(N):
-            for j in range(i, N):
-                if (i, j) in attractive_pairs:
-                    # Detect first minimum close to the hard core
-                    r_m, u_m = detect_first_minimum_near_core(
-                        r,
-                        u_matrix[i, j],
-                        sigma=bh_sigma[i, j],
-                    )
-                    r_minima[(i, j)] = r_m
-                    u_att = np.zeros_like(r)
-                    mask_rep = r <= r_m
-                    mask_att = r > r_m
-                    # WCA attractive tail
-                    u_att[mask_rep] = u_m
-                    u_att[mask_att] = u_matrix[i, j][mask_att]
-                    u_attractive[i, j] = u_att
-                    u_attractive[j, i] = u_att
-                    print ("\n\n\n\n\n\n\n", r_m, "\n\n\n\n\n\n")
-                    print ("\n\n\n\n\n\n\n", u_m, "\n\n\n\n\n\n")
+        
 
         # ============================================================
         # Run G(r) computation for σ_opt
