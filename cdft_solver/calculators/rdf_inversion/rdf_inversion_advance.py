@@ -1111,7 +1111,7 @@ def boltzmann_inversion_advance(
                 k += 1
             return sigma_mat
 
-        gamma_initial = np.zeros_like((N, N, Nr))
+        gamma_initial = np.zeros_like(u_matrix)
         gamma_inputs  =  {}
         for sname, sdata in states.items():
             gamma_inputs[sname] = gamma_initial
@@ -1125,7 +1125,7 @@ def boltzmann_inversion_advance(
             for sname, sdata in states.items():
                 beta_s = sdata["beta"]
                 rho_s = sdata["densities"]
-                gamma_initial =  np.array (gamma_inputs[sname])
+                gamma_initial =  gamma_inputs[sname]
                 c_trial, gamma_trial, g_trial, conversion_flag = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
