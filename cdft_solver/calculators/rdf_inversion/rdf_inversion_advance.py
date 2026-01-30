@@ -1661,10 +1661,7 @@ def boltzmann_inversion_advance(
                     plt.axvline(
                         sigma_matrix[i, j],
                         color="r",
-                        linestyle="--",Vipul
-Sharma
-Assistant Professor, Materials Engineering
-Ph.D.
+                        linestyle="--",
                         label="σ"
                     )
 
