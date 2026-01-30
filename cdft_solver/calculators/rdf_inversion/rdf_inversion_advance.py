@@ -1135,9 +1135,10 @@ def boltzmann_inversion_advance(
                     n_iter=n_iter,
                     tol=tolerance,
                     alpha_rdf_max=alpha_max,
+                    gamma_initial=gamma_inputs[sname]
                 )
                 if conversion_flag:
-                    gamma_inputs[sname] =  gamma_trial.copy()
+                    gamma_inputs[sname] =  gamma_trial
                     for (i, j) in total_pair:
                         diff = g_trial[i, j] - final_oz_results[sname]["g_pred"][i, j]
                         loss += np.sum(diff * diff)
@@ -1155,8 +1156,8 @@ def boltzmann_inversion_advance(
 
         sigma_init_vec = np.array([sigma_guess[i, j] for (i, j) in hard_core_pairs])
         
-        lower_factor = 0.8
-        upper_factor = 1.2
+        lower_factor = 0.5
+        upper_factor = 1.5
 
         bounds = [
             (lower_factor * s0, upper_factor * s0)
@@ -1174,7 +1175,6 @@ def boltzmann_inversion_advance(
                     "xtol": 1e-6,        # tighter convergence
                     "ftol": 1e-6,
                     "maxiter": 500,    # <-- MORE ITERATIONS
-                    "maxfev": 20000,    # <-- MORE FUNCTION CALLS
                     "disp": True
                 },
             )
