@@ -5,7 +5,6 @@ from scipy.fftpack import dst, idst
 from scipy.interpolate import interp1d
 from collections import defaultdict
 from pathlib import Path
-
 from collections.abc import Mapping
 from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
 from cdft_solver.generators.potential_splitter.mf import meanfield_potentials 
@@ -14,12 +13,9 @@ from cdft_solver.generators.potential_splitter.raw import raw_potentials
 from scipy.optimize import minimize_scalar
 from scipy.optimize import minimize
 from collections.abc import Mapping
-
 import matplotlib.pyplot as plt
 import re
-
 from cdft_solver.calculators.radial_distribution_function.closure import closure_update_c_matrix
-
 import os
 import sys
 import ctypes

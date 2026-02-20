@@ -656,7 +656,7 @@ def coexistence_densities_isocore(
             for i in range (len(fractions)):
                 if(fractions[i]<0.0):
                     print ( f"Attempt {attempt}: rejected — negative fraction {fractions[i]:.4f}")
-                continue
+                    continue
  
             
 
