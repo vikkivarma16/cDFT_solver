@@ -538,6 +538,34 @@ def coexistence_densities_isochem(
             # -----------------------------------
             dominant_threshold = 0.9  # species considered dominant if ≥ 90% of its max density
             hetero_ok = True
+            
+            
+            
+            density_tol = 1e-8  # adjust based on physical scale
+
+            # --- NEW CONSTRAINT: reject if densities across phases are nearly identical ---
+            for i, sp_name in enumerate(species_names):
+                densities = [rhos_per_phase[p][i] for p in range(n_phases)]
+
+                all_close = True
+                for p1 in range(n_phases):
+                    for p2 in range(p1 + 1, n_phases):
+                        if abs(densities[p1] - densities[p2]) >= density_tol:
+                            all_close = False
+                            break
+                    if not all_close:
+                        break
+
+                if all_close:
+                    hetero_ok = False
+                    break
+
+            if not hetero_ok:
+                continue
+            
+            
+            
+            
 
             # --- precompute per-species max density across all phases ---
             species_max = {}
