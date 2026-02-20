@@ -626,12 +626,6 @@ def coexistence_densities_isocore(
                         break
 
                 if all_close:
-                    if verbose:
-                        print(
-                            f"Attempt {attempt}: rejected — species '{sp_name}' "
-                            f"has nearly identical densities across all phases "
-                            f"(all pairwise Δρ < {density_tol})."
-                        )
                     hetero_ok = False
                     break
 
