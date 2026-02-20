@@ -608,6 +608,36 @@ def coexistence_densities_isocore(
             hetero_ok = True
 
             # --- precompute per-species max density across all phases ---
+            
+            
+            density_tol = 1e-8  # adjust based on physical scale
+
+            # --- NEW CONSTRAINT: reject if densities across phases are nearly identical ---
+            for i, sp_name in enumerate(species_names):
+                densities = [rhos_per_phase[p][i] for p in range(n_phases)]
+
+                all_close = True
+                for p1 in range(n_phases):
+                    for p2 in range(p1 + 1, n_phases):
+                        if abs(densities[p1] - densities[p2]) >= density_tol:
+                            all_close = False
+                            break
+                    if not all_close:
+                        break
+
+                if all_close:
+                    if verbose:
+                        print(
+                            f"Attempt {attempt}: rejected — species '{sp_name}' "
+                            f"has nearly identical densities across all phases "
+                            f"(all pairwise Δρ < {density_tol})."
+                        )
+                    hetero_ok = False
+                    break
+
+            if not hetero_ok:
+                continue
+              
             species_max = {}
             for i, sp_name in enumerate(species_names):
                 max_dens = max(rhos_per_phase[p][i] for p in range(n_phases))
