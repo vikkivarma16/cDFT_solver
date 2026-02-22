@@ -266,6 +266,8 @@ def scan_isochem_multi(
     last_solution = np.ones(len(unknown_species)) * 0.1
 
     for rho_fixed in rho_fixed_values:
+    
+        print (rho_fixed, "\n\n\n")
 
         def root_func(rho_unknown):
             rho = np.zeros(len(species))
@@ -282,7 +284,7 @@ def scan_isochem_multi(
                     return np.ones(len(mu_species)) * 1e6
 
             vij = compute_vij(rho, kernel="uniform")
-            print (vij)
+            #print (vij)
             
             mu, _ = eval_mu_pressure(rho, vij)
 
