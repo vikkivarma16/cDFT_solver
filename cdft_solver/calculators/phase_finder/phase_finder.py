@@ -288,14 +288,6 @@ def scan_isochem_multi(
             
             mu, _ = eval_mu_pressure(rho, vij)
             
-            
-            
-            print (mu)
-            print (rho)
-            print (vij)
-            print (total_density_bound)
-            
-            
             return np.array([
                 mu[i] - mu_targets[species[i]]
                 for i in mu_indices
