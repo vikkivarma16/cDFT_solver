@@ -290,7 +290,10 @@ def scan_isochem_multi(
             
             
             
-
+            print (mu)
+            print (rho)
+            print (vij)
+            
             return np.array([
                 mu[i] - mu_targets[species[i]]
                 for i in mu_indices
