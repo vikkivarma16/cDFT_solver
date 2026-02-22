@@ -291,12 +291,7 @@ def scan_isochem_multi(
                 mu[i] - mu_targets[species[i]]
                 for i in mu_indices
             ])
-
-        try:
-            sol = root(root_func, last_solution)
-        except:
-            continue
-
+        sol = root(root_func, last_solution)
         if not sol.success:
             continue
 
