@@ -293,7 +293,17 @@ def scan_isochem_multi(
                 mu[i] - mu_targets[species[i]]
                 for i in mu_indices
             ])
-        sol = root(root_func, last_solution, method="hybr")
+        
+        
+        sol = root(
+            root_func,
+            last_solution,
+            method="hybr",
+            options={
+                "maxfev": 10000,   # increase function evaluations
+                "xtol": 1e-10,     # tighter convergence tolerance
+            }
+        )
         if not sol.success:
             continue
 
