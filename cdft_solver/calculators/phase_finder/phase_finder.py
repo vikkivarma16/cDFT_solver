@@ -283,6 +283,7 @@ def scan_isochem_multi(
             vij = compute_vij(rho, kernel="uniform")
             print (vij)
             
+            exit (0)
             
             mu, _ = eval_mu_pressure(rho, vij)
 
