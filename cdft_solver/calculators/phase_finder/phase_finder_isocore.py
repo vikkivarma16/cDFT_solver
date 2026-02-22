@@ -185,7 +185,7 @@ import numpy as np
 import json
 
 
-def scan_isocore_direct(
+def scan_isocore_multi(
     ctx,
     config_dict,
     fe_res,
