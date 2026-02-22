@@ -312,6 +312,7 @@ def scan_isochem_multi(
             "rho_scan": float(rho_fixed),
             "rho_solution": rho.tolist(),
             "pressure": float(P),
+            "mue": mu.tolist(),
         })
 
         if verbose:
