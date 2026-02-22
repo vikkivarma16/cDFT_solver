@@ -287,6 +287,9 @@ def scan_isochem_multi(
             #print (vij)
             
             mu, _ = eval_mu_pressure(rho, vij)
+            
+            
+            
 
             return np.array([
                 mu[i] - mu_targets[species[i]]
@@ -306,6 +309,12 @@ def scan_isochem_multi(
 
         vij = compute_vij(rho, kernel="uniform")
         mu, P = eval_mu_pressure(rho, vij)
+        
+        print (rho)
+        print (mu)
+        print (P)
+        print ("\n\n\n\n")
+        
 
         results.append({
             "rho_scan": float(rho_fixed),
