@@ -180,7 +180,12 @@ def build_thermodynamics_from_fe_res(fe_res):
 
 
 
-def scan_isocore_multi(
+from pathlib import Path
+import numpy as np
+import json
+
+
+def scan_isocore_direct(
     ctx,
     config_dict,
     fe_res,
@@ -190,7 +195,11 @@ def scan_isocore_multi(
     verbose=True,
 ):
     """
-    Generalized density scan with multiple chemical potentials fixed.
+    Direct density scan:
+    - Intrinsic constraint fixes one or more densities.
+    - Extrinsic constraint provides scanning density upper bound.
+    - No root solving.
+    - Just compute mu and pressure.
     """
 
     thermo = build_thermodynamics_from_fe_res(fe_res)
@@ -200,16 +209,37 @@ def scan_isocore_multi(
     intrinsic = deep_get(config_dict, "intrinsic_constraints", {})
     extrinsic = deep_get(config_dict, "extrinsic_constraints", {})
 
-    mu_targets = intrinsic.get("chemical_potential", {})
-    fixed_density_dict = extrinsic.get("density", {})
+    intrinsic_density_dict = intrinsic.get("density", {})
+    extrinsic_density_dict = extrinsic.get("density", {})
     total_density_bound = extrinsic.get("total_density_bound", None)
 
-    mu_species = list(mu_targets.keys())
-    fixed_species = list(fixed_density_dict.keys())
-    N = N_species = len(species)
-    species_names = list(species)
-    
-    def compute_vij(densities, kernel):
+    N = len(species)
+
+    # ---- Validate ----
+    if len(extrinsic_density_dict) != 1:
+        raise ValueError("Only one scanning density supported")
+
+    scan_species = list(extrinsic_density_dict.keys())[0]
+    rho_scan_max = extrinsic_density_dict[scan_species]
+
+    scan_index = species.index(scan_species)
+
+    fixed_indices = []
+    fixed_values = {}
+
+    for sp, val in intrinsic_density_dict.items():
+        idx = species.index(sp)
+        fixed_indices.append(idx)
+        fixed_values[idx] = val
+
+    rho_scan_values = np.linspace(1e-8, rho_scan_max, n_points)
+
+    results = []
+
+    # ---------------------------------------------------
+    # Local vij function
+    # ---------------------------------------------------
+    def compute_vij(densities, kernel="uniform"):
         kernel_out = build_strength_kernel(
             ctx=ctx,
             config=config_dict,
@@ -217,12 +247,13 @@ def scan_isocore_multi(
             densities=densities,
             kernel_type=kernel,
         )
+
         r = kernel_out["r"]
         kernel = kernel_out["kernel"]
 
         kernel_dict = {}
-        for i, si in enumerate(species_names):
-            for j, sj in enumerate(species_names):
+        for i, si in enumerate(species):
+            for j, sj in enumerate(species):
                 kernel_dict[(si, sj)] = {"r": r, "values": kernel[i, j]}
 
         vij_out = vij_radial_kernel(
@@ -233,96 +264,54 @@ def scan_isocore_multi(
             export_json=True,
         )
 
-        vij = np.zeros((N_species, N_species))
-        for i, si in enumerate(species_names):
-            for j, sj in enumerate(species_names):
+        vij = np.zeros((N, N))
+        for i, si in enumerate(species):
+            for j, sj in enumerate(species):
                 vij[i, j] = vij_out["vij_numeric"][(si, sj)]
 
         return vij
-    
-    
 
-    # Unknown species = those not fixed
-    unknown_species = [s for s in species if s not in fixed_species]
+    # ---------------------------------------------------
+    # Main scan loop
+    # ---------------------------------------------------
+    for rho_scan in rho_scan_values:
 
-    if len(mu_species) != len(unknown_species):
-        raise ValueError(
-            "Number of μ constraints must equal number of unknown densities"
-        )
+        rho = np.zeros(N)
 
-    mu_indices = [species.index(s) for s in mu_species]
-    fixed_indices = [species.index(s) for s in fixed_species]
-    unknown_indices = [species.index(s) for s in unknown_species]
+        # Insert intrinsic fixed densities
+        for idx in fixed_indices:
+            rho[idx] = fixed_values[idx]
 
-    # Build scanning grid over fixed density (if one fixed)
-    if len(fixed_species) != 1:
-        raise ValueError("Scan currently supports one scanning density")
+        # Insert scanned density
+        rho[scan_index] = rho_scan
 
-    fixed_sp = fixed_species[0]
-    rho_fixed_max = fixed_density_dict[fixed_sp]
-    rho_fixed_values = np.linspace(1e-6, rho_fixed_max, n_points)
+        if total_density_bound is not None:
+            if np.sum(rho) > total_density_bound:
+                continue
 
-    results = []
-    last_solution = np.ones(len(unknown_species)) * 0.1
-
-    for rho_fixed in rho_fixed_values:
-    
-        print (rho_fixed, "\n\n\n")
-
-        def root_func(rho_unknown):
-            rho = np.zeros(len(species))
-
-            # insert fixed
-            rho[fixed_indices[0]] = rho_fixed
-
-            # insert unknown guesses
-            for idx, val in zip(unknown_indices, rho_unknown):
-                rho[idx] = val
-
-            if total_density_bound is not None:
-                if np.sum(rho) > total_density_bound:
-                    return np.ones(len(mu_species)) * 1e6
-
-            vij = compute_vij(rho, kernel="uniform")
-            #print (vij)
-            
-            mu, _ = eval_mu_pressure(rho, vij)
-            
-            return np.array([
-                mu[i] - mu_targets[species[i]]
-                for i in mu_indices
-            ])
-        sol = root(root_func, last_solution, method="hybr")
-        if not sol.success:
-            continue
-
-        rho_unknown_solution = sol.x
-        last_solution = rho_unknown_solution
-
-        rho = np.zeros(len(species))
-        rho[fixed_indices[0]] = rho_fixed
-        for idx, val in zip(unknown_indices, rho_unknown_solution):
-            rho[idx] = val
-
-        vij = compute_vij(rho, kernel="uniform")
+        vij = compute_vij(rho)
         mu, P = eval_mu_pressure(rho, vij)
-        
 
         results.append({
-            "rho_scan": float(rho_fixed),
-            "rho_solution": rho.tolist(),
+            "rho_scan": float(rho_scan),
+            "rho_full": rho.tolist(),
             "pressure": float(P),
             "mue": mu.tolist(),
         })
 
         if verbose:
-            print(f"{fixed_sp}={rho_fixed:.4f}, P={P:.4f}")
-            
+            print(f"{scan_species}={rho_scan:.4f}, P={P:.4f}")
+
+    # ---------------------------------------------------
+    # Save to scratch
+    # ---------------------------------------------------
     scratch = Path(ctx.scratch_dir)
+    output_path = scratch / output_file
 
-    output_file = Path(scratch/output_file)
-
-    with open(output_file, "w") as f:
+    with open(output_path, "w") as f:
         json.dump(results, f, indent=4)
+
+    if verbose:
+        print(f"Saved to {output_path}")
 
     return results
