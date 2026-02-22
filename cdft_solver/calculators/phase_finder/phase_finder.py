@@ -206,7 +206,8 @@ def scan_isochem_multi(
 
     mu_species = list(mu_targets.keys())
     fixed_species = list(fixed_density_dict.keys())
-    
+    N = N_species = len(species)
+    species_names = list(species)
     
     def compute_vij(densities, kernel):
         kernel_out = build_strength_kernel(
