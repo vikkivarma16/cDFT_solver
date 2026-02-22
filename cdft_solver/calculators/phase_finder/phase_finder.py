@@ -281,6 +281,9 @@ def scan_isochem_multi(
                     return np.ones(len(mu_species)) * 1e6
 
             vij = compute_vij(rho, kernel="uniform")
+            print (vij)
+            
+            
             mu, _ = eval_mu_pressure(rho, vij)
 
             return np.array([
