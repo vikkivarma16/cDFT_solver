@@ -186,6 +186,7 @@ def scan_isochem_multi(
     fe_res,
     supplied_data=None,
     n_points=200,
+    export = True,
     output_file="pressure_vs_density.json",
     verbose=True,
 ):
@@ -321,8 +322,8 @@ def scan_isochem_multi(
     scratch = Path(ctx.scratch_dir)
 
     output_file = Path(scratch/output_file)
-
-    with open(output_file, "w") as f:
-        json.dump(results, f, indent=4)
+    if export:
+        with open(output_file, "w") as f:
+            json.dump(results, f, indent=4)
 
     return results
