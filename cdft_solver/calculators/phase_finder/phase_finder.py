@@ -295,7 +295,7 @@ def scan_isochem_multi(
                 mu[i] - mu_targets[species[i]]
                 for i in mu_indices
             ])
-        sol = root(root_func, last_solution)
+        sol = root(root_func, last_solution, method="hybr")
         if not sol.success:
             continue
 
@@ -309,11 +309,6 @@ def scan_isochem_multi(
 
         vij = compute_vij(rho, kernel="uniform")
         mu, P = eval_mu_pressure(rho, vij)
-        
-        print (rho)
-        print (mu)
-        print (P)
-        print ("\n\n\n\n")
         
 
         results.append({
