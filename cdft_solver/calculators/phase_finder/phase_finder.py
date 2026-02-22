@@ -314,6 +314,10 @@ def scan_isochem_multi(
 
         if verbose:
             print(f"{fixed_sp}={rho_fixed:.4f}, P={P:.4f}")
+            
+    scratch = Path(ctx.scratch_dir)
+
+    output_file = Path(scratch/output_file)
 
     with open(output_file, "w") as f:
         json.dump(results, f, indent=4)
