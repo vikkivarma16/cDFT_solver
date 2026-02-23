@@ -264,7 +264,7 @@ def scan_isochem_multi(
     rho_fixed_values = np.linspace(1e-6, rho_fixed_max, n_points)
 
     results = []
-    last_solution = np.ones(len(unknown_species)) * 0.1
+    last_solution = np.ones(len(unknown_species)) * 0.01
 
     for rho_fixed in rho_fixed_values:
     
