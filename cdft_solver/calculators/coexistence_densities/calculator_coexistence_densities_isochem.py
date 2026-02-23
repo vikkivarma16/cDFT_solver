@@ -478,7 +478,7 @@ def coexistence_densities_isochem(
         eval_mue_pressure_fn,
         heterogeneous_pair,
         total_density_bound,
-        max_attempts=200000,
+        max_attempts=1000000,
         verbose=True,
     ):
         N = len(species_names)
