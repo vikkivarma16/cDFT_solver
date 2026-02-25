@@ -186,12 +186,15 @@ def evaluate_grand_canonical_state(
     fe_res,
     supplied_data=None,
     n_points=200,
-    export = True,
+    export=True,
     output_file="pressure_vs_density.json",
     verbose=True,
 ):
     """
-    Generalized density scan with multiple chemical potentials fixed.
+    Grand canonical evaluation at given fixed densities.
+
+    This version solves for unknown densities once per configuration
+    rather than scanning density grids.
     """
 
     thermo = build_thermodynamics_from_fe_res(fe_res)
@@ -207,10 +210,30 @@ def evaluate_grand_canonical_state(
 
     mu_species = list(mu_targets.keys())
     fixed_species = list(fixed_density_dict.keys())
-    N = N_species = len(species)
+
     species_names = list(species)
-    
-    def compute_vij(densities, kernel):
+    N_species = len(species)
+
+    # ---------------------------------
+    # Index mapping
+    # ---------------------------------
+
+    mu_indices = [species.index(s) for s in mu_species]
+    fixed_indices = [species.index(s) for s in fixed_species]
+
+    unknown_species = [s for s in species if s not in fixed_species]
+    unknown_indices = [species.index(s) for s in unknown_species]
+
+    if len(mu_species) != len(unknown_species):
+        raise ValueError(
+            "Number of μ constraints must equal number of unknown densities"
+        )
+
+    # ---------------------------------
+    # Kernel computation
+    # ---------------------------------
+
+    def compute_vij(densities, kernel="uniform"):
         kernel_out = build_strength_kernel(
             ctx=ctx,
             config=config_dict,
@@ -218,13 +241,18 @@ def evaluate_grand_canonical_state(
             densities=densities,
             kernel_type=kernel,
         )
+
         r = kernel_out["r"]
         kernel = kernel_out["kernel"]
 
         kernel_dict = {}
+
         for i, si in enumerate(species_names):
             for j, sj in enumerate(species_names):
-                kernel_dict[(si, sj)] = {"r": r, "values": kernel[i, j]}
+                kernel_dict[(si, sj)] = {
+                    "r": r,
+                    "values": kernel[i, j],
+                }
 
         vij_out = vij_radial_kernel(
             ctx=ctx,
@@ -235,105 +263,86 @@ def evaluate_grand_canonical_state(
         )
 
         vij = np.zeros((N_species, N_species))
+
         for i, si in enumerate(species_names):
             for j, sj in enumerate(species_names):
                 vij[i, j] = vij_out["vij_numeric"][(si, sj)]
 
         return vij
-    
-    
 
-    # Unknown species = those not fixed
-    unknown_species = [s for s in species if s not in fixed_species]
+    # ---------------------------------
+    # Solve for unknown densities (single root solve)
+    # ---------------------------------
 
-    if len(mu_species) != len(unknown_species):
-        raise ValueError(
-            "Number of μ constraints must equal number of unknown densities"
-        )
+    fixed_density_vector = np.zeros(len(species))
 
-    mu_indices = [species.index(s) for s in mu_species]
-    fixed_indices = [species.index(s) for s in fixed_species]
-    unknown_indices = [species.index(s) for s in unknown_species]
+    for sp, val in fixed_density_dict.items():
+        fixed_density_vector[species.index(sp)] = val
 
-    # Build scanning grid over fixed density (if one fixed)
-    if len(fixed_species) != 1:
-        raise ValueError("Scan currently supports one scanning density")
-
-    fixed_sp = fixed_species[0]
-    rho_fixed_max = fixed_density_dict[fixed_sp]
-    rho_fixed_values = np.linspace(1e-6, rho_fixed_max, n_points)
-
-    results = []
     last_solution = np.ones(len(unknown_species)) * 0.01
 
-    for rho_fixed in rho_fixed_values:
-    
-        print (rho_fixed, "\n\n\n")
+    def root_func(rho_unknown):
 
-        def root_func(rho_unknown):
-            rho = np.zeros(len(species))
+        rho = np.copy(fixed_density_vector)
 
-            # insert fixed
-            rho[fixed_indices[0]] = rho_fixed
-
-            # insert unknown guesses
-            for idx, val in zip(unknown_indices, rho_unknown):
-                rho[idx] = val
-
-            if total_density_bound is not None:
-                if np.sum(rho) > total_density_bound:
-                    return np.ones(len(mu_species)) * 1e6
-
-            vij = compute_vij(rho, kernel="uniform")
-            #print (vij)
-            
-            mu, _ = eval_mu_pressure(rho, vij)
-            
-            return np.array([
-                mu[i] - mu_targets[species[i]]
-                for i in mu_indices
-            ])
-        
-        
-        sol = root(
-            root_func,
-            last_solution,
-            method="hybr",
-            options={
-                "maxfev": 10000,   # increase function evaluations
-                "xtol": 1e-10,     # tighter convergence tolerance
-            }
-        )
-        if not sol.success:
-            continue
-
-        rho_unknown_solution = sol.x
-        last_solution = rho_unknown_solution
-
-        rho = np.zeros(len(species))
-        rho[fixed_indices[0]] = rho_fixed
-        for idx, val in zip(unknown_indices, rho_unknown_solution):
+        for idx, val in zip(unknown_indices, rho_unknown):
             rho[idx] = val
 
+        if total_density_bound is not None:
+            if np.sum(rho) > total_density_bound:
+                return np.ones(len(mu_species)) * 1e6
+
         vij = compute_vij(rho, kernel="uniform")
-        mu, P = eval_mu_pressure(rho, vij)
-        
 
-        results.append({
-            "rho_scan": float(rho_fixed),
-            "rho_solution": rho.tolist(),
-            "pressure": float(P),
-            "mue": mu.tolist(),
-        })
+        mu, _ = eval_mu_pressure(rho, vij)
 
+        return np.array([
+            mu[i] - mu_targets[species[i]]
+            for i in mu_indices
+        ])
+
+    from scipy.optimize import root
+
+    sol = root(
+        root_func,
+        last_solution,
+        method="hybr",
+        options={
+            "maxfev": 10000,
+            "xtol": 1e-10,
+        }
+    )
+
+    if not sol.success:
         if verbose:
-            print(f"{fixed_sp}={rho_fixed:.4f}, P={P:.4f}")
-            
-    scratch = Path(ctx.scratch_dir)
+            print("Root solver failed")
+        return None
 
-    output_file = Path(scratch/output_file)
+    rho_unknown_solution = sol.x
+
+    rho = np.copy(fixed_density_vector)
+
+    for idx, val in zip(unknown_indices, rho_unknown_solution):
+        rho[idx] = val
+
+    vij = compute_vij(rho, kernel="uniform")
+
+    mu, P = eval_mu_pressure(rho, vij)
+
+    result = {
+        "rho_solution": rho.tolist(),
+        "pressure": float(P),
+        "mue": mu.tolist(),
+    }
+
     if export:
-        with open(output_file, "w") as f:
-            json.dump(results, f, indent=4)
+        from pathlib import Path
+        import json
 
-    return results
+        scratch = Path(ctx.scratch_dir)
+        output_file = Path(scratch / output_file)
+
+        with open(output_file, "w") as f:
+            json.dump(result, f, indent=4)
+
+    return result
