@@ -180,7 +180,7 @@ def build_thermodynamics_from_fe_res(fe_res):
 
 
 
-def scan_isochem_multi(
+def evaluate_grand_canonical_state(
     ctx,
     config_dict,
     fe_res,

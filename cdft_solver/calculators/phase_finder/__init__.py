@@ -3,9 +3,5 @@ this module compute the possible number of phases
 '''
 
 
-
-
-
-from .phase_finder_isochem import scan_isochem_multi
-from .phase_finder_isocore import scan_isocore_multi
-from .thermodynamic_potentials import evaluate_canonical_state
+from .thermodynamic_potentials_isochem import evaluate_grand_canonical_state
+from .thermodynamic_potentials_isocore import evaluate_canonical_state
