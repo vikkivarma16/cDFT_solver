@@ -185,7 +185,6 @@ def evaluate_grand_canonical_state(
     config_dict,
     fe_res,
     supplied_data=None,
-    n_points=200,
     export=True,
     output_file="pressure_vs_density.json",
     verbose=True,
