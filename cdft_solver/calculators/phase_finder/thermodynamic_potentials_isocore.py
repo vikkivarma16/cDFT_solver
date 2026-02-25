@@ -139,6 +139,7 @@ def build_thermodynamics_from_fe_res(fe_res):
 
     mu_funcs = [sp.lambdify(all_args, mu, "numpy") for mu in mu_syms]
     pressure_func = sp.lambdify(all_args, pressure_sym, "numpy")
+    f_func = sp.lambdify(all_args, f_sym, "numpy")
 
     def eval_mu_pressure(rho, vij):
         """
@@ -166,8 +167,9 @@ def build_thermodynamics_from_fe_res(fe_res):
 
         mu = np.array([f(*args) for f in mu_funcs])
         P = pressure_func(*args)
+        f = f_func(*args)
 
-        return mu, P
+        return mu, P, f
 
     return {
         "density_symbols": density_syms,
@@ -250,7 +252,7 @@ def evaluate_canonical_state(
     vij = compute_vij(rho, kernel="uniform")
 
     # Evaluate thermodynamics
-    mu, P = eval_mu_pressure(rho, vij)
+    mu, P, f = eval_mu_pressure(rho, vij)
 
     result = {
         "ensemble": "canonical",
@@ -258,6 +260,7 @@ def evaluate_canonical_state(
         "densities": rho.tolist(),
         "chemical_potentials": mu.tolist(),
         "pressure": float(P),
+        "free_energy_density": float(f),
     }
 
     if verbose:
