@@ -1128,7 +1128,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             pressure_line = f"Pressure value is given as: {pressure_values[int(nx/2)]:.6e}\n\n"
             iteration_line = f"Number of iteration is given as: {iteration + 1}\n\n\n"
             alpha_line  =  f"Alpha value is given as: {alpha}\n\n\n\n\n"
-            print(pressure_line + iteration_line, end="")
+            print(pressure_line + iteration_line +alpha_line, end="")
             log_fu.write(pressure_line)
             log_fu.close()
             #log_fu.write(iteration_line)
