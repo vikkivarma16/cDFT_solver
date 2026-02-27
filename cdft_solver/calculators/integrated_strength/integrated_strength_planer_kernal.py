@@ -93,7 +93,7 @@ def vij_planer_kernel(
                 raise ValueError(f"U shape mismatch for {pair}")
 
             # --------------------------------------------------
-            # Vectorized integration over r
+            # Vectorized integration over r   ::::::::::::::::::
             # --------------------------------------------------
             vij = np.trapz(
                 2.0 * np.pi * r_grid[None, None, :] * K * U,

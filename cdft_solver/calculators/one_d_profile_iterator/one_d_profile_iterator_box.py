@@ -754,6 +754,9 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     for k, sk in enumerate(species):
         for j, sj in enumerate(species):
             vij_array[k, j, :, :] = vij_dict[(sk, sj)]
+            
+            
+            print (vij_dict)
 
     # Optional sanity check
     assert np.allclose(vij_array, vij_array.swapaxes(0,1).swapaxes(2,3)) \

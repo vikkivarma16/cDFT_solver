@@ -117,7 +117,7 @@ def build_strength_kernel_planer(
             densities=densities,
             supplied_data=supplied_data,
             export=False,
-            plot=False,
+            plot=True,
             filename_prefix="rdf",
         )
 
