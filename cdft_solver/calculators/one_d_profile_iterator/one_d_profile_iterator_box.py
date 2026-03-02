@@ -899,8 +899,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     def compute_vij(densities, kernel="uniform"):
         kernel_out = build_strength_kernel(
             ctx=ctx,
-            config=config_dict,
-            supplied_data=supplied_data,
+            config=system,
+            supplied_data=None,
             densities=densities,
             kernel_type=kernel,
         )
@@ -919,8 +919,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
         vij_out = vij_radial_kernel(
             ctx=ctx,
-            config=config_dict,
-            kernel=kernel_dict,
+            config=system,
+            kernel=kernel_applied,
             supplied_data=None,
             export_json=True,
         )
