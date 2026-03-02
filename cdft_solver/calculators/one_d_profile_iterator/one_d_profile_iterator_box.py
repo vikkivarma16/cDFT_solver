@@ -936,6 +936,9 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     #print(rho_r[0][0])
     
     rho_point = rho_r_current[:, 0]  # shape (N,)
+    free_energy = find_key_recursive(config, "free_energy")
+    kernel_applied = free_energy["integrated_strength_kernel"]
+    
     
         
     vij = compute_vij(rho_point, kernel=kernel_applied)
@@ -950,7 +953,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     
     
 
-    temperature = 1.0
+    temperature = 1
     # ---------------------------------------------
     # Convert vij dict to dense array
     # ---------------------------------------------
@@ -989,8 +992,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     alpha = 0.05
     
     
-    free_energy = find_key_recursive(config, "free_energy")
-    kernel_applied = free_energy["integrated_strength_kernel"]
+    
     
     iteration_max = profile_p[ "iteration_max" ]
     log_period = profile_p [ "log_period" ]
