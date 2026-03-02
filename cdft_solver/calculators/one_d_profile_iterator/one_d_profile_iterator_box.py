@@ -1,3 +1,170 @@
+CURRENT_VIJ_PER_PHASE = None
+
+
+# ============================================================
+# RECURSIVE SEARCH UTILITIES
+# ============================================================
+def deep_get(data, key, default=None):
+    """
+    Recursively search for key in nested dicts/lists.
+    Returns first match.
+    """
+    if isinstance(data, dict):
+        if key in data:
+            return data[key]
+        for v in data.values():
+            out = deep_get(v, key, default)
+            if out is not default:
+                return out
+    elif isinstance(data, list):
+        for item in data:
+            out = deep_get(item, key, default)
+            if out is not default:
+                return out
+    return default
+
+
+def deep_get_all(data, key):
+    """Return all matches for key in nested structure."""
+    found = []
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if k == key:
+                found.append(v)
+            found.extend(deep_get_all(v, key))
+    elif isinstance(data, list):
+        for item in data:
+            found.extend(deep_get_all(item, key))
+    return found
+
+
+def build_thermodynamics_from_fe_res(fe_res):
+    """
+    Given a free-energy result dictionary (from JSON),
+    reconstruct SymPy objects and compute chemical potentials
+    and pressure.
+
+    Parameters
+    ----------
+    fe_res : dict
+        Free energy JSON dictionary
+
+    Returns
+    -------
+    dict with:
+        - density_symbols
+        - vij_symbols
+        - free_energy
+        - mu_expressions
+        - pressure_expression
+        - eval_mu_pressure(rho, vij)
+    """
+
+    # --------------------------------------------------------
+    # 1) Reconstruct symbols
+    # --------------------------------------------------------
+    
+    variables = deep_get(fe_res, "variables", [])
+    expr_str = deep_get(fe_res, "expression")
+    
+
+    if expr_str is None:
+        raise ValueError("Free energy expression not found in fe_res")
+
+    symbols = {}
+
+    for v in variables:
+        if isinstance(v, sp.Symbol):
+            # Already a Symbol
+            symbols[v.name] = v
+        else:
+            # Assume string-like
+            symbols[str(v)] = sp.Symbol(str(v))
+
+
+    # --------------------------------------------------------
+    # 2) Reconstruct free-energy expression
+    # --------------------------------------------------------
+    f_sym = sp.sympify(expr_str, locals=symbols)
+
+    # --------------------------------------------------------
+    # 3) Identify density and interaction variables
+    # --------------------------------------------------------
+    density_syms = sorted(
+        [s for s in symbols.values() if s.name.startswith("rho_")],
+        key=lambda s: s.name
+    )
+
+    vij_syms = sorted(
+        [s for s in symbols.values() if s.name.startswith("v_")],
+        key=lambda s: s.name
+    )
+
+    if not density_syms:
+        raise ValueError("No density variables (rho_*) found")
+
+    # --------------------------------------------------------
+    # 4) Chemical potentials
+    # --------------------------------------------------------
+    mu_syms = [sp.diff(f_sym, rho) for rho in density_syms]
+
+    # --------------------------------------------------------
+    # 5) Pressure
+    #     P = -f + sum_i rho_i * mu_i
+    # --------------------------------------------------------
+    pressure_sym = -f_sym + sum(r * mu for r, mu in zip(density_syms, mu_syms))
+
+    # --------------------------------------------------------
+    # 6) Numerical evaluators
+    # --------------------------------------------------------
+    all_args = density_syms + vij_syms
+
+    mu_funcs = [sp.lambdify(all_args, mu, "numpy") for mu in mu_syms]
+    pressure_func = sp.lambdify(all_args, pressure_sym, "numpy")
+    f_func = sp.lambdify(all_args, f_sym, "numpy")
+
+    def eval_mu_pressure(rho, vij):
+        """
+        Parameters
+        ----------
+        rho : array_like, shape (Ns,)
+            Densities in the same order as density_syms
+        vij : array_like, shape (Ns, Ns) or flat
+            Pair interactions
+
+        Returns
+        -------
+        mu : ndarray
+            Chemical potentials
+        P : float
+            Pressure
+        """
+        rho = np.asarray(rho, dtype=float)
+
+        vij = np.asarray(vij, dtype=float)
+        if vij.ndim == 2:
+            vij = vij.reshape(-1)
+
+        args = np.concatenate([rho, vij])
+
+        mu = np.array([f(*args) for f in mu_funcs])
+        P = pressure_func(*args)
+        f = f_func(*args)  
+
+        return mu, P, f
+
+    return {
+        "density_symbols": density_syms,
+        "vij_symbols": vij_syms,
+        "free_energy": f_sym,
+        "mu_expressions": mu_syms,
+        "pressure_expression": pressure_sym,
+        "eval_mu_pressure": eval_mu_pressure,
+    }
+
+
+
+
 def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = True, filename  = "one_d_profiles"):   
 
 
@@ -28,7 +195,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     from cdft_solver.calculators.coexistence_densities.calculator_coexistence_densities_isochem import coexistence_densities_isochem
 
     
-    
     from cdft_solver.generators.potential_splitter.hc import hard_core_potentials
     from cdft_solver.generators.grids_properties.external_potential_grid import external_potential_grid
     from cdft_solver.generators.grids_properties.k_and_r_space_box import r_k_space_box
@@ -40,6 +206,9 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     from cdft_solver.generators.density_weights.mf_weights_planer import mf_weights_planer
     from cdft_solver.calculators.one_d_profile_iterator.kernel_generator_planer import build_strength_kernel_planer
     from cdft_solver.calculators.integrated_strength.integrated_strength_planer_kernal import vij_planer_kernel
+    
+    from cdft_solver.calculators.coexistence_densities.kernel_generator import build_strength_kernel
+    from cdft_solver.calculators.integrated_strength.integrated_strength_radial_kernal import vij_radial_kernel
     
     
     
@@ -704,36 +873,74 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             grand_rosenfeld_flag = 1
             
     grand_meanfield_flag = 1
-                
-
-    def make_ideal_gas_pressure(FE):
-        """
-        Returns a lambdified ideal gas pressure function:
-            p = sum_i rho_i
-
-        The function takes a single argument:
-            rho_vec  (array of species densities)
-        """
-
-        # symbolic variables rho_0, rho_1, ..., rho_{N-1}
-        rho_syms = [sp.symbols(f"rho_{i}") for i in range(len(FE.rho))]
-
-        # symbolic ideal gas pressure
-        P_expr = sum(rho_syms)
-
-        # lambdify -> numerical function taking N scalars
-        P_num = sp.lambdify(rho_syms, P_expr, "numpy")
-
-        # user-level function
-        def pressure_fn(rho_vec):
-            return P_num(*list(rho_vec))
-
-        return pressure_fn
-
     
+    filenames = {}
+    filenames["hard_core"] = "supplied_data_free_energy_hard_core.json"
+    filenames["mean_field"] = "supplied_data_free_energy_mean_field.json"
+    filenames["ideal"] =  "supplied_data_free_energy_ideal.json"
+    filenames["hybrid"] =  "supplied_data_free_energy_hybrid.json"
 
-    func_pressure = make_ideal_gas_pressure(FE)
 
+    free_energy  = total_free_energy(
+        ctx=ctx,
+        hc_data=hc_data,
+        system_config=system,
+        export_json=True,
+        filenames = filenames
+    )
+    
+    thermo = build_thermodynamics_from_fe_res(free_energy)   
+    func_pressure = thermo["eval_mu_pressure"]
+    
+    
+    def compute_vij(densities, kernel="uniform"):
+        kernel_out = build_strength_kernel(
+            ctx=ctx,
+            config=config_dict,
+            supplied_data=supplied_data,
+            densities=densities,
+            kernel_type=kernel,
+        )
+
+        r = kernel_out["r"]
+        kernel = kernel_out["kernel"]
+
+        kernel_dict = {}
+
+        for i, si in enumerate(species_names):
+            for j, sj in enumerate(species_names):
+                kernel_dict[(si, sj)] = {
+                    "r": r,
+                    "values": kernel[i, j],
+                }
+
+        vij_out = vij_radial_kernel(
+            ctx=ctx,
+            config=config_dict,
+            kernel=kernel_dict,
+            supplied_data=None,
+            export_json=True,
+        )
+
+        vij = np.zeros((N_species, N_species))
+
+        for i, si in enumerate(species_names):
+            for j, sj in enumerate(species_names):
+                vij[i, j] = vij_out["vij_numeric"][(si, sj)]
+
+        return vij
+        
+    print(rho_r[0])
+    
+    exit(0)
+        
+    vij = compute_vij(rho_r[0], kernel=applied_kernel)
+        _, _, pressure = eval_mu_pressure(rho_r[0], vij)
+    
+    
+    
+    
+    
 
     temperature = 1.0
     # ---------------------------------------------
@@ -769,9 +976,13 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
 
     profile_p = find_key_recursive(config, "profile")
-    alpha_max = profile_p [ "alpha_mixing_min" ]
+    alpha_max = profile_p [ "alpha_mixing_min"]
     alpha_max = 0.01
     alpha = 0.05
+    
+    
+    free_energy = find_key_recursive(config, "free_energy")
+    kernel_applied = free_energy["integrated_strength_kernel"]
     
     iteration_max = profile_p[ "iteration_max" ]
     log_period = profile_p [ "log_period" ]
@@ -831,6 +1042,21 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     
     
     while (iteration < iteration_max):
+    
+        if (interation%100 == 0):
+            def compute_vij (densities, kernel  =  "uniform"):
+                kernel = build_strength_kernel_planer( ctx, config, densities = densities, supplied_data=None, kernel_type=kernel, )
+                vij  =  vij_planer_kernel(ctx, config, kernel_data= kernel, u_data = mean_f_weights, export_json=False, filename="vij_planar_kernel_u.json", plot = True) 
+                return vij
+            vij = compute_vij (densities = rho_r, kernel = applied_kernel)
+            
+            vij_dict = vij["vij_numeric"]
+            species = vij["species"]
+            
+            for k, sk in enumerate(species):
+                for j, sj in enumerate(species):
+                    vij_array[k, j, :, :] = vij_dict[(sk, sj)]
+        
         
         rho_r_initial = rho_r_current.copy()  # IMPORTANT: real copy for residual
         

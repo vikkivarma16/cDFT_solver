@@ -83,8 +83,6 @@ def build_thermodynamics_from_fe_res(fe_res):
     variables = deep_get(fe_res, "variables", [])
     expr_str = deep_get(fe_res, "expression")
     
-    
-    print (variables)
 
     if expr_str is None:
         raise ValueError("Free energy expression not found in fe_res")
