@@ -934,7 +934,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     
     exit(0)
         
-    vij = compute_vij(rho_r[0], kernel=applied_kernel)
+    vij = compute_vij(rho_r[0], kernel=kernel_applied)
     _, _, pressure = eval_mu_pressure(rho_r[0], vij)
     
     
@@ -1048,7 +1048,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
                 kernel = build_strength_kernel_planer( ctx, config, densities = densities, supplied_data=None, kernel_type=kernel, )
                 vij  =  vij_planer_kernel(ctx, config, kernel_data= kernel, u_data = mean_f_weights, export_json=False, filename="vij_planar_kernel_u.json", plot = True) 
                 return vij
-            vij = compute_vij (densities = rho_r, kernel = applied_kernel)
+            vij = compute_vij (densities = rho_r, kernel = kernel_applied)
             
             vij_dict = vij["vij_numeric"]
             species = vij["species"]
