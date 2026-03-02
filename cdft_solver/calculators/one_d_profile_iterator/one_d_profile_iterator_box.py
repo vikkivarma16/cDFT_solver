@@ -935,7 +935,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     exit(0)
         
     vij = compute_vij(rho_r[0], kernel=applied_kernel)
-        _, _, pressure = eval_mu_pressure(rho_r[0], vij)
+    _, _, pressure = eval_mu_pressure(rho_r[0], vij)
     
     
     
