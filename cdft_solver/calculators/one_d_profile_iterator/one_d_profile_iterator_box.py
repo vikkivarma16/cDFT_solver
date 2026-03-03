@@ -910,8 +910,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
         kernel_dict = {}
 
-        for i, si in enumerate(species_names):
-            for j, sj in enumerate(species_names):
+        for i, si in enumerate(species):
+            for j, sj in enumerate(species):
                 kernel_dict[(si, sj)] = {
                     "r": r,
                     "values": kernel[i, j],
@@ -927,8 +927,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
         vij = np.zeros((N_species, N_species))
 
-        for i, si in enumerate(species_names):
-            for j, sj in enumerate(species_names):
+        for i, si in enumerate(species):
+            for j, sj in enumerate(species):
                 vij[i, j] = vij_out["vij_numeric"][(si, sj)]
 
         return vij
