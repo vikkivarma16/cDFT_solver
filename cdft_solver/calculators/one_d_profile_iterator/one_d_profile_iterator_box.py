@@ -957,7 +957,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     _, pressure, _ = func_pressure(rho_point_2, vij_bulk)
     bulk_pressure_2 = pressure
     
-    print(bulk_pressure, bulk_pressure_2, vij_bulk)
+    print(bulk_pressure, bulk_pressure_2, rho_point_2, vij_bulk)
     
     
     #print(rho_point)
@@ -1302,10 +1302,12 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             vij_point = np.array(vij_point)
             
             
-            _, pressure_values[i], _ = func_pressure(ind_density, vij_point)
+            _, pressure, _ = func_pressure(ind_density, vij_point)
             
             
-            print(pressure_values[i])
+            pressure_values[i] = pressure
+            
+            print(pressure)
             print(ind_density)
             
             
