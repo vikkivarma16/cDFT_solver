@@ -1306,6 +1306,11 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             
             _, pressure_values[i], _ = func_pressure(ind_density, vij_point)
             
+            
+            print(pressure_values[i])
+            print(ind_density)
+            
+            
                 
             # -------------------------
 # Convergence check
