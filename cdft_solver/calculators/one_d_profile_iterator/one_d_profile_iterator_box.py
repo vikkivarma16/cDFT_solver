@@ -804,6 +804,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
        
     
 
+    print("\n\n\n\n\n\n", value, "\n\n\n\n\n\n\n")
+
     # Call the new bulk assignment
     rho_mue = bulk_rho_mue_planer(
         ctx=ctx,
