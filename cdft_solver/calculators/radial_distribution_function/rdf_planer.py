@@ -417,16 +417,12 @@ def rdf_planer(
     closure_cfg = find_key_recursive(rdf_config, "closure")
     if closure_cfg is None:
         raise KeyError("No closure definitions found")
-
     pair_closures = np.empty((Ns, Ns), dtype=object)
-
     for i, si in enumerate(species):
         for j in range(i, Ns):
             sj = species[j]
-
             key_ij = si + sj
             key_ji = sj + si
-
             if key_ij in closure_cfg:
                 closure = closure_cfg[key_ij]
             elif key_ji in closure_cfg:
@@ -435,18 +431,14 @@ def rdf_planer(
                 raise KeyError(
                     f"Missing closure for pair '{key_ij}' or '{key_ji}'"
                 )
-
             pair_closures[i, j] = closure
             pair_closures[j, i] = closure
             
     # -----------------------------
     # Sigma matrix
     # -----------------------------
-    
     print ("supplied pair closures are given as:", pair_closures)
-    
     sigma_matrix = np.zeros((Ns,Ns)) if sigma is None else np.array(sigma)
-    
     print ("Given sigma matrix is :", sigma_matrix)
     # -----------------------------
     # Initialize correlation functions
@@ -454,10 +446,9 @@ def rdf_planer(
     Zij = z_grid[:, None] - z_grid[None, :]
     dz = z_grid[1] - z_grid[0]
     
-    
     #print(z_grid)
-    
     # Geometry
+    
     R_ijr = np.sqrt(Zij[:, :, None]**2 + r_grid[None, None, :]**2)
     
     #print ("\n\n\n length one :", len(R_ijr))
@@ -466,7 +457,7 @@ def rdf_planer(
     
     
     u_matrix = np.zeros((Ns, Ns, Nz, Nz, Nr))
-
+    
     for i, si in enumerate(species):
         for j in range(i, Ns):
             sj = species[j]
