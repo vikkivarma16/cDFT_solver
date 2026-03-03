@@ -1293,7 +1293,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             
             
             print(vij_point)
-            print(pressur_values[i])
+            print(pressure_values[i])
             print(bulk_pressure)
                 
                 
