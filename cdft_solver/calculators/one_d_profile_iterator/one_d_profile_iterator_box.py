@@ -1292,17 +1292,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             grand_landau += landau[i]
             surface_tension_values [i] =  bulk_pressure + grand_landau # - func_pressure(*ind_density) #
             
-            vij_point  = []
-            for it in range (N):
-                temp = []
-                for jt in range (N):
-                
-                    temp.append(vij_array[it, jt, i, i])
-                vij_point.append(temp)
-            vij_point = np.array(vij_point)
             
-            
-            _, pressure, _ = func_pressure(ind_density, vij_point)
+            pressure= grand_landau
             
             
             pressure_values[i] = pressure
