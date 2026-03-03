@@ -342,12 +342,15 @@ def rdf_planer(
     Ns = len(species)
 
     beta = rdf_block.get("beta", 1.0)
-    tol = rdf_block.get("tolerance", 1e-6)
+    #tol = rdf_block.get("tolerance", 1e-6)
     n_iter = find_key_recursive(rdf_config, "max_iteration")
     alpha_max = rdf_block.get("alpha_max", 0.05)
     
     
     rdf_planer  =  find_key_recursive(rdf_config, "planer_rdf")
+    tol = 0.02
+    tol = rdf_planer["tolerance"]
+    
     planer_grid_config = {}
     planer_grid_config ["space_confinement_parameters"] = rdf_planer
     
