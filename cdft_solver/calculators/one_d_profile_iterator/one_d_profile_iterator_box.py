@@ -959,6 +959,9 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     
     print(bulk_pressure, bulk_pressure_2, vij_bulk)
     
+    
+    print(rho_point)
+    print(rho_point_2)
     exit(0)
     
     
