@@ -884,7 +884,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     filenames["hybrid"] =  "supplied_data_free_energy_hybrid.json"
 
 
-    free_energy  = total_free_energy(
+    free_energy_system  = total_free_energy(
         ctx=ctx,
         hc_data=hc_data,
         system_config=system,
@@ -892,7 +892,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         filenames = filenames
     )
     
-    thermo = build_thermodynamics_from_fe_res(free_energy)   
+    thermo = build_thermodynamics_from_fe_res(free_energy_system)   
     func_pressure = thermo["eval_mu_pressure"]
     
     N_species =  len(species)
