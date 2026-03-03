@@ -895,6 +895,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     thermo = build_thermodynamics_from_fe_res(free_energy)   
     func_pressure = thermo["eval_mu_pressure"]
     
+    N_species =  len(species)
     
     def compute_vij(densities, kernel="uniform"):
         kernel_out = build_strength_kernel(
@@ -951,6 +952,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     print(rho_point)
     exit(0)
     
+    
+    region which is being used 
     
     
     
