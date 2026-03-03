@@ -920,7 +920,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         vij_out = vij_radial_kernel(
             ctx=ctx,
             config=system,
-            kernel=kernel_applied,
+            kernel=kernel_dict,
             supplied_data=None,
             export_json=True,
         )
