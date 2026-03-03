@@ -944,20 +944,14 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     
     #print (kernel_applied )
     #exit(0)
-    print (rho_point, kernel_applied)
+    
+    
     vij_bulk = compute_vij(rho_point, kernel=kernel_applied)
     _, _, pressure = func_pressure(rho_point, vij_bulk)
-    
-    
     bulk_pressure = pressure
-    print(pressure)
-    print(vij)
-    print(rho_point)
     
     
     
-    
-
     temperature = 1
     # ---------------------------------------------
     # Convert vij dict to dense array
