@@ -1307,9 +1307,11 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             
             pressure_values[i] = pressure
             
+            
+            print(vij_point)
             print(pressure)
             print(ind_density)
-            
+            exit(0)
             
                 
             # -------------------------
