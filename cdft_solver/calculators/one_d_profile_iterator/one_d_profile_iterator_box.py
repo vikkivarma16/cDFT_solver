@@ -940,7 +940,10 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     kernel_applied = free_energy["integrated_strength_kernel"]
     
     
-        
+    
+    print (kernel_applied )
+    exit(0)
+
     vij = compute_vij(rho_point, kernel=kernel_applied)
     _, _, pressure = eval_mu_pressure(rho_point, vij)
     
