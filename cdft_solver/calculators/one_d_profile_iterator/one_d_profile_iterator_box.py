@@ -1281,7 +1281,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             for it in range (N):
                 temp = []
                 for jt in range (N):
-                    temp.append(vij[it, jt][i][i])
+                    temp.append(vij[it, jt][i, i])
                 vij_point(temp)
             vij_point = np.array(vij_point)
             pressure_values[i] = func_pressure(ind_density, vij_point)
