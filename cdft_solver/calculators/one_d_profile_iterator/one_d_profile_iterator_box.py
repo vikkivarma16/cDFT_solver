@@ -957,12 +957,12 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     _, pressure, _ = func_pressure(rho_point_2, vij_bulk)
     bulk_pressure_2 = pressure
     
-    print(bulk_pressure, bulk_pressure_2, vij_bulk)
+    #print(bulk_pressure, bulk_pressure_2, vij_bulk)
     
     
-    print(rho_point)
-    print(rho_point_2)
-    exit(0)
+    #print(rho_point)
+    #print(rho_point_2)
+    #exit(0)
     
     
     
@@ -1304,16 +1304,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             vij_point = np.array(vij_point)
             
             
-            _, _, pressure_values[i] = func_pressure(ind_density, vij_point)
+            _, pressure_values[i], _ = func_pressure(ind_density, vij_point)
             
-            
-            print(vij_point)
-            print(pressure_values[i])
-            print(bulk_pressure)
-            
-            print (rho_point)
-            print (ind_density)
-                
                 
             # -------------------------
 # Convergence check
