@@ -950,6 +950,16 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     _, _, pressure = func_pressure(rho_point, vij_bulk)
     bulk_pressure = pressure
     
+    rho_point_2 = rho_r_current[:, -1]
+    
+    _, _, pressure = func_pressure(rho_point_2, vij_bulk)
+    bulk_pressure_2 = pressure
+    
+    print(bulk_pressure, bulk_pressure_2)
+    
+    exit(0)
+    
+    
     
     
     temperature = 1
