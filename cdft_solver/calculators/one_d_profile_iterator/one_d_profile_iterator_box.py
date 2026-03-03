@@ -984,7 +984,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     profile_p = find_key_recursive(config, "profile")
     
     vij_interval = int (profile_p["vij_interval"])
-    alpha_max = float (profile_p [ "alpha_mixing_min"])
+    alpha_min = float (profile_p [ "alpha_mixing_min"])
     alpha_max = 0.01
     alpha = 0.05
     
@@ -994,7 +994,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     iteration_max = profile_p[ "iteration_max" ]
     log_period = profile_p [ "log_period" ]
     tol = find_key_recursive(profile_p, "tolerance")
-    alpha_min  =  0.00001
+    #alpha_min  =  0.00001
     
     prev_residual = np.inf
     
