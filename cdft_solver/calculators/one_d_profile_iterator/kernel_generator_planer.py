@@ -3,6 +3,7 @@
 import numpy as np
 from collections.abc import Mapping
 from cdft_solver.calculators.radial_distribution_function.rdf_radial import rdf_radial
+from cdft_solver.calculators.radial_distribution_function.rdf_planer import rdf_planer
 
 
 def build_strength_kernel_planer(
@@ -110,17 +111,18 @@ def build_strength_kernel_planer(
     # ==================================================
     if kernel_type == "rdf":
         print("🔄 Computing RDF-based planar strength kernel")
-
-        rdf_out = rdf_radial(
-            ctx=ctx,
-            rdf_config=config,
-            densities=densities,
+        
+        rdf_planer(
+            ctx = ctx,
+            rdf_config =  config,
+            densities = densities,
             supplied_data=supplied_data,
             export=False,
             plot=True,
-            filename_prefix="rdf",
+            filename_prefix="rdf_2d",
         )
-
+        
+        
         for i, si in enumerate(species):
             for j, sj in enumerate(species[i:], start=i):
 
