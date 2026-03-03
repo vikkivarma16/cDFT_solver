@@ -982,7 +982,9 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
 
     profile_p = find_key_recursive(config, "profile")
-    alpha_max = profile_p [ "alpha_mixing_min"]
+    
+    vij_interval = int (profile_p["vij_interval"])
+    alpha_max = float (profile_p [ "alpha_mixing_min"])
     alpha_max = 0.01
     alpha = 0.05
     
@@ -1048,7 +1050,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     
     while (iteration < iteration_max):
     
-        if (iteration%100 == 0):
+        if (iteration% vij_interval == 0):
             def compute_vij (densities, kernel  =  "uniform"):
                 kernel = build_strength_kernel_planer( ctx, config, densities = densities, supplied_data=None, kernel_type=kernel, )
                 vij  =  vij_planer_kernel(ctx, config, kernel_data= kernel, u_data = mean_f_weights, export_json=False, filename="vij_planar_kernel_u.json", plot = True) 
