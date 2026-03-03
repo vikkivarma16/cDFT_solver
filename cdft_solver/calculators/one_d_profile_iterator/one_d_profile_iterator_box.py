@@ -978,10 +978,6 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         for j, sj in enumerate(species):
             vij_array[k, j, :, :] = vij_dict[(sk, sj)]
             
-            
-            print (vij_dict)
-            
-            exit(0)
 
     # Optional sanity check
     assert np.allclose(vij_array, vij_array.swapaxes(0,1).swapaxes(2,3)) \
@@ -1287,9 +1283,14 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             grand_landau += landau[i]
             surface_tension_values [i] =  bulk_pressure + grand_landau # - func_pressure(*ind_density) #
             
-            
-            
-            pressure_values[i] = func_pressure(ind_density)
+            vij_point  = []
+            for it in range (N):
+                temp = []
+                for jt in range (N):
+                    temp.append(vij[it, jt, i , i])
+                vij_point(temp)
+            vij_point = np.array(vij_point)
+            pressure_values[i] = func_pressure(ind_density, vij_point)
                 
                 
             # -------------------------
