@@ -55,17 +55,11 @@ def free_energy_lattice(ctx=None, hc_data=None, export_json=True, filename="Solu
     # -------------------------
     # Lattice vacancy entropy correction
     # -------------------------
-    rho_tot = sum(densities)
-
-    f_lattice_entropy = (
-        (1 - rho_tot) * sp.log(1 - rho_tot)
-        + rho_tot   # cancels -rho_i from ideal later
-    )
 
     # -------------------------
     # Total lattice free energy
     # -------------------------
-    f_lattice = fhc + f_mf + f_lattice_entropy
+    f_lattice = fhc + f_mf 
 
     # -------------------------
     # Flatten variables for Lambda
