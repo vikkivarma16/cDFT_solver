@@ -1076,6 +1076,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
             for k, sk in enumerate(species):
                 for j, sj in enumerate(species):
                     vij_array[k, j, :, :] = vij_dict[(sk, sj)]
+                    
+            print (vij_array)
         
         
         rho_r_initial = rho_r_current.copy()  # IMPORTANT: real copy for residual
