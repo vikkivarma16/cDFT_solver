@@ -2,7 +2,6 @@
 
 import numpy as np
 from collections.abc import Mapping
-from cdft_solver.calculators.radial_distribution_function.rdf_radial import rdf_radial
 from cdft_solver.calculators.radial_distribution_function.rdf_planer import rdf_planer
 
 
@@ -14,12 +13,13 @@ def build_strength_kernel_planer(
     kernel_type="uniform",
 ):
     """
-    Build planar strength kernel with MF-compatible structure.
+    Build planar strength kernel.
 
     Returns
     -------
     dict:
         {
+            "type": "...",
             "species": [...],
             "z_grid": [...],
             "r_grid": [...],
@@ -56,7 +56,7 @@ def build_strength_kernel_planer(
     if species is None:
         raise ValueError("Species not found in config")
 
-    N = len(species)
+    Ns = len(species)
 
     # --------------------------------------------------
     # Planar grid
@@ -66,6 +66,7 @@ def build_strength_kernel_planer(
         raise ValueError("Missing planer_rdf block")
 
     box_props = params["box_properties"]
+
     Nz = int(box_props["box_points"][0])
     Nr = int(box_props["box_points"][1])
 
@@ -75,9 +76,6 @@ def build_strength_kernel_planer(
     z_grid = np.linspace(0.0, Lz, Nz)
     r_grid = np.linspace(0.0, Rmax, Nr)
 
-    # --------------------------------------------------
-    # Allocate kernel
-    # --------------------------------------------------
     strength_kernel = {}
 
     def pair_key(a, b):
@@ -91,9 +89,9 @@ def build_strength_kernel_planer(
 
         for i, si in enumerate(species):
             for j, sj in enumerate(species[i:], start=i):
-                pair = pair_key(si, sj)
                 kernel = np.ones((Nz, Nz, Nr), dtype=float)
-                strength_kernel[pair] = kernel
+
+                strength_kernel[pair_key(si, sj)] = kernel
                 strength_kernel[pair_key(sj, si)] = kernel
 
         return {
@@ -107,39 +105,35 @@ def build_strength_kernel_planer(
         }
 
     # ==================================================
-    # RDF KERNEL
+    # RDF-BASED KERNEL (FIXED)
     # ==================================================
     if kernel_type == "rdf":
         print("🔄 Computing RDF-based planar strength kernel")
-        
-        rdf_planer(
-            ctx = ctx,
-            rdf_config =  config,
-            densities = densities,
+
+        rdf_out = rdf_planer(
+            ctx=ctx,
+            rdf_config=config,
+            densities=densities,
             supplied_data=supplied_data,
             export=False,
-            plot=True,
-            filename_prefix="rdf_2d",
+            plot=False,
         )
-        
-        
+
+        g_tensor = rdf_out["g_r"]  # (Ns, Ns, Nz, Nz, Nr)
+
         for i, si in enumerate(species):
-            for j, sj in enumerate(species[i:], start=i):
+            for j, sj in enumerate(species):
 
-                g_r = rdf_out[(si, sj)]["g_r"]
-                r_rdf = rdf_out[(si, sj)]["r"]
+                kernel = g_tensor[i, j]  # (Nz, Nz, Nr)
 
-                if len(g_r) != Nr:
-                    raise ValueError("RDF r-grid incompatible with planar grid")
+                # Defensive shape check
+                if kernel.shape != (Nz, Nz, Nr):
+                    raise ValueError(
+                        f"Incompatible RDF kernel shape for pair {si}{sj}: "
+                        f"{kernel.shape} != {(Nz, Nz, Nr)}"
+                    )
 
-                kernel = np.zeros((Nz, Nz, Nr), dtype=float)
-
-                # Planar lift: same g(r) for every (z,z′)
-                for k in range(Nr):
-                    kernel[:, :, k] = g_r[k]
-
-                strength_kernel[pair_key(si, sj)] = kernel
-                strength_kernel[pair_key(sj, si)] = kernel
+                strength_kernel[pair_key(si, sj)] = kernel.copy()
 
         return {
             "type": "rdf",
@@ -157,4 +151,3 @@ def build_strength_kernel_planer(
     raise ValueError(
         f"Unknown kernel_type '{kernel_type}' (expected 'uniform' or 'rdf')"
     )
-
