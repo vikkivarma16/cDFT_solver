@@ -100,6 +100,15 @@ def merge_free_energies(components):
     }
 
 
+def find_key_recursive(d, key):
+    if key in d:
+        return d[key]
+    for v in d.values():
+        if isinstance(v, dict):
+            out = find_key_recursive(v, key)
+            if out is not None:
+                return out
+    return None
 
 
 
@@ -130,8 +139,23 @@ def total_free_energy(
 
     if system_config is None or "system" not in system_config:
         raise ValueError("system_config must contain 'system'")
+    
+    # -------------------------
+    # Extract free-energy mode safely
+    # -------------------------
+    free_energy_block = find_key_recursive(system_config, "free_energy")
 
-    mode = system_config["system"].get("mode", "standard").lower()
+    if free_energy_block is None:
+        raise ValueError("Missing 'free_energy' block in system_config")
+
+    mode = free_energy_block.get("mode", "standard")
+
+    if not isinstance(mode, str):
+        raise ValueError("free_energy mode must be a string")
+
+    mode = mode.lower()
+        
+    
 
     # -------------------------
     # Sigma inspection
