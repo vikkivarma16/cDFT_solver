@@ -1,4 +1,4 @@
-
+from sympy import Lambda
 from cdft_solver.calculators.free_energy_hard_core.hard_core_lattice import hard_core_lattice
 
 
@@ -31,16 +31,7 @@ def free_energy_lattice(ctx=None, hc_data=None, export_json=True, filename="Solu
     # Symbolic densities
     # -------------------------
     densities = [sp.symbols(f"rho_{s}") for s in species]
-
-    # -------------------------
-    # Hard-core contribution
-    # -------------------------
-    # Reuse your hard_core machinery conceptually:
-    # same flags, same sigma handling, same zero-d construction
-    from sympy import Lambda
-
-    # Build hard-core free energy expression
-    # (this is exactly what hard_core() already returns)
+    
     hc_result = hard_core_lattice( ctx=ctx, hc_data=hc_data, export_json=False )
 
     fhc = hc_result["expression"]
@@ -60,11 +51,21 @@ def free_energy_lattice(ctx=None, hc_data=None, export_json=True, filename="Solu
         for i in range(n_species)
         for j in range(n_species)
     )
+    
+    # -------------------------
+    # Lattice vacancy entropy correction
+    # -------------------------
+    rho_tot = sum(densities)
+
+    f_lattice_entropy = (
+        (1 - rho_tot) * sp.log(1 - rho_tot)
+        + rho_tot   # cancels -rho_i from ideal later
+    )
 
     # -------------------------
     # Total lattice free energy
     # -------------------------
-    f_lattice = fhc + f_mf
+    f_lattice = fhc + f_mf + f_lattice_entropy
 
     # -------------------------
     # Flatten variables for Lambda
