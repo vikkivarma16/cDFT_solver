@@ -25,6 +25,9 @@ def hybrid(ctx):
             "fhc_symbolic": sympy.Expr
         }
     """
+    
+    print ("free energy hybrid lattice computed for the same purpose !!!!!!\n\n\n\n")
+    
     import numpy as np
     import sympy as sp
     from pathlib import Path
