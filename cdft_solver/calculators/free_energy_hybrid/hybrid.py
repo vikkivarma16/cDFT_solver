@@ -1,7 +1,7 @@
 from sympy import Lambda
 
 
-def free_energy_hybrid(ctx=None, export_json=True, filename="Solution_hybrid.json"):
+def hybrid(ctx=None, export_json=True, filename="Solution_hybrid.json"):
     """
     Computes the symbolic hybrid free energy:
 
