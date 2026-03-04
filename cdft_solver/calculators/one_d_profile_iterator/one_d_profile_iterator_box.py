@@ -848,13 +848,16 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     piee = np.pi
     
 
-    def compute_vij (densities, kernel  =  "uniform"):
+    def compute_vij_planer (densities, kernel  =  "uniform"):
         kernel = build_strength_kernel_planer( ctx = ctx, config = system, densities = densities, supplied_data = None, kernel_type = kernel, )
         vij = vij_planer_kernel (ctx, config, kernel_data = kernel, u_data = mean_f_weights, export_json = False, filename = "vij_planar_kernel_u.json", plot = True)
         return vij
         
     
-    vij = compute_vij (densities = rho_r, kernel = "uniform")
+    vij = compute_vij_planer (densities = rho_r, kernel = "uniform")
+    
+    
+    
     
     
 
@@ -1065,12 +1068,8 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
     while (iteration < iteration_max):
     
         if (iteration% vij_interval == 0):
-            def compute_vij (densities, kernel  =  "uniform"):
-                kernel = build_strength_kernel_planer( ctx, config, densities = densities, supplied_data=None, kernel_type=kernel, )
-                vij  =  vij_planer_kernel(ctx, config, kernel_data= kernel, u_data = mean_f_weights, export_json=False, filename="vij_planar_kernel_u.json", plot = True) 
-                return vij
-            vij = compute_vij (densities = rho_r, kernel = kernel_applied)
-            
+        
+            vij = compute_vij_planer (densities = rho_r, kernel = kernel_applied)
             vij_dict = vij["vij_numeric"]
             species = vij["species"]
             
