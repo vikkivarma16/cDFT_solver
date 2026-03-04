@@ -41,7 +41,7 @@ def free_energy_lattice(ctx=None, hc_data=None, export_json=True, filename="Solu
 
     # Build hard-core free energy expression
     # (this is exactly what hard_core() already returns)
-    hc_result = hard_core_lattice( ctx=None, hc_data=hc_data, export_json=False )
+    hc_result = hard_core_lattice( ctx=ctx, hc_data=hc_data, export_json=False )
 
     fhc = hc_result["expression"]
 

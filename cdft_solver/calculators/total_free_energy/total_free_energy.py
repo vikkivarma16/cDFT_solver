@@ -243,7 +243,7 @@ def total_free_energy(
             filename = filenames["hybrid"],
         )
 
-        components.extend(hyb_lattice)
+        components.extend([hyb_lattice])
 
         merged = merge_free_energies(components)
         merged["selected_model"] = "ideal + hybrid_lattice"
