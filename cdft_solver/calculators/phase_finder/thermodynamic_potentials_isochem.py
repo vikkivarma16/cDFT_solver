@@ -306,6 +306,8 @@ def evaluate_grand_canonical_state(
                 return np.ones(len(mu_species)) * 1e6
 
         vij = vij = compute_vij(rho, kernel=integrated_strength_kernel)
+        
+        print (vij)
 
         mu, _, _ = eval_mu_pressure(rho, vij)
 

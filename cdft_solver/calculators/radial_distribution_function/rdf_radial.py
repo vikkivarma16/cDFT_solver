@@ -463,9 +463,8 @@ def apply_adaptive_ylim(ax, ydata, limit=10, clip=5):
     ymax = np.nanmax(np.abs(ydata))
     if ymax > limit:
         ax.set_ylim(-clip, clip)
-def plot_matrix_quantity(
-    r, quantity, u_matrix, species, title_prefix, filename, plots_dir
-):
+def plot_matrix_quantity( r, quantity, u_matrix, species, title_prefix, filename, plots_dir):
+    
     n = len(species)
     fig, axes = plt.subplots(n, n, figsize=(3*n, 3*n), sharex=True)
 

@@ -263,6 +263,7 @@ def evaluate_canonical_state(
     free_energy  = find_key_recursive(config_dict, "free_energy")
     integrated_strength_kernel = free_energy["integrated_strength_kernel"]
     vij = compute_vij(rho, kernel=integrated_strength_kernel)
+    print(vij)
     
     # Evaluate thermodynamics
     mu, P, f = eval_mu_pressure(rho, vij)
