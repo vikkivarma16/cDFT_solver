@@ -180,6 +180,17 @@ def build_thermodynamics_from_fe_res(fe_res):
 
 
 
+def find_key_recursive(d, key):
+    if key in d:
+        return d[key]
+    for v in d.values():
+        if isinstance(v, dict):
+            out = find_key_recursive(v, key)
+            if out is not None:
+                return out
+    return None
+
+
 def evaluate_grand_canonical_state(
     ctx,
     config_dict,
@@ -272,6 +283,9 @@ def evaluate_grand_canonical_state(
     # ---------------------------------
     # Solve for unknown densities (single root solve)
     # ---------------------------------
+    free_energy  = find_key_recursive(config_dict, "free_energy")
+    integrated_strength_kernel = free_energy["integrated_strength_kernel"]
+    
 
     fixed_density_vector = np.zeros(len(species))
 
@@ -291,7 +305,7 @@ def evaluate_grand_canonical_state(
             if np.sum(rho) > total_density_bound:
                 return np.ones(len(mu_species)) * 1e6
 
-        vij = compute_vij(rho, kernel="uniform")
+        vij = vij = compute_vij(rho, kernel=integrated_strength_kernel)
 
         mu, _, _ = eval_mu_pressure(rho, vij)
 
