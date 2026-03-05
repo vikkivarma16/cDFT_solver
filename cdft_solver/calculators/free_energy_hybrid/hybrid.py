@@ -189,9 +189,7 @@ def hybrid(
     f_mf = sp.Integer(0)
 
     for i in range(n_species):
-        for j in range(i, n_species):
-
-            pref = 1 if i == j else 2
+        for j in range(n_species):
 
             if flag[i] == 0 or flag[j] == 0:
                 squeeze = 1 / (1 - eta_c)
@@ -200,7 +198,6 @@ def hybrid(
 
             f_mf += (
                 sp.Rational(1, 2)
-                * pref
                 * vij[i][j]
                 * eta[i]
                 * eta[j]
