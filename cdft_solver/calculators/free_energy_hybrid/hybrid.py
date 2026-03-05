@@ -86,6 +86,40 @@ def hybrid(
         eta[i] for i in range(n_species)
         if flag[i] == 1
     )
+    
+     # -------------------------------------------------
+    # Mean-field interaction symbols
+    # -------------------------------------------------
+    vij = [
+        [
+            sp.symbols(f"v_{species[i]}_{species[j]}")
+            for j in range(n_species)
+        ]
+        for i in range(n_species)
+    ]
+
+    # -------------------------------------------------
+    # Squeezed mean-field interaction
+    # -------------------------------------------------
+    f_mf = sp.Integer(0)
+
+    for i in range(n_species):
+        for j in range(n_species):
+
+            if flag[i] == 0 or flag[j] == 0:
+                squeeze = 1 / (1 - eta_c)
+            else:
+                squeeze = 1
+
+            f_mf += (
+                sp.Rational(1, 2)
+                * vij[i][j]
+                * eta[i]
+                * eta[j]
+                * squeeze
+            )
+    
+    
 
     # -------------------------------------------------
     # Hard-core FMT-like term
@@ -112,7 +146,7 @@ def hybrid(
             if flag[i] == 1
         )
 
-        phi0 = fac1 * sp.log(1 - fac2) + fac2
+        phi0 = fac1 * sp.log(1 - fac2) + fac2 + f_mf
 
         diff1 = [
             sp.diff(phi0, etas_sym[i])
@@ -172,42 +206,12 @@ def hybrid(
 
     fhc = hard_core_expression()
 
-    # -------------------------------------------------
-    # Mean-field interaction symbols
-    # -------------------------------------------------
-    vij = [
-        [
-            sp.symbols(f"v_{species[i]}_{species[j]}")
-            for j in range(n_species)
-        ]
-        for i in range(n_species)
-    ]
-
-    # -------------------------------------------------
-    # Squeezed mean-field interaction
-    # -------------------------------------------------
-    f_mf = sp.Integer(0)
-
-    for i in range(n_species):
-        for j in range(n_species):
-
-            if flag[i] == 0 or flag[j] == 0:
-                squeeze = 1 / (1 - eta_c)
-            else:
-                squeeze = 1
-
-            f_mf += (
-                sp.Rational(1, 2)
-                * vij[i][j]
-                * eta[i]
-                * eta[j]
-                * squeeze
-            )
+   
 
     # -------------------------------------------------
     # Total free energy
     # -------------------------------------------------
-    f_total = fhc + f_mf
+    f_total = fhc
 
     # -------------------------------------------------
     # Flatten variables
