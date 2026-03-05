@@ -82,10 +82,7 @@ def hybrid(
     ]
 
     # total colloid packing fraction
-    eta_c = sum(
-        eta[i] for i in range(n_species)
-        if flag[i] == 1
-    )
+    
     
      # -------------------------------------------------
     # Mean-field interaction symbols
@@ -104,6 +101,10 @@ def hybrid(
     f_mf = sp.Integer(0)
     
     etas_sym = [sp.symbols(f"eta_{i}") for i in range(n_species)]
+    eta_c = sum(
+        etas_sym[i] for i in range(n_species)
+        if flag[i] == 1
+    )
 
     for i in range(n_species):
         for j in range(n_species):
