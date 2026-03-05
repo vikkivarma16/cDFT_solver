@@ -54,6 +54,17 @@ def deep_get_all(data, key):
     return found
 
 
+def find_key_recursive(d, key):
+    if key in d:
+        return d[key]
+    for v in d.values():
+        if isinstance(v, dict):
+            out = find_key_recursive(v, key)
+            if out is not None:
+                return out
+    return None
+
+
 def build_thermodynamics_from_fe_res(fe_res):
     """
     Given a free-energy result dictionary (from JSON),
@@ -249,8 +260,10 @@ def evaluate_canonical_state(
 
         return vij
 
-    vij = compute_vij(rho, kernel="uniform")
-
+    free_energy  = find_key_recursive(config_dict, free_energy)
+    integrated_strength_kernel = free_energy["integrated_strength_kernel"]
+    vij = compute_vij(rho, kernel=integrated_strength_kernel)
+    
     # Evaluate thermodynamics
     mu, P, f = eval_mu_pressure(rho, vij)
 
