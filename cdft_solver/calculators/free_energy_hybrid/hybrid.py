@@ -1,12 +1,17 @@
 from sympy import Lambda
 
 
-def hybrid(ctx=None, export_json=True, filename="Solution_hybrid.json"):
+def hybrid(
+    ctx=None,
+    hc_data=None,
+    export_json=True,
+    filename="Solution_hybrid.json",
+):
     """
-    Computes the symbolic hybrid free energy:
+    Computes hybrid free energy:
 
-        F_hybrid = F_hard_core (FMT-like)
-                   + squeezed mean-field interaction
+        F = F_hard_core (FMT-like zero-d)
+            + squeezed mean-field interaction
 
     Interaction structure:
         - Colloid–colloid: 1/2 v_ij η_i η_j
@@ -14,43 +19,54 @@ def hybrid(ctx=None, export_json=True, filename="Solution_hybrid.json"):
         - Polymer–colloid: 1/2 v_ij η_i η_j / (1 - η_c)
 
     where:
-        η_c = sum over colloid packing fractions
-
-    Parameters
-    ----------
-    ctx : object
-        Must contain:
-            - scratch_dir
-            - input_file
-
-    Returns
-    -------
-    dict with symbolic function and expression
+        η_c = total colloid packing fraction
     """
 
     import sympy as sp
     import numpy as np
     import json
     from pathlib import Path
-    from cdft_solver.generators.potential_splitters.generator_potential_splitter_hc import (
-        hard_core_potentials,
-    )
-
-    print("Hybrid cavity + squeezed mean-field free energy constructed.\n")
 
     # -------------------------------------------------
-    # Load hard-core data
+    # Validate hc_data
     # -------------------------------------------------
-    hc_data = hard_core_potentials(ctx)
-
     if hc_data is None or not isinstance(hc_data, dict):
-        raise ValueError("Hard-core data could not be loaded.")
+        raise ValueError("hc_data must be provided as a dictionary")
 
-    species = sorted(hc_data.keys())
+    species = list(hc_data.get("species", []))
+    sigma_raw = hc_data.get("sigma", [])
+    flag_raw = hc_data.get("flag", [])
+
+    if not species:
+        raise ValueError("hc_data must contain 'species'")
+
     n_species = len(species)
 
-    sigma = [hc_data[s]["sigma_eff"] for s in species]
-    flag = [hc_data[s]["flag"] for s in species]  # 1 = colloid, 0 = polymer
+    # -------------------------------------------------
+    # Extract diagonal helper (same as lattice)
+    # -------------------------------------------------
+    def extract_diagonal(data, n, name="array"):
+
+        arr = np.asarray(data)
+
+        if arr.ndim == 1 and arr.size == n:
+            return arr.tolist()
+
+        if arr.ndim == 1 and arr.size == n * n:
+            return arr.reshape((n, n)).diagonal().tolist()
+
+        if arr.ndim == 2 and arr.shape == (n, n):
+            return arr.diagonal().tolist()
+
+        raise ValueError(
+            f"{name} must be length-{n}, {n}x{n}, or flat length-{n*n} array"
+        )
+
+    sigma = extract_diagonal(sigma_raw, n_species, "sigma")
+    flag = extract_diagonal(flag_raw, n_species, "flag")
+
+    sigma = [float(s) for s in sigma]
+    flag = [int(f) for f in flag]
 
     # -------------------------------------------------
     # Symbolic densities
@@ -58,20 +74,21 @@ def hybrid(ctx=None, export_json=True, filename="Solution_hybrid.json"):
     densities = [sp.symbols(f"rho_{s}") for s in species]
 
     # -------------------------------------------------
-    # Packing fractions η_i
+    # Packing fractions
     # -------------------------------------------------
     eta = [
         densities[i] * (sp.pi * sigma[i] ** 3 / 6)
         for i in range(n_species)
     ]
 
-    # Colloid packing fraction
+    # total colloid packing fraction
     eta_c = sum(
-        eta[i] for i in range(n_species) if flag[i] == 1
+        eta[i] for i in range(n_species)
+        if flag[i] == 1
     )
 
     # -------------------------------------------------
-    # Hard-core FMT part (zero-dimensional route)
+    # Hard-core FMT-like term
     # -------------------------------------------------
     def hard_core_expression():
 
@@ -88,22 +105,34 @@ def hybrid(ctx=None, export_json=True, filename="Solution_hybrid.json"):
         ]
 
         fac1 = 1 - sum(etas_sym)
+
         fac2 = sum(
-            etas_sym[i] for i in range(n_species) if flag[i] == 1
+            etas_sym[i]
+            for i in range(n_species)
+            if flag[i] == 1
         )
 
         phi0 = fac1 * sp.log(1 - fac2) + fac2
 
-        diff1 = [sp.diff(phi0, etas_sym[i]) for i in range(n_species)]
-        diff2 = [
-            [sp.diff(phi0, etas_sym[i], etas_sym[j])
-             for j in range(n_species)]
+        diff1 = [
+            sp.diff(phi0, etas_sym[i])
             for i in range(n_species)
         ]
+
+        diff2 = [
+            [
+                sp.diff(phi0, etas_sym[i], etas_sym[j])
+                for j in range(n_species)
+            ]
+            for i in range(n_species)
+        ]
+
         diff3 = [
             [
-                [sp.diff(phi0, etas_sym[i], etas_sym[j], etas_sym[k])
-                 for k in range(n_species)]
+                [
+                    sp.diff(phi0, etas_sym[i], etas_sym[j], etas_sym[k])
+                    for k in range(n_species)
+                ]
                 for j in range(n_species)
             ]
             for i in range(n_species)
@@ -115,7 +144,9 @@ def hybrid(ctx=None, export_json=True, filename="Solution_hybrid.json"):
         )
 
         phi2 = sum(
-            variables[i][1] * variables[j][2] * diff2[i][j]
+            variables[i][1]
+            * variables[j][2]
+            * diff2[i][j]
             for i in range(n_species)
             for j in range(n_species)
         )
@@ -133,7 +164,7 @@ def hybrid(ctx=None, export_json=True, filename="Solution_hybrid.json"):
 
         fhc = phi1 + phi2 + phi3
 
-        # Substitute η_i
+        # substitute η_i
         for i in range(n_species):
             fhc = fhc.subs(etas_sym[i], variables[i][3])
 
@@ -145,13 +176,15 @@ def hybrid(ctx=None, export_json=True, filename="Solution_hybrid.json"):
     # Mean-field interaction symbols
     # -------------------------------------------------
     vij = [
-        [sp.symbols(f"v_{species[i]}_{species[j]}")
-         for j in range(n_species)]
+        [
+            sp.symbols(f"v_{species[i]}_{species[j]}")
+            for j in range(n_species)
+        ]
         for i in range(n_species)
     ]
 
     # -------------------------------------------------
-    # Squeezed interaction free energy
+    # Squeezed mean-field interaction
     # -------------------------------------------------
     f_mf = sp.Integer(0)
 
@@ -160,7 +193,6 @@ def hybrid(ctx=None, export_json=True, filename="Solution_hybrid.json"):
 
             pref = 1 if i == j else 2
 
-            # Polymer involved?
             if flag[i] == 0 or flag[j] == 0:
                 squeeze = 1 / (1 - eta_c)
             else:
@@ -176,17 +208,20 @@ def hybrid(ctx=None, export_json=True, filename="Solution_hybrid.json"):
             )
 
     # -------------------------------------------------
-    # Total hybrid free energy
+    # Total free energy
     # -------------------------------------------------
     f_total = fhc + f_mf
 
     # -------------------------------------------------
-    # Flatten variables for Lambda
+    # Flatten variables
     # -------------------------------------------------
     flat_vars = tuple(
         densities
-        + [vij[i][j] for i in range(n_species)
-           for j in range(n_species)]
+        + [
+            vij[i][j]
+            for i in range(n_species)
+            for j in range(n_species)
+        ]
     )
 
     F_func = Lambda(flat_vars, f_total)
@@ -204,15 +239,19 @@ def hybrid(ctx=None, export_json=True, filename="Solution_hybrid.json"):
     # Optional JSON export
     # -------------------------------------------------
     if export_json and ctx is not None and hasattr(ctx, "scratch_dir"):
+
         scratch = Path(ctx.scratch_dir)
         scratch.mkdir(parents=True, exist_ok=True)
 
         out_file = scratch / filename
 
         with open(out_file, "w") as f:
+
             json.dump(
                 {
                     "species": species,
+                    "sigma_eff": sigma,
+                    "flag": flag,
                     "variables": [str(v) for v in flat_vars],
                     "function": str(F_func),
                     "expression": str(f_total),
