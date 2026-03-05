@@ -102,6 +102,8 @@ def hybrid(
     # Squeezed mean-field interaction
     # -------------------------------------------------
     f_mf = sp.Integer(0)
+    
+    etas_sym = [sp.symbols(f"eta_{i}") for i in range(n_species)]
 
     for i in range(n_species):
         for j in range(n_species):
@@ -114,8 +116,8 @@ def hybrid(
             f_mf += (
                 sp.Rational(1, 2)
                 * vij[i][j]
-                * eta[i]
-                * eta[j]
+                * etas_sym[i]
+                * etas_sym[j]
                 * squeeze
             )
     
