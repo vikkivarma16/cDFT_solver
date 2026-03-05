@@ -152,7 +152,9 @@ def hybrid(
             sp.diff(phi0, etas_sym[i])
             for i in range(n_species)
         ]
-
+        
+        print ("\n\n\n\n", diff1, "\n\n\n\n")
+        
         diff2 = [
             [
                 sp.diff(phi0, etas_sym[i], etas_sym[j])
@@ -160,6 +162,8 @@ def hybrid(
             ]
             for i in range(n_species)
         ]
+        
+        print ("\n\n\n\n", diff2, "\n\n\n\n")
 
         diff3 = [
             [
@@ -171,6 +175,8 @@ def hybrid(
             ]
             for i in range(n_species)
         ]
+        
+        print ("\n\n\n\n", diff3, "\n\n\n\n")
 
         phi1 = sum(
             variables[i][0] * diff1[i]
