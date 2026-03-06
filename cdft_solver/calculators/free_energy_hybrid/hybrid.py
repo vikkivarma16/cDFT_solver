@@ -110,7 +110,7 @@ def hybrid(
         for j in range(n_species):
 
             if flag[i] == 0 or flag[j] == 0:
-                squeeze = 1 / (1 - 0.5*eta_c)
+                squeeze = 1 # / (1 - 0.5*eta_c + )_)
             else:
                 squeeze = 1
 
