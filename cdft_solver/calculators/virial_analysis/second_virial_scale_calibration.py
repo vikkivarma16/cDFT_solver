@@ -182,7 +182,7 @@ def second_virial_scale_calibration(
         options=dict(
             xtol=1e-6,
             ftol=1e-6,
-            maxiter=500,
+            maxiter=50000,
             disp=True,
         ),
     )
