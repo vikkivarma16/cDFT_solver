@@ -1082,9 +1082,42 @@ def c_analysis(
         print("✅ Saved result_sigma_analysis.json")
                 
         
+        
+        
+        
+        
+        u_attractive = np.zeros_like(u_matrix)
+        r_minima = {}
+        attractive_pairs = [ (i, j) for i in range(N) for j in range(i, N) if has_core[i, j] and np.any(u_matrix[i, j] < -1e-4) ]
+        for i in range(N):
+            for j in range(i, N):
+                if (i, j) in attractive_pairs:
+                    # Detect first minimum close to the hard core
+                    r_m, u_m = detect_first_minimum_near_core(
+                        r,
+                        u_matrix[i, j],
+                        sigma=bh_sigma[i, j],
+                    )
+                    r_minima[(i, j)] = r_m
+                    u_att = np.zeros_like(r)
+                    mask_rep = r <= r_m
+                    mask_att = r > r_m
+                    # WCA attractive tail
+                    u_att[mask_rep] = u_m
+                    u_att[mask_att] = u_matrix[i, j][mask_att]
+                    u_attractive[i, j] = u_att
+                    u_attractive[j, i] = u_att
+        
+        
+        
+        
+        
         # ============================================================
         # G(r) computation (state-free)
         # ============================================================
+        
+        
+        
 
         def compute_G_of_r(
             u_repulsive,
