@@ -322,138 +322,6 @@ def detect_first_minimum_near_core(r, u_ij, sigma=None):
     return r_use[idx], u_use[idx]
     
     
-    
-
-
-def process_supplied_rdf_multistate(supplied_data, species, r_grid):
-
-    if supplied_data is None:
-        return {}
-
-    # Locate state container (flexible naming)
-    state_block = (
-        supplied_data.get("states")
-        or supplied_data.get("state")
-        or supplied_data
-    )
-
-    states_out = {}
-    N = len(species)
-    Nr = len(r_grid)
-
-    for state_name, state_data in state_block.items():
-
-        # -----------------------------
-        # Required metadata
-        # -----------------------------
-        densities_raw = state_data.get("densities", None)
-        if densities_raw is None:
-            raise KeyError(f"State '{state_name}' missing 'densities'")
-
-        # ---------------------------------------
-        # Case 1: dict keyed by species name
-        # ---------------------------------------
-        if isinstance(densities_raw, dict):
-            densities = np.zeros(N, dtype=float)
-
-            for i, s in enumerate(species):
-                if s in densities_raw:
-                    densities[i] = float(densities_raw[s])
-                else:
-                    densities[i] = 0.0   # default for missing species
-
-        # ---------------------------------------
-        # Case 2: scalar density → broadcast
-        # ---------------------------------------
-        elif np.isscalar(densities_raw):
-            densities = np.full(N, float(densities_raw))
-
-        # ---------------------------------------
-        # Case 3: array-like
-        # ---------------------------------------
-        else:
-            densities = np.asarray(densities_raw, dtype=float)
-
-            if densities.ndim != 1:
-                raise ValueError(
-                    f"State '{state_name}' densities must be 1D array, scalar, or dict"
-                )
-
-            if len(densities) == 1:
-                densities = np.full(N, densities[0])
-
-            if len(densities) != N:
-                raise ValueError(
-                    f"State '{state_name}' densities size mismatch: "
-                    f"expected {N}, got {len(densities)}"
-                )
-
-
-        # Beta / temperature
-        if "beta" in state_data:
-            beta = float(state_data["beta"])
-        elif "temperature" in state_data:
-            beta = 1.0 / float(state_data["temperature"])
-        else:
-            beta = 1.0  # default if nothing provided
-
-        # -----------------------------
-        # RDF dictionary
-        # -----------------------------
-        rdf_dict = state_data.get("rdf", {})
-        if rdf_dict is None:
-            raise KeyError(f"State '{state_name}' has no RDF data")
-
-        # -----------------------------
-        # Allocate arrays
-        # -----------------------------
-        g_target = np.zeros((N, N, Nr))
-        fixed_mask = np.zeros((N, N), dtype=bool)
-
-        # -----------------------------
-        # Process all pairwise RDFs
-        # -----------------------------
-        for i, si in enumerate(species):
-            for j, sj in enumerate(species):
-
-                # pair keys may be "AB" or "BA"
-                pair_keys = [f"{si}{sj}", f"{sj}{si}"]
-                entry = None
-                for key in pair_keys:
-                    if key in rdf_dict:
-                        entry = rdf_dict[key]
-                        break
-                if entry is None:
-                    continue  # skip missing pairs
-
-                r_sup = np.asarray(entry.get("x", entry.get("r", [])), dtype=float)
-                g_sup = np.asarray(entry.get("y", entry.get("g", [])), dtype=float)
-
-                if r_sup.size == 0 or g_sup.size == 0:
-                    continue  # skip empty data
-
-                # Interpolation
-                interp = interp1d(
-                    r_sup,
-                    g_sup,
-                    kind="linear",
-                    bounds_error=False,
-                    fill_value=(g_sup[0], 1.0),
-                )
-                g_interp = interp(r_grid)
-
-                # Symmetric assignment
-                g_target[i, j, :] = g_target[j, i, :] = g_interp
-                fixed_mask[i, j] = fixed_mask[j, i] = True
-
-        states_out[state_name] = {
-            "densities": densities,
-            "beta": beta,
-            "g_target": g_target,
-            "fixed_mask": fixed_mask,
-        }
-
-    return states_out
 
 
 def find_key_recursive(d, key):
@@ -565,13 +433,11 @@ def c_analysis(
 
     beta_ref = rdf_block.get("beta", 1.0)
     beta = beta_ref
-    tolerance = rdf_block.get("tolerance", 1e-6)
-    ibi_tolerance = rdf_block.get("ibi_tolerance", 1e-6)                 
+    tolerance = rdf_block.get("tolerance", 1e-6)       
     n_iter = find_key_recursive(rdf_config, "max_iteration")
     alpha_max = rdf_block.get("alpha_max", 0.05)
-    alpha_ibi_max = rdf_block.get("alpha_ibi_max", 0.05)
+        
     
-    n_iter_ibi = rdf_block.get("max_iteration_ibi", 500)
     
     system = rdf_config
     hc_data = hard_core_potentials(
@@ -597,6 +463,17 @@ def c_analysis(
         file_name_prefix="supplied_data_potential_total.json",
         export_files=False,
     )
+    
+    
+    raw_potential = raw_potentials(
+        ctx=ctx,
+        input_data=system,
+        grid_points=5000,
+        file_name_prefix="supplied_data_potential_raw.json",
+        export_files=True
+    )
+    
+    pdata = raw_potential["potentials"]
     
     sigma = hc_data["sigma"]
     print ("sigma matrix before gr: ",sigma)
@@ -654,8 +531,7 @@ def c_analysis(
     # Initialize σ and u
     # -------------------------------------------------
     sigma_matrix = np.zeros((N, N)) if sigma is None else sigma.copy()
-    invert_mask = np.ones((N, N), dtype=bool)
-
+    
     for i, si in enumerate(species):
         for j in range(i, N):   # fixed N
             sj = species[j]
@@ -679,23 +555,16 @@ def c_analysis(
                 fill_value=(pdata["U"][0], 0.0),
                 assume_sorted=True,
             )
-
             u_val = beta_ref * interp_u(r)
-
-            # Correct non-zero detection
-            if np.any(np.abs(u_val) > 1e-6):
-                invert_mask[i, j] = invert_mask[j, i] = False
-
             # symmetric assignment
             u_matrix[i, j, :] = u_val
             u_matrix[j, i, :] = u_val
-
                 
             
     plots = Path(ctx.plots_dir)      
     # u_matrix: (N, N, Nr), r: (Nr,)
     u_strength = np.zeros((N, N))
-
+    
     for i in range(N):
         for j in range(N):
             u = u_matrix[i, j, :]
@@ -707,6 +576,7 @@ def c_analysis(
 
 
     plot_u_matrix( r=r, u_matrix=u_matrix, species=species, outdir=plots, filename="pair_potentials_before inversion.png",)
+    
     # -----------------------------
     # Sigma matrix
     # -----------------------------
@@ -993,7 +863,7 @@ def c_analysis(
             r=r,
             pair_closures=pair_closures,
             densities=np.asarray(densities_s, float),
-            u_matrix=beta_s * u_ref / beta_ref,
+            u_matrix=u_ref,
             sigma_matrix=np.zeros((N, N)),
             n_iter=n_iter,
             tol=tolerance,
@@ -1154,7 +1024,7 @@ def c_analysis(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(densities, float),
-                    u_matrix=beta * u_alpha / beta_ref,
+                    u_matrix= u_alpha,
                     sigma_matrix=np.zeros((N, N)),
                     n_iter=n_iter,
                     tol=tolerance,
@@ -1166,8 +1036,9 @@ def c_analysis(
 
                 G_accum += g_alpha * dalpha
 
-            G_u = beta * G_accum * u_attractive / beta_ref
-
+            G_u = beta * G_accum * u_attractive
+            
+            
             return G_accum, G_u
 
 
