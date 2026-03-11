@@ -714,6 +714,7 @@ def c_analysis(
     
     
     densities_s = densities
+    beta_s = beta
     c_pred, gamma_pred, g_pred, conversion_flag = multi_component_oz_solver_alpha(
         r=r,
         pair_closures=pair_closures,
