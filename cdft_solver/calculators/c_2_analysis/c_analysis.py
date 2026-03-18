@@ -1074,6 +1074,57 @@ def c_analysis(
             tolerance=tolerance,
             alpha_max=alpha_max,
         )
+        
+        
+        
+        # ============================================================
+        # Second virial coefficient analysis (ΔB2)
+        # ============================================================
+
+        def compute_B2(r, u_r, beta):
+            """
+            Compute second virial coefficient:
+                B2 = -2π ∫ (exp(-β u(r)) - 1) r^2 dr
+            """
+            f_r = np.exp(-beta * u_r) - 1.0
+            return -2.0 * np.pi * np.trapz(r**2 * f_r, r)
+
+
+        B2_real = np.zeros((N, N))
+        B2_ref  = np.zeros((N, N))
+        delta_B2 = np.zeros((N, N))
+        two_delta_B2 = np.zeros((N, N))
+
+        for i in range(N):
+            for j in range(i, N):
+
+                # --- Full system
+                B2_real[i, j] = compute_B2(r, u_matrix[i, j], beta_ref)
+
+                # --- Reference system
+                B2_ref[i, j]  = compute_B2(r, u_ref[i, j], beta_ref)
+
+                # --- ΔB2
+                delta = B2_real[i, j] - B2_ref[i, j]
+
+                delta_B2[i, j] = delta_B2[j, i] = delta
+                two_delta_B2[i, j] = two_delta_B2[j, i] = 2.0 * delta
+                
+                
+        delta_b2_package = {
+            "r": r.tolist(),
+            "B2_real": B2_real.tolist(),
+            "B2_ref": B2_ref.tolist(),
+            "delta_B2": delta_B2.tolist(),
+            "two_delta_B2": two_delta_B2.tolist(),
+        }
+
+        out_file = Path(ctx.scratch_dir) / "delta_B2_results.json"
+
+        with open(out_file, "w") as f:
+            json.dump(delta_b2_package, f, indent=4)
+
+        print("✅ ΔB2 analysis exported →", out_file)
 
 
         # ============================================================
