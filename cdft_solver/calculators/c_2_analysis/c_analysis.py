@@ -1112,7 +1112,6 @@ def c_analysis(
                 
                 
         delta_b2_package = {
-            "r": r.tolist(),
             "B2_real": B2_real.tolist(),
             "B2_ref": B2_ref.tolist(),
             "delta_B2": delta_B2.tolist(),
