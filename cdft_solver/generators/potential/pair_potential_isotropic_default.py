@@ -104,7 +104,6 @@ register_isotropic_pair_potential("gs", gaussian)
 def generalized_gaussian(p):
     """
     Generalized Gaussian / GEM-n potential
-
     V(r) = epsilon * exp(-(r/sigma)^n)
     """
 
