@@ -100,6 +100,33 @@ register_isotropic_pair_potential("gaussian", gaussian)
 register_isotropic_pair_potential("gs", gaussian)
 
 
+
+def generalized_gaussian(p):
+    """
+    Generalized Gaussian / GEM-n potential
+
+    V(r) = epsilon * exp(-(r/sigma)^n)
+    """
+
+    sigma = p.get("sigma", 1.0)
+    epsilon = p.get("epsilon", 1.0)
+    n = p.get("n", 2.0)   # power exponent
+
+    def V(r):
+        r = np.asarray(r)
+        return epsilon * np.exp(- (r / sigma) ** n)
+
+    return V
+
+
+# Register
+register_isotropic_pair_potential("generalized_gaussian", generalized_gaussian)
+register_isotropic_pair_potential("gem", generalized_gaussian)
+register_isotropic_pair_potential("gem_n", generalized_gaussian)
+register_isotropic_pair_potential("ggs", generalized_gaussian)
+
+
+
 # ------------------------------------------------------------
 # MIE
 # ------------------------------------------------------------
