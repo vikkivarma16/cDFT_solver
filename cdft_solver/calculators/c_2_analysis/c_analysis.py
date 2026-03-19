@@ -1115,7 +1115,7 @@ def c_analysis(
             "B2_real": B2_real.tolist(),
             "B2_ref": B2_ref.tolist(),
             "delta_B2": delta_B2.tolist(),
-            "two_delta_B2": two_delta_B2.tolist(),
+            "2_delta_B2": two_delta_B2.tolist(),
         }
 
         out_file = Path(ctx.scratch_dir) / "delta_B2_results.json"
