@@ -562,7 +562,7 @@ def dispersion_relation(
     alpha_max = rdf_block.get("alpha_max", 0.05)
     
     
-    
+    print ("\n\n\n\nSupplied densities are given as:", densities, "\n\n\n\n\n")
     system = rdf_config
     hc_data = hard_core_potentials(
         ctx=ctx,
