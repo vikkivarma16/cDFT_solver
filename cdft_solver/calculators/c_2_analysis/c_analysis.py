@@ -521,6 +521,7 @@ def c_analysis(
     # -----------------------------
     
     potential_dict = total_data["total_potentials"]
+    potential_dict = pdata
     u_matrix = np.zeros((N, N, len(r)))
     print ("closures applied: ", pair_closures)
     N = len (species)
