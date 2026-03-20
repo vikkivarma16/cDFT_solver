@@ -14,6 +14,27 @@ from cdft_solver.generators.potential_splitter.raw import raw_potentials
 # Utilities
 # ============================================================
 
+def find_zero_crossing(r, u):
+    idx = np.where(u <= 0)[0]
+    if len(idx) > 0:
+        return r[idx[0]]
+    return r[-1]
+    
+def compute_sigma_BH(scale, r, u):
+    u_scaled = scale * u
+
+    # --- find repulsive region ---
+    r_cut = find_zero_crossing(r, u_scaled)
+
+    mask = r <= r_cut
+    r_eff = r[mask]
+    u_eff = u_scaled[mask]
+
+    integrand = 1.0 - np.exp(-np.clip(u_eff, -100, 100))
+
+    return np.trapz(integrand, r_eff)
+
+
 def find_key_recursive(d, key):
     if key in d:
         return d[key]
@@ -160,6 +181,42 @@ def second_virial_scale_calibration(
     pair_list = [(i, j) for i in range(n) for j in range(i, n)]
     scale_init = np.ones(len(pair_list))
     bounds = [(0.0, 10.0)] * len(scale_init)
+    
+    def objective(scale_vec):
+        loss = 0.0
+        k = 0
+
+        for (i, j) in pair_list:
+            f_ij = scale_vec[k]
+
+            u_ij = u_total[i, j]
+
+            # --- compute B2 ---
+            B2_ij = compute_B2_scaled(f_ij, r, u_ij)
+
+            # --- compute BH diameter ---
+            sigma_BH = compute_sigma_BH(f_ij, r, u_ij)
+
+            # --- check if repulsive core exists ---
+            if sigma_BH > 1e-6:
+
+                B2_HS = (2.0 / 3.0) * np.pi * sigma_BH**3
+                ratio = B2_ij / B2_HS
+
+                target = B2_target[i, j]   # dimensionless now
+                diff = ratio - target
+
+            else:
+                # fallback: no meaningful hard-core
+                diff = B2_ij - B2_target[i, j]
+
+            loss += diff * diff
+            k += 1
+
+        return loss
+    
+    
+    
 
     def objective(scale_vec):
         loss = 0.0
@@ -233,4 +290,3 @@ def second_virial_scale_calibration(
         print(f"✅ Second virial scale calibration exported → {path}")
 
     return B2, scale_calibrated
-
