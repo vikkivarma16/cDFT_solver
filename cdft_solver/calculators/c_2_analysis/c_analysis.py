@@ -834,7 +834,7 @@ def c_analysis(
 
         sigma_init_vec = np.array([sigma_guess[i, j] for (i, j) in hard_core_pairs])
 
-        bounds = [(0.5 * s0, 1.5 * s0) for s0 in sigma_init_vec]
+        bounds = [(0.9 * s0, 1.2 * s0) for s0 in sigma_init_vec]
 
         result = minimize(
             sigma_objective,
