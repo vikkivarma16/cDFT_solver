@@ -20,19 +20,73 @@ def find_zero_crossing(r, u):
         return r[idx[0]]
     return r[-1]
     
-def compute_sigma_BH(scale, r, u):
+def compute_sigma_BH(scale, r, u, tol=1e-6, hc_threshold=1e3):
+    """
+    Compute Barker–Henderson diameter with robust hard-core detection.
+
+    Parameters
+    ----------
+    scale : float
+        Scaling factor (epsilon scaling)
+    r : array
+        Radial grid
+    u : array
+        Potential (beta-scaled or not, consistent usage)
+    tol : float
+        Numerical tolerance
+    hc_threshold : float
+        Threshold to detect hard-core (very large repulsion)
+
+    Returns
+    -------
+    sigma : float
+        Effective hard-sphere diameter (0 if no hard-core)
+    """
+
     u_scaled = scale * u
 
-    # --- find repulsive region ---
-    r_cut = find_zero_crossing(r, u_scaled)
+    # --------------------------------------------------
+    # STEP 1: Detect hard-core behavior
+    # --------------------------------------------------
+    # Look only at short-range region
+    n_probe = max(5, len(r) // 50)
+    u_short = u_scaled[:n_probe]
 
+    # Hard-core detection: very large repulsion
+    if np.max(u_short) < hc_threshold:
+        return 0.0
+
+    # --------------------------------------------------
+    # STEP 2: Find first zero crossing
+    # --------------------------------------------------
+    idx = np.where(u_scaled <= 0)[0]
+
+    if len(idx) > 0:
+        r_cut = r[idx[0]]
+    else:
+        r_cut = r[-1]
+
+    # --------------------------------------------------
+    # STEP 3: Restrict to repulsive region
+    # --------------------------------------------------
     mask = r <= r_cut
     r_eff = r[mask]
     u_eff = u_scaled[mask]
 
+    # --------------------------------------------------
+    # STEP 4: Barker–Henderson integral
+    # --------------------------------------------------
     integrand = 1.0 - np.exp(-np.clip(u_eff, -100, 100))
 
-    return np.trapz(integrand, r_eff)
+    sigma = np.trapz(integrand, r_eff)
+
+    # --------------------------------------------------
+    # STEP 5: Safety check
+    # --------------------------------------------------
+    if sigma < tol:
+        return 0.0
+
+    return sigma
 
 
 def find_key_recursive(d, key):
