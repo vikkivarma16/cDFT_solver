@@ -269,19 +269,6 @@ def second_virial_scale_calibration(
 
         return loss
     
-    
-    
-
-    def objective(scale_vec):
-        loss = 0.0
-        k = 0
-        for (i, j) in pair_list:
-            f_ij = scale_vec[k]
-            B2_ij = compute_B2_scaled(f_ij, r, u_total[i, j])
-            diff = B2_ij - B2_target[i, j]
-            loss += diff * diff
-            k += 1
-        return loss
 
     print("\nOptimizing total-potential scale factors...")
 
