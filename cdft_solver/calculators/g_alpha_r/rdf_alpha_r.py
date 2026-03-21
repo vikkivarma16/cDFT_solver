@@ -750,13 +750,13 @@ def rdf_alpha_r(
             u_matrix[j, i, :] = u_val
             
     plots = Path(ctx.plots_dir)      
-    plot_u_matrix(
-    r=r,
-    u_matrix=u_matrix,
-    species=species,
-    outdir=plots,
-    filename="pair_potentials.png",
-)
+        plot_u_matrix(
+        r=r,
+        u_matrix=u_matrix,
+        species=species,
+        outdir=plots,
+        filename="pair_potentials.png",
+    )
 
   
 
@@ -1020,7 +1020,7 @@ def rdf_alpha_r(
         
 
             G_accum = np.zeros_like(u_attractive)
-            gamma_inputs =  np.zeros_like(u_attractive)
+            gamma_inputs =  g_ref_final
 
             # --------------------------------------------------------
             # Loop over α
@@ -1041,8 +1041,6 @@ def rdf_alpha_r(
                     gamma_initial=gamma_inputs
                 )
                 
-                if conversion_flag:
-                    gamma_inputs =  gamma_trial.copy()
                 
 
                 # Accumulate G(r)
