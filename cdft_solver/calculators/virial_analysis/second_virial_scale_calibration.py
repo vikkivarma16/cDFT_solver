@@ -296,6 +296,13 @@ def second_virial_scale_calibration(
         for j in range(i, n):
             B2_ij = compute_B2_scaled(scale_calibrated[i, j], r, u_total[i, j])
             B2[i, j] = B2[j, i] = B2_ij
+            f_ij = scale_calibrated[i, j]
+            u_ij = u_total[i, j]
+            sigma_BH = compute_sigma_BH(f_ij, r, u_ij)
+            # --- check... if repulsive core exists ---
+            if sigma_BH > 1e-6:
+                B2_HS = (2.0 / 3.0) * np.pi * sigma_BH**3
+                B2[i, j] = B2[j, i] = B2_ij / B2_HS
 
     # ============================================================
     # EXPORT
