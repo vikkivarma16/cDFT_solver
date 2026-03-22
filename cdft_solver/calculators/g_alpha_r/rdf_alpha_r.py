@@ -1038,7 +1038,6 @@ def rdf_alpha_r(
                     n_iter=n_iter,
                     tol=tol,
                     alpha_rdf_max=alpha_max,
-                    gamma_initial=gamma_inputs
                 )
                 
                 
