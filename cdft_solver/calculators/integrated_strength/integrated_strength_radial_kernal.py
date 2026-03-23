@@ -217,6 +217,9 @@ def vij_radial_kernel(
                 B2_ref = compute_B2(r_common, u_ref, beta)
 
                 vij = 2.0 * (B2_real - B2_ref)
+                
+                
+                print (beta)
 
                 print(f"[DEBUG] Pair ({si},{sj})")
                 print(f"B2_real = {B2_real:.6e}, B2_ref = {B2_ref:.6e}")
