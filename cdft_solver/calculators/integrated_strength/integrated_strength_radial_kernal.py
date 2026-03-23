@@ -201,6 +201,8 @@ def vij_radial_kernel(
             # --------------------------------------------------
             use_b2 = is_uniform_kernel(Kc) and has_hard_core(Uc_raw)
 
+            import matplotlib.pyplot as plt
+
             if use_b2:
                 sigma = None
                 if sigma_matrix is not None:
@@ -208,17 +210,43 @@ def vij_radial_kernel(
 
                 u_real = Uc_raw
                 u_ref = wca_split(r_common, u_real)
-                    
 
                 B2_real = compute_B2(r_common, u_real, beta)
                 B2_ref = compute_B2(r_common, u_ref, beta)
-                
-                print (B2_real, B2_ref)
 
                 vij = 2.0 * (B2_real - B2_ref)
-                
-                print (vij)
-                
+
+                print(f"[DEBUG] Pair ({si},{sj})")
+                print(f"B2_real = {B2_real:.6e}, B2_ref = {B2_ref:.6e}")
+                print(f"vij (2ΔB2) = {vij:.6e}")
+
+                # --------------------------------------------------
+                # Plot debug
+                # --------------------------------------------------
+                scratch = Path(ctx.scratch_dir)
+                scratch.mkdir(parents=True, exist_ok=True)
+
+                fig = plt.figure()
+
+                plt.plot(r_common, u_real, label="u_real (raw)")
+                plt.plot(r_common, u_ref, "--", label="u_ref (WCA)")
+
+                if sigma is not None and sigma > 0:
+                    plt.axvline(sigma, linestyle=":", label=f"sigma = {sigma:.3f}")
+
+                plt.xlabel("r")
+                plt.ylabel("u(r)")
+                plt.title(f"Pair {si}-{sj}\n2ΔB2 = {vij:.4e}")
+                plt.legend()
+                plt.grid(True)
+
+                fname = scratch / f"debug_u_real_ref_{si}_{sj}.png"
+                plt.savefig(fname, dpi=150, bbox_inches="tight")
+                plt.close(fig)
+
+                print(f"[DEBUG] Plot saved → {fname}")
+
+                # optional hard stop (keep if you want)
                 exit(0)
 
             else:
