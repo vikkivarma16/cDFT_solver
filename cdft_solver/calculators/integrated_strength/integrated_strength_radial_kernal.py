@@ -202,7 +202,6 @@ def vij_radial_kernel(
             use_b2 = is_uniform_kernel(Kc) and has_hard_core(Uc_raw)
 
             if use_b2:
-                import matplotlib.pyplot as plt
 
                 sigma = None
                 if sigma_matrix is not None:
@@ -210,9 +209,6 @@ def vij_radial_kernel(
 
                 u_real = Uc_raw
                 u_ref = wca_split(r_common, u_real)
-
-                print(u_real)
-
                 # --------------------------------------------------
                 # B2 computation
                 # --------------------------------------------------
@@ -220,88 +216,6 @@ def vij_radial_kernel(
                 B2_ref = compute_B2(r_common, u_ref, beta)
 
                 vij = 2.0 * (B2_real - B2_ref)
-
-                print(beta)
-                print(f"[DEBUG] Pair ({si},{sj})")
-                print(f"B2_real = {B2_real:.6e}, B2_ref = {B2_ref:.6e}")
-                print(f"vij (2ΔB2) = {vij:.6e}")
-
-                # --------------------------------------------------
-                # Prepare debug data
-                # --------------------------------------------------
-                exp_real = np.exp(-beta * u_real)
-                exp_ref  = np.exp(-beta * u_ref)
-
-                scratch = Path(ctx.scratch_dir)
-                scratch.mkdir(parents=True, exist_ok=True)
-
-                # --------------------------------------------------
-                # SAVE NPZ, TXT, CSV (same as before)
-                # --------------------------------------------------
-                # [Same as previous section: np.savez, TXT, CSV]
-
-                # --------------------------------------------------
-                # 24-12 reference potential
-                # --------------------------------------------------
-                epsilon_ref = 0.7407  # example, same as sanity check
-                sigma_ref   = 1.0
-                def u_24_12(r, epsilon, sigma):
-                    sr = sigma / r
-                    return 4.0 * epsilon * (sr**24 - sr**12)
-
-                u_2412 = u_24_12(r_common, epsilon_ref, sigma_ref)
-                exp_2412 = np.exp(-beta * u_2412)
-
-                # --------------------------------------------------
-                # Plot potentials + reference 24-12
-                # --------------------------------------------------
-                fig = plt.figure()
-                plt.plot(r_common, u_real, label="u_real (raw)")
-                plt.plot(r_common, u_ref, "--", label="u_ref (WCA)")
-                plt.plot(r_common, u_2412, "k:", label="u_24-12 reference")
-                if sigma is not None and sigma > 0:
-                    plt.axvline(sigma, linestyle=":", label=f"sigma = {sigma:.3f}")
-                plt.xlabel("r")
-                plt.ylabel("u(r)")
-                plt.ylim(-1,1)
-                plt.title(f"Pair {si}-{sj}\n2ΔB2 = {vij:.4e}")
-                plt.legend()
-                plt.grid(True)
-                fname = scratch / f"debug_u_real_ref_2412_{si}_{sj}.png"
-                plt.savefig(fname, dpi=150, bbox_inches="tight")
-                plt.close(fig)
-                print(f"[DEBUG] Plot saved → {fname}")
-
-                # --------------------------------------------------
-                # Twin-axis sanity plot (potential + exp(-βu)) with 24-12 overlay
-                # --------------------------------------------------
-                fig2, ax1 = plt.subplots()
-                ax1.plot(r_common, u_real, 'b', label="u_real (raw)")
-                ax1.plot(r_common, u_ref, 'b--', label="u_ref (WCA)")
-                ax1.plot(r_common, u_2412, 'k:', label="u_24-12 ref")
-                ax1.set_xlabel("r")
-                ax1.set_ylim(-3, 3)
-                ax1.set_ylabel("Potential u(r)", color='b')
-                ax1.tick_params(axis='y', labelcolor='b')
-                ax1.grid(True)
-
-                ax2 = ax1.twinx()
-                ax2.plot(r_common, exp_real, 'r', label="exp(-β u_real)")
-                ax2.plot(r_common, exp_ref, 'r--', label="exp(-β u_ref)")
-                ax2.plot(r_common, exp_2412, 'k:', label="exp(-β u_24-12)")
-                ax2.set_ylabel("exp(-β u)", color='r')
-                ax2.tick_params(axis='y', labelcolor='r')
-                ax2.set_ylim(-3, 3)
-
-                fig2.legend(loc="upper right")
-                plt.title(f"B2 sanity check with 24-12 ref: Pair {si}-{sj}")
-                fname2 = scratch / f"debug_b2_sanity_2412_{si}_{sj}.png"
-                plt.savefig(fname2, dpi=150, bbox_inches="tight")
-                plt.close(fig2)
-                print(f"[DEBUG] B2 sanity plot with 24-12 ref saved → {fname2}")
-
-                # optional hard stop
-                exit(0)
 
             else:
                 vij = float(
