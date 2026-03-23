@@ -210,27 +210,60 @@ def vij_radial_kernel(
 
                 u_real = Uc_raw
                 u_ref = wca_split(r_common, u_real)
-                print (u_real)
-                
+
+                print(u_real)
 
                 B2_real = compute_B2(r_common, u_real, beta)
                 B2_ref = compute_B2(r_common, u_ref, beta)
 
                 vij = 2.0 * (B2_real - B2_ref)
-                
-                
-                print (beta)
 
+                print(beta)
                 print(f"[DEBUG] Pair ({si},{sj})")
                 print(f"B2_real = {B2_real:.6e}, B2_ref = {B2_ref:.6e}")
                 print(f"vij (2ΔB2) = {vij:.6e}")
 
                 # --------------------------------------------------
-                # Plot debug
+                # Prepare debug data
                 # --------------------------------------------------
+                exp_real = np.exp(-beta * u_real)
+                exp_ref  = np.exp(-beta * u_ref)
+
                 scratch = Path(ctx.scratch_dir)
                 scratch.mkdir(parents=True, exist_ok=True)
 
+                # --------------------------------------------------
+                # SAVE NUMPY (full precision)
+                # --------------------------------------------------
+                npz_file = scratch / f"debug_b2_data_{si}_{sj}.npz"
+                np.savez(
+                    npz_file,
+                    r=r_common,
+                    u_real=u_real,
+                    u_ref=u_ref,
+                    exp_real=exp_real,
+                    exp_ref=exp_ref,
+                    beta=beta,
+                    B2_real=B2_real,
+                    B2_ref=B2_ref,
+                    vij=vij,
+                )
+
+                print(f"[DEBUG] Raw data saved → {npz_file}")
+
+                # --------------------------------------------------
+                # SAVE TEXT (readable)
+                # --------------------------------------------------
+                txt_file = scratch / f"debug_b2_data_{si}_{sj}.txt"
+                header = "r  u_real  u_ref  exp(-beta*u_real)  exp(-beta*u_ref)"
+                data = np.column_stack((r_common, u_real, u_ref, exp_real, exp_ref))
+                np.savetxt(txt_file, data, header=header)
+
+                print(f"[DEBUG] Text data saved → {txt_file}")
+
+                # --------------------------------------------------
+                # Plot debug
+                # --------------------------------------------------
                 fig = plt.figure()
 
                 plt.plot(r_common, u_real, label="u_real (raw)")
@@ -243,7 +276,7 @@ def vij_radial_kernel(
                 plt.ylabel("u(r)")
                 plt.title(f"Pair {si}-{sj}\n2ΔB2 = {vij:.4e}")
                 plt.legend()
-                plt.ylim(-1,1)
+                plt.ylim(-1, 1)
                 plt.grid(True)
 
                 fname = scratch / f"debug_u_real_ref_{si}_{sj}.png"
@@ -252,7 +285,29 @@ def vij_radial_kernel(
 
                 print(f"[DEBUG] Plot saved → {fname}")
 
-                # optional hard stop (keep if you want)
+                # --------------------------------------------------
+                # Optional: integrand plot (VERY insightful)
+                # --------------------------------------------------
+                fig2 = plt.figure()
+                integrand_real = (np.exp(-beta * u_real) - 1.0) * r_common**2
+                integrand_ref  = (np.exp(-beta * u_ref) - 1.0) * r_common**2
+
+                plt.plot(r_common, integrand_real, label="integrand real")
+                plt.plot(r_common, integrand_ref, "--", label="integrand ref")
+
+                plt.xlabel("r")
+                plt.ylabel("r^2 (exp(-βu)-1)")
+                plt.title(f"B2 Integrand {si}-{sj}")
+                plt.legend()
+                plt.grid(True)
+
+                fname2 = scratch / f"debug_integrand_{si}_{sj}.png"
+                plt.savefig(fname2, dpi=150, bbox_inches="tight")
+                plt.close(fig2)
+
+                print(f"[DEBUG] Integrand plot saved → {fname2}")
+
+                # optional hard stop
                 exit(0)
 
             else:
