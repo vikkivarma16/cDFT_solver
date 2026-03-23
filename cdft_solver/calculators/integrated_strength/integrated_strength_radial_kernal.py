@@ -201,9 +201,9 @@ def vij_radial_kernel(
             # --------------------------------------------------
             use_b2 = is_uniform_kernel(Kc) and has_hard_core(Uc_raw)
 
-            import matplotlib.pyplot as plt
-
             if use_b2:
+                import matplotlib.pyplot as plt
+
                 sigma = None
                 if sigma_matrix is not None:
                     sigma = sigma_matrix[i, j]
@@ -213,6 +213,9 @@ def vij_radial_kernel(
 
                 print(u_real)
 
+                # --------------------------------------------------
+                # B2 computation
+                # --------------------------------------------------
                 B2_real = compute_B2(r_common, u_real, beta)
                 B2_ref = compute_B2(r_common, u_ref, beta)
 
@@ -233,7 +236,7 @@ def vij_radial_kernel(
                 scratch.mkdir(parents=True, exist_ok=True)
 
                 # --------------------------------------------------
-                # SAVE NUMPY (full precision)
+                # SAVE NPZ (full precision)
                 # --------------------------------------------------
                 npz_file = scratch / f"debug_b2_data_{si}_{sj}.npz"
                 np.savez(
@@ -248,21 +251,51 @@ def vij_radial_kernel(
                     B2_ref=B2_ref,
                     vij=vij,
                 )
-
-                print(f"[DEBUG] Raw data saved → {npz_file}")
+                print(f"[DEBUG] NPZ saved → {npz_file}")
 
                 # --------------------------------------------------
-                # SAVE TEXT (readable)
+                # SAVE CLEAN TXT (readable)
                 # --------------------------------------------------
                 txt_file = scratch / f"debug_b2_data_{si}_{sj}.txt"
-                header = "r  u_real  u_ref  exp(-beta*u_real)  exp(-beta*u_ref)"
-                data = np.column_stack((r_common, u_real, u_ref, exp_real, exp_ref))
-                np.savetxt(txt_file, data, header=header)
 
-                print(f"[DEBUG] Text data saved → {txt_file}")
+                with open(txt_file, "w") as f:
+                    f.write("# ==========================================\n")
+                    f.write(f"# Pair: {si}-{sj}\n")
+                    f.write(f"# beta = {beta}\n")
+                    f.write(f"# B2_real = {B2_real:.8e}\n")
+                    f.write(f"# B2_ref  = {B2_ref:.8e}\n")
+                    f.write(f"# vij (2ΔB2) = {vij:.8e}\n")
+                    if sigma is not None:
+                        f.write(f"# sigma = {sigma}\n")
+                    f.write("# ==========================================\n")
+                    f.write("# Columns:\n")
+                    f.write("# r        u_real        u_ref        exp(-βu_real)    exp(-βu_ref)\n")
+
+                    for rr, ur, uref, er, eref in zip(
+                        r_common, u_real, u_ref, exp_real, exp_ref
+                    ):
+                        f.write(
+                            f"{rr:12.6f}  {ur:14.6e}  {uref:14.6e}  {er:14.6e}  {eref:14.6e}\n"
+                        )
+
+                print(f"[DEBUG] TXT saved → {txt_file}")
 
                 # --------------------------------------------------
-                # Plot debug
+                # SAVE CSV (Excel-friendly)
+                # --------------------------------------------------
+                csv_file = scratch / f"debug_b2_data_{si}_{sj}.csv"
+
+                with open(csv_file, "w") as f:
+                    f.write("r,u_real,u_ref,exp_real,exp_ref\n")
+                    for rr, ur, uref, er, eref in zip(
+                        r_common, u_real, u_ref, exp_real, exp_ref
+                    ):
+                        f.write(f"{rr},{ur},{uref},{er},{eref}\n")
+
+                print(f"[DEBUG] CSV saved → {csv_file}")
+
+                # --------------------------------------------------
+                # Plot potentials
                 # --------------------------------------------------
                 fig = plt.figure()
 
@@ -286,11 +319,12 @@ def vij_radial_kernel(
                 print(f"[DEBUG] Plot saved → {fname}")
 
                 # --------------------------------------------------
-                # Optional: integrand plot (VERY insightful)
+                # Plot integrand (CRITICAL DEBUG)
                 # --------------------------------------------------
                 fig2 = plt.figure()
-                integrand_real = (np.exp(-beta * u_real) - 1.0) * r_common**2
-                integrand_ref  = (np.exp(-beta * u_ref) - 1.0) * r_common**2
+
+                integrand_real = (exp_real - 1.0) * r_common**2
+                integrand_ref  = (exp_ref - 1.0) * r_common**2
 
                 plt.plot(r_common, integrand_real, label="integrand real")
                 plt.plot(r_common, integrand_ref, "--", label="integrand ref")
