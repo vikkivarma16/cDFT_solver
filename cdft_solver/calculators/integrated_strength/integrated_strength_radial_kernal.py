@@ -210,6 +210,8 @@ def vij_radial_kernel(
 
                 u_real = Uc_raw
                 u_ref = wca_split(r_common, u_real)
+                print (u_real)
+                
 
                 B2_real = compute_B2(r_common, u_real, beta)
                 B2_ref = compute_B2(r_common, u_ref, beta)
@@ -238,6 +240,7 @@ def vij_radial_kernel(
                 plt.ylabel("u(r)")
                 plt.title(f"Pair {si}-{sj}\n2ΔB2 = {vij:.4e}")
                 plt.legend()
+                plt.ylim(-1,1)
                 plt.grid(True)
 
                 fname = scratch / f"debug_u_real_ref_{si}_{sj}.png"
