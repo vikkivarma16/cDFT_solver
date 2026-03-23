@@ -263,6 +263,7 @@ def vij_radial_kernel(
                     plt.axvline(sigma, linestyle=":", label=f"sigma = {sigma:.3f}")
                 plt.xlabel("r")
                 plt.ylabel("u(r)")
+                plt.ylim(-1,1)
                 plt.title(f"Pair {si}-{sj}\n2ΔB2 = {vij:.4e}")
                 plt.legend()
                 plt.grid(True)
@@ -279,6 +280,7 @@ def vij_radial_kernel(
                 ax1.plot(r_common, u_ref, 'b--', label="u_ref (WCA)")
                 ax1.plot(r_common, u_2412, 'k:', label="u_24-12 ref")
                 ax1.set_xlabel("r")
+                ax1.set_ylim(-3, 3)
                 ax1.set_ylabel("Potential u(r)", color='b')
                 ax1.tick_params(axis='y', labelcolor='b')
                 ax1.grid(True)
@@ -289,6 +291,7 @@ def vij_radial_kernel(
                 ax2.plot(r_common, exp_2412, 'k:', label="exp(-β u_24-12)")
                 ax2.set_ylabel("exp(-β u)", color='r')
                 ax2.tick_params(axis='y', labelcolor='r')
+                ax2.set_ylim(-3, 3)
 
                 fig2.legend(loc="upper right")
                 plt.title(f"B2 sanity check with 24-12 ref: Pair {si}-{sj}")
