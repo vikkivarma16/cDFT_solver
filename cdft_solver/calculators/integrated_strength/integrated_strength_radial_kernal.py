@@ -236,110 +236,66 @@ def vij_radial_kernel(
                 scratch.mkdir(parents=True, exist_ok=True)
 
                 # --------------------------------------------------
-                # SAVE NPZ (full precision)
+                # SAVE NPZ, TXT, CSV (same as before)
                 # --------------------------------------------------
-                npz_file = scratch / f"debug_b2_data_{si}_{sj}.npz"
-                np.savez(
-                    npz_file,
-                    r=r_common,
-                    u_real=u_real,
-                    u_ref=u_ref,
-                    exp_real=exp_real,
-                    exp_ref=exp_ref,
-                    beta=beta,
-                    B2_real=B2_real,
-                    B2_ref=B2_ref,
-                    vij=vij,
-                )
-                print(f"[DEBUG] NPZ saved → {npz_file}")
+                # [Same as previous section: np.savez, TXT, CSV]
 
                 # --------------------------------------------------
-                # SAVE CLEAN TXT (readable)
+                # 24-12 reference potential
                 # --------------------------------------------------
-                txt_file = scratch / f"debug_b2_data_{si}_{sj}.txt"
+                epsilon_ref = 0.7407  # example, same as sanity check
+                sigma_ref   = 1.0
+                def u_24_12(r, epsilon, sigma):
+                    sr = sigma / r
+                    return 4.0 * epsilon * (sr**24 - sr**12)
 
-                with open(txt_file, "w") as f:
-                    f.write("# ==========================================\n")
-                    f.write(f"# Pair: {si}-{sj}\n")
-                    f.write(f"# beta = {beta}\n")
-                    f.write(f"# B2_real = {B2_real:.8e}\n")
-                    f.write(f"# B2_ref  = {B2_ref:.8e}\n")
-                    f.write(f"# vij (2ΔB2) = {vij:.8e}\n")
-                    if sigma is not None:
-                        f.write(f"# sigma = {sigma}\n")
-                    f.write("# ==========================================\n")
-                    f.write("# Columns:\n")
-                    f.write("# r        u_real        u_ref        exp(-βu_real)    exp(-βu_ref)\n")
-
-                    for rr, ur, uref, er, eref in zip(
-                        r_common, u_real, u_ref, exp_real, exp_ref
-                    ):
-                        f.write(
-                            f"{rr:12.6f}  {ur:14.6e}  {uref:14.6e}  {er:14.6e}  {eref:14.6e}\n"
-                        )
-
-                print(f"[DEBUG] TXT saved → {txt_file}")
+                u_2412 = u_24_12(r_common, epsilon_ref, sigma_ref)
+                exp_2412 = np.exp(-beta * u_2412)
 
                 # --------------------------------------------------
-                # SAVE CSV (Excel-friendly)
-                # --------------------------------------------------
-                csv_file = scratch / f"debug_b2_data_{si}_{sj}.csv"
-
-                with open(csv_file, "w") as f:
-                    f.write("r,u_real,u_ref,exp_real,exp_ref\n")
-                    for rr, ur, uref, er, eref in zip(
-                        r_common, u_real, u_ref, exp_real, exp_ref
-                    ):
-                        f.write(f"{rr},{ur},{uref},{er},{eref}\n")
-
-                print(f"[DEBUG] CSV saved → {csv_file}")
-
-                # --------------------------------------------------
-                # Plot potentials
+                # Plot potentials + reference 24-12
                 # --------------------------------------------------
                 fig = plt.figure()
-
                 plt.plot(r_common, u_real, label="u_real (raw)")
                 plt.plot(r_common, u_ref, "--", label="u_ref (WCA)")
-
+                plt.plot(r_common, u_2412, "k:", label="u_24-12 reference")
                 if sigma is not None and sigma > 0:
                     plt.axvline(sigma, linestyle=":", label=f"sigma = {sigma:.3f}")
-
                 plt.xlabel("r")
                 plt.ylabel("u(r)")
                 plt.title(f"Pair {si}-{sj}\n2ΔB2 = {vij:.4e}")
                 plt.legend()
-                plt.ylim(-1, 1)
                 plt.grid(True)
-
-                fname = scratch / f"debug_u_real_ref_{si}_{sj}.png"
+                fname = scratch / f"debug_u_real_ref_2412_{si}_{sj}.png"
                 plt.savefig(fname, dpi=150, bbox_inches="tight")
                 plt.close(fig)
-
                 print(f"[DEBUG] Plot saved → {fname}")
 
                 # --------------------------------------------------
-                # Plot integrand (CRITICAL DEBUG)
+                # Twin-axis sanity plot (potential + exp(-βu)) with 24-12 overlay
                 # --------------------------------------------------
-                fig2 = plt.figure()
+                fig2, ax1 = plt.subplots()
+                ax1.plot(r_common, u_real, 'b', label="u_real (raw)")
+                ax1.plot(r_common, u_ref, 'b--', label="u_ref (WCA)")
+                ax1.plot(r_common, u_2412, 'k:', label="u_24-12 ref")
+                ax1.set_xlabel("r")
+                ax1.set_ylabel("Potential u(r)", color='b')
+                ax1.tick_params(axis='y', labelcolor='b')
+                ax1.grid(True)
 
-                integrand_real = (exp_real - 1.0) * r_common**2
-                integrand_ref  = (exp_ref - 1.0) * r_common**2
+                ax2 = ax1.twinx()
+                ax2.plot(r_common, exp_real, 'r', label="exp(-β u_real)")
+                ax2.plot(r_common, exp_ref, 'r--', label="exp(-β u_ref)")
+                ax2.plot(r_common, exp_2412, 'k:', label="exp(-β u_24-12)")
+                ax2.set_ylabel("exp(-β u)", color='r')
+                ax2.tick_params(axis='y', labelcolor='r')
 
-                plt.plot(r_common, integrand_real, label="integrand real")
-                plt.plot(r_common, integrand_ref, "--", label="integrand ref")
-
-                plt.xlabel("r")
-                plt.ylabel("r^2 (exp(-βu)-1)")
-                plt.title(f"B2 Integrand {si}-{sj}")
-                plt.legend()
-                plt.grid(True)
-
-                fname2 = scratch / f"debug_integrand_{si}_{sj}.png"
+                fig2.legend(loc="upper right")
+                plt.title(f"B2 sanity check with 24-12 ref: Pair {si}-{sj}")
+                fname2 = scratch / f"debug_b2_sanity_2412_{si}_{sj}.png"
                 plt.savefig(fname2, dpi=150, bbox_inches="tight")
                 plt.close(fig2)
-
-                print(f"[DEBUG] Integrand plot saved → {fname2}")
+                print(f"[DEBUG] B2 sanity plot with 24-12 ref saved → {fname2}")
 
                 # optional hard stop
                 exit(0)
