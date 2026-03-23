@@ -119,7 +119,7 @@ def vij_radial_kernel(
         export_files=False,
     )
 
-    sigma_matrix = hc_data.get("sigma", None)
+    sigma_matrix = np.array(hc_data.get("sigma", None))
 
     mf_dict = mf_data["potentials"]
     raw_dict = raw_data["potentials"]
