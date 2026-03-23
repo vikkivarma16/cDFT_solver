@@ -212,8 +212,12 @@ def vij_radial_kernel(
 
                 B2_real = compute_B2(r_common, u_real, beta)
                 B2_ref = compute_B2(r_common, u_ref, beta)
+                
+                print (B2_real, B2_ref)
 
                 vij = 2.0 * (B2_real - B2_ref)
+                
+                print (vij)
 
             else:
                 vij = float(
