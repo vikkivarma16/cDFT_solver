@@ -218,6 +218,8 @@ def vij_radial_kernel(
                 vij = 2.0 * (B2_real - B2_ref)
                 
                 print (vij)
+                
+                exit(0)
 
             else:
                 vij = float(
