@@ -531,8 +531,8 @@ def coexistence_densities_isocore(
         eval_mue_pressure_fn,
         heterogeneous_pair,
         total_density_bound,
-        max_attempts=1000000,
         verbose=True,
+        max_attempts=2000000,
     ):
         """
         Solves isochore coexistence for fixed total species densities pvec.
