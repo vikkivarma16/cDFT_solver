@@ -1025,6 +1025,7 @@ def rdf_alpha_r(
             # --------------------------------------------------------
             # Loop over α
             # --------------------------------------------------------
+            gamma_inputs = np.zeros_like(u_matrix)
             for alpha in alpha_grid:
 
                 u_alpha = u_repulsive + alpha * u_attractive
@@ -1038,6 +1039,7 @@ def rdf_alpha_r(
                     n_iter=n_iter,
                     tol=tol,
                     alpha_rdf_max=alpha_max,
+                    gamma_initial=gamma_inputs
                 )
                 
                 
