@@ -666,17 +666,26 @@ def coexistence_densities_isocore(
                 continue
 
             # --- BOUNDS CHECK (per-phase densities must be within [0, total_density_bound]) ---
+            valid_bounds = True
+
             for p_idx, phase in enumerate(rhos_per_phase):
                 for rho_idx, rho in enumerate(phase):
                     if not (0.0 <= rho <= total_density_bound):
                         if verbose:
-                            print(
-                                f"Attempt {attempt}: rejected — density {rho:.4f} "
-                                f"out of bounds for species {species_names[rho_idx]} "
-                                f"in phase {p_idx+1}."
-                            )
-                        continue
-                        
+                            print(...)
+                        valid_bounds = False
+                        break
+                if not valid_bounds:
+                    break
+
+            if not valid_bounds:
+                continue  # ← THIS is the correct rejection
+                    
+            if any(f < 0.0 for f in fractions):
+                if verbose:
+                    print(f"Attempt {attempt}: rejected — negative fraction")
+                continue
+                    
             for i in range (len(fractions)):
                 if(fractions[i]<0.0):
                     print ( f"Attempt {attempt}: rejected — negative fraction {fractions[i]:.4f}")
@@ -757,7 +766,7 @@ def coexistence_densities_isocore(
             eval_mue_pressure_fn=eval_mue_pressure_fn,
             heterogeneous_pair=heterogeneous_pair,
             total_density_bound=total_density_bound,
-            verbose=verbose,
+            verbose=True,
         )
 
         if sol is None:
