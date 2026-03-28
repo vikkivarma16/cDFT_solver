@@ -698,6 +698,12 @@ def coexistence_densities_isocore(
                 )
                 mu_vals.append([float(x) for x in mu_p])
                 pressure_vals.append(float(p_p))
+    
+                if(p_p<0.0):
+                    print ( f"Attempt {attempt}: rejected — negative pressure {p_p:.4f}")
+                    continue
+                
+                
 
             return {
                 "rhos_per_phase": rhos_per_phase,
