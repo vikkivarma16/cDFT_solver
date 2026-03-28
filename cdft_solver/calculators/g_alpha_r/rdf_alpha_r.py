@@ -1020,7 +1020,6 @@ def rdf_alpha_r(
         
 
             G_accum = np.zeros_like(u_attractive)
-            gamma_inputs =  g_ref_final
 
             # --------------------------------------------------------
             # Loop over α
