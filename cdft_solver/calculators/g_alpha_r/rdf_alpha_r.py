@@ -1006,7 +1006,7 @@ def rdf_alpha_r(
             r,
             pair_closures,
             N,
-            n_alpha=20,
+            n_alpha,
         ):
             """
             Computes G(r) = ∫_0^1 g_alpha(r) dα
@@ -1117,7 +1117,7 @@ def rdf_alpha_r(
             r=r,
             pair_closures=pair_closures,
             N=N,
-            n_alpha=20
+            n_alpha=21
         )
         
     G_out = {}
