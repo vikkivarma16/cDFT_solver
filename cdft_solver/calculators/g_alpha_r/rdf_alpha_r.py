@@ -789,7 +789,7 @@ def rdf_alpha_r(
     # Density continuation for OZ convergence
     # -------------------------------------------------
 
-    n_ramp = 10
+    n_ramp = 1
     densities_target = np.asarray(densities, float)
 
     gamma_inputs = np.zeros_like(u_matrix)
