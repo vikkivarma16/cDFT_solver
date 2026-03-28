@@ -1117,7 +1117,7 @@ def rdf_alpha_r(
             r=r,
             pair_closures=pair_closures,
             N=N,
-            n_alpha=21
+            n_alpha=11
         )
         
     G_out = {}
