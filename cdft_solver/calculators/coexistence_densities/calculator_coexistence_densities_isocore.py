@@ -691,6 +691,7 @@ def coexistence_densities_isocore(
             pressure_vals = []
 
             global CURRENT_VIJ_PER_PHASE
+            
             for p in range(n_phases):
                 mu_p, p_p = eval_mue_pressure_fn(
                     rhos_per_phase[p],
@@ -699,9 +700,9 @@ def coexistence_densities_isocore(
                 mu_vals.append([float(x) for x in mu_p])
                 pressure_vals.append(float(p_p))
     
-                if(p_p<0.0):
-                    print ( f"Attempt {attempt}: rejected — negative pressure {p_p:.4f}")
-                    continue
+            if(pressure_vals[0]<0.0):
+                print ( f"Attempt {attempt}: rejected — negative pressure {p_p:.4f}")
+                continue
                 
                 
 
