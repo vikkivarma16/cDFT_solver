@@ -794,31 +794,30 @@ def rdf_alpha_r(
 
     gamma_inputs = np.zeros_like(u_matrix)
 
-    for step in range(1, n_ramp + 1):
-        scale = step / n_ramp
-        densities_step = scale * densities_target
 
-        print(f"[OZ] Density ramp {step}/{n_ramp}  scale = {scale:.2f}")
+    densities_step =  densities_target
 
-        c_ref, gamma_ref, g_ref, conversed = multi_component_oz_solver_alpha(
-            r=r,
-            pair_closures=pair_closures,
-            densities=densities_step,
-            u_matrix=u_matrix,
-            sigma_matrix=sigma_matrix,
-            n_iter=n_iter,
-            tol=tol,
-            alpha_rdf_max=alpha_max,
-            gamma_initial=gamma_inputs
+    print(f"Rdf computation for the full system")
+
+    c_ref, gamma_ref, g_ref, conversed = multi_component_oz_solver_alpha(
+        r=r,
+        pair_closures=pair_closures,
+        densities=densities_step,
+        u_matrix=u_matrix,
+        sigma_matrix=sigma_matrix,
+        n_iter=n_iter,
+        tol=tol,
+        alpha_rdf_max=alpha_max,
+        gamma_initial=gamma_inputs
+    )
+
+    if not conversed:
+        raise RuntimeError(
+            f"OZ solver failed to converge at density scale {scale:.2f}"
         )
 
-        if not conversed:
-            raise RuntimeError(
-                f"OZ solver failed to converge at density scale {scale:.2f}"
-            )
-
-        # Warm-start next step
-        gamma_inputs = gamma_ref.copy()
+    # Warm-start next step
+    gamma_inputs = gamma_ref.copy()
 
     # Final converged solution at full density
     c_ref_final   = c_ref
@@ -1120,14 +1119,26 @@ def rdf_alpha_r(
             n_alpha=11
         )
         
-    G_out = {}
-    for i, si in enumerate(species):
-        for j, sj in enumerate(species):
-            G_out[(si, sj)] = {
-                "r": r,
-                "g_r": G_accume[i, j],
-                "g_u_r": G_u[i, j],
-            }
+        G_out = {}
+        for i, si in enumerate(species):
+            for j, sj in enumerate(species):
+                G_out[(si, sj)] = {
+                    "r": r,
+                    "g_r": G_accume[i, j],
+                    "g_u_r": G_u[i, j],
+                }
+                
+    else :
+    
+        G_out = {}
+        for i, si in enumerate(species):
+            for j, sj in enumerate(species):
+                G_out[(si, sj)] = {
+                    "r": r,
+                    "g_r": g_rep_final[i, j],
+                    "g_u_r": np.zeros_like(r),  # placeholder for consistency
+                }
+        
     
     return G_out
 
