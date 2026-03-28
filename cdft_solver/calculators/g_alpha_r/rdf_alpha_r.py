@@ -1014,37 +1014,53 @@ def rdf_alpha_r(
             """
 
             alpha_grid = np.linspace(0.0, 1.0, n_alpha)
-            dalpha = alpha_grid[1] - alpha_grid[0]
 
-           
-        
+            if (n_alpha % 2) == 0:
+                raise ValueError("Simpson's rule requires n_alpha to be odd")
 
-            G_accum = np.zeros_like(u_attractive)
+            # Store all g(r, α)
+            g_alpha_all = []
+
+            gamma_inputs = np.zeros_like(u_matrix)
 
             # --------------------------------------------------------
             # Loop over α
             # --------------------------------------------------------
-            gamma_inputs = np.zeros_like(u_matrix)
             for alpha in alpha_grid:
 
                 u_alpha = u_repulsive + alpha * u_attractive
-                
-                _, gamma_trial, g_alpha , conversion_flag= multi_component_oz_solver_alpha(
+
+                _, gamma_trial, g_alpha, conversion_flag = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(densities, float),
-                    u_matrix= u_alpha ,
+                    u_matrix=u_alpha,
                     sigma_matrix=np.zeros((N, N)),
                     n_iter=n_iter,
                     tol=tol,
                     alpha_rdf_max=alpha_max,
                     gamma_initial=gamma_inputs
                 )
-                
-                
 
-                # Accumulate G(r)
-                G_accum += g_alpha * dalpha
+                g_alpha_all.append(g_alpha)
+
+            # Convert to array: shape → (n_alpha, N, N, Nr)
+            g_alpha_all = np.array(g_alpha_all)
+
+            # --------------------------------------------------------
+            # Simpson weights
+            # --------------------------------------------------------
+            weights = np.ones(n_alpha)
+            weights[1:-1:2] = 4
+            weights[2:-2:2] = 2
+
+            dalpha = alpha_grid[1] - alpha_grid[0]
+
+            # --------------------------------------------------------
+            # Simpson integration (vectorized over r, i, j)
+            # --------------------------------------------------------
+            G_accum = np.tensordot(weights, g_alpha_all, axes=(0, 0))
+            G_accum *= dalpha / 3.0
             # --------------------------------------------------------
             # Compute G_u(r)
             # --------------------------------------------------------
