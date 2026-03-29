@@ -801,7 +801,7 @@ def delta_c_alpha(
 
     c_ref, gamma_ref, g_ref, conversed = multi_component_oz_solver_alpha(
         r=r,
-        pair_closures=pair_closureu_ref = build_hard_core_u_from_sigma(sigma_matrix)#: np.zeros_like(u_matrix)  s,
+        pair_closures=pair_closures
         densities=densities_step,
         u_matrix=u_matrix,
         sigma_matrix=sigma_matrix,
