@@ -813,7 +813,7 @@ def rdf_alpha_r(
 
     if not conversed:
         raise RuntimeError(
-            f"OZ solver failed to converge at density scale {scale:.2f}"
+            f"OZ solver failed to converge at density scale {densities}"
         )
 
     # Warm-start next step
