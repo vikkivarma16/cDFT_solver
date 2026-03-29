@@ -4,6 +4,7 @@ import numpy as np
 from collections.abc import Mapping
 from cdft_solver.calculators.radial_distribution_function.rdf_radial import rdf_radial
 from cdft_solver.calculators.g_alpha_r.rdf_alpha_r import rdf_alpha_r
+from cdft_solver.calculators.g_alpha_r.delta_c import delta_c_alpha
 
 
 def  build_strength_kernel(
@@ -107,6 +108,41 @@ def  build_strength_kernel(
             "kernel": kernel,
             "r": r,
         }
+    if kernel_type == "delta_c":
+        print("✅ Using UNIFORM integrated strength kernel")
+
+        rdf_out = delta_c_alpha(
+            ctx=ctx,
+            rdf_config=config,
+            densities=densities,
+            supplied_data=None,
+            export=False,
+            plot=True,
+            filename_prefix="rdf",
+        )
+
+        # Get species list
+        species = find_key_recursive(system_cfg, "species")
+        N = len(species)
+
+        # Infer r-grid size from one of the RDF outputs
+        sample_key = (species[0], species[0])
+        r = rdf_out[sample_key]["r"]
+        Nr = len(r)
+
+        # Initialize kernel array
+        kernel = np.zeros((N, N, Nr))
+
+        # Fill kernel from RDF
+        for i, si in enumerate(species):
+            for j, sj in enumerate(species):
+                kernel[i, j, :] = rdf_out[(si, sj)]["value"]
+
+        return {
+            "type": "delta_c",
+            "kernel": kernel,
+            "r": r,
+        }
 
     # ==================================================
     # RDF KERNEL
@@ -142,15 +178,15 @@ def  build_strength_kernel(
         # Fill kernel from RDF
         for i, si in enumerate(species):
             for j, sj in enumerate(species):
-                kernel[i, j, :] = rdf_out[(si, sj)]["g_r"]
+                kernel[i, j, :] = rdf_out[(si, sj)]["value"]
 
         return {
             "type": "rdf",
             "kernel": kernel,
             "r": r,
         }
-
-
+        
+        
     # ==================================================
     # ERROR
     # ==================================================

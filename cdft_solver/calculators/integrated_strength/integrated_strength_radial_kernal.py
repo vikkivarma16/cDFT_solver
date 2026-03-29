@@ -200,6 +200,8 @@ def vij_radial_kernel(
             # Decision
             # --------------------------------------------------
             use_b2 = is_uniform_kernel(Kc) and has_hard_core(Uc_raw)
+            
+            use_uniform =   is_uniform_kernel(Kc)
 
             if use_b2:
 
@@ -217,11 +219,15 @@ def vij_radial_kernel(
 
                 vij = 2.0 * (B2_real - B2_ref)
 
-            else:
+            elif use_uniform:
                 vij = float(
                     np.trapz(4.0 * np.pi * r_common**2 * Kc * Uc, r_common)
                 )
-
+            else:
+                vij = float(
+                    np.trapz(4.0 * np.pi * r_common**2 * Kc, r_common)
+                )
+                
             vij_numeric[key] = vij
             vij_numeric[rkey] = vij
 

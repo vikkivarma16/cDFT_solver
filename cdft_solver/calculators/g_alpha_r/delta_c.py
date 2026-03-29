@@ -595,7 +595,7 @@ def find_key_recursive(d, key):
 # Main RDF driver
 # =============================
 
-def rdf_alpha_r(
+def delta_c_alpha(
     ctx,
     rdf_config,
     densities,
@@ -801,7 +801,7 @@ def rdf_alpha_r(
 
     c_ref, gamma_ref, g_ref, conversed = multi_component_oz_solver_alpha(
         r=r,
-        pair_closures=pair_closures,
+        pair_closures=pair_closureu_ref = build_hard_core_u_from_sigma(sigma_matrix)#: np.zeros_like(u_matrix)  s,
         densities=densities_step,
         u_matrix=u_matrix,
         sigma_matrix=sigma_matrix,
@@ -999,89 +999,58 @@ def rdf_alpha_r(
     
     if hard_core_pairs:
         
-        def compute_G_of_r(
+        def delta_c_r(
             u_ref,
-            u_soft,
+            u_full,
             r,
             pair_closures,
             N,
-            n_alpha,
         ):
             """
-            Computes G(r) = ∫_0^1 g_alpha(r) dα
-            with debug plots of g_alpha, u_repulsive, and alpha*u_attractive
+            Computes G(r) using Δc(r) = c_full - c_rep
+            instead of thermodynamic integration.
             """
 
-            alpha_grid = np.linspace(0.0, 1.0, n_alpha)
-
-            if (n_alpha % 2) == 0:
-                raise ValueError("Simpson's rule requires n_alpha to be odd")
-
-            # Store all g(r, α)
-            g_alpha_all = []
-
-            gamma_inputs = np.zeros_like(u_matrix)
-
             # --------------------------------------------------------
-            # Loop over α
+            # Solve OZ for FULL system
             # --------------------------------------------------------
-            for alpha in alpha_grid:
-
-                u_alpha = u_ref + alpha * u_soft
-
-                _, gamma_trial, g_alpha, conversion_flag = multi_component_oz_solver_alpha(
-                    r=r,
-                    pair_closures=pair_closures,
-                    densities=np.asarray(densities, float),
-                    u_matrix=u_alpha,
-                    sigma_matrix=np.zeros((N, N)),
-                    n_iter=n_iter,
-                    tol=tol,
-                    alpha_rdf_max=alpha_max,
-                    gamma_initial=gamma_inputs
-                )
-
-                g_alpha_all.append(g_alpha)
-
-            # Convert to array: shape → (n_alpha, N, N, Nr)
-            g_alpha_all = np.array(g_alpha_all)
-
+            c_full, gamma_full, g_full, _ = multi_component_oz_solver_alpha(
+                r=r,
+                pair_closures=pair_closures,
+                densities=np.asarray(densities, float),
+                u_matrix=u_full,
+                sigma_matrix=np.zeros((N, N)),
+                n_iter=n_iter,
+                tol=tol,
+                alpha_rdf_max=alpha_max,
+                gamma_initial=np.zeros_like(u_full),
+            )
             # --------------------------------------------------------
-            # Simpson weights
+            # Solve OZ for REPULSIVE system
             # --------------------------------------------------------
-            weights = np.ones(n_alpha)
-            weights[1:-1:2] = 4
-            weights[2:-2:2] = 2
-
-            dalpha = alpha_grid[1] - alpha_grid[0]
-
-            # --------------------------------------------------------
-            # Simpson integration (vectorized over r, i, j)
-            # --------------------------------------------------------
-            G_accum = np.tensordot(weights, g_alpha_all, axes=(0, 0))
-            G_accum *= dalpha / 3.0
-            # --------------------------------------------------------
-            # Compute G_u(r)
-            # --------------------------------------------------------
-            G_u = G_accum * u_soft
+            c_rep, gamma_rep, g_rep, _ = multi_component_oz_solver_alpha(
+                r=r,
+                pair_closures=pair_closures,
+                densities=np.asarray(densities, float),
+                u_matrix=u_ref,
+                sigma_matrix=np.zeros((N, N)),
+                n_iter=n_iter,
+                tol=tol,
+                alpha_rdf_max=alpha_max,
+                gamma_initial=np.zeros_like(u_ref),
+            )
             
-            return G_u, G_accum
-            
-            
-        u_ref = build_hard_core_u_from_sigma(sigma_matrix)#: np.zeros_like(u_matrix)   
-        #for i in range(N):
-        #    for j in range(N):
-        #        if has_core[i, j]:
-        #            #u_ref[i, j] = wca_split(r, u_matrix[i, j])
-        #            u_ref[i, j] =  build_hard_core_u_from_sigma(sigma_matrix):
-        #            # u_r =  u_matrix[i, j]
-        #            # bh , r0 =  compute_bh_radius_truncated(r, u_r, beta_ref)
-        #            # mask  =  r < r0
-        #            # u_ref[i ,j] =  np.zeros_like(r)
-        #            # u_ref[i, j, mask] =  u_matrix[i, j, mask]
-        #        else:
-        #            u_ref[i, j] = u_matrix[i, j].copy()
+            delta_c = c_full - c_rep
 
+            # --------------------------------------------------------
+            # Define G(r)
+            # --------------------------------------------------------
+        
+
+            return delta_c
+        
+        u_ref = build_hard_core_u_from_sigma(sigma_matrix)#: np.zeros_like(u_matrix)  
+        
         
         u_soft = np.zeros_like(u_matrix)
         r_minima = {}
@@ -1107,37 +1076,33 @@ def rdf_alpha_r(
                 elif not has_core[i, j]:
                     u_soft[i, j] = u_matrix[i, j]
                     u_soft[j, i] = u_matrix[i, j]
-
-        # ============================================================
-        # Run G(r) computation for σ_opt
-        # ============================================================
-        G_u, G_accume = compute_G_of_r(
-            u_ref = u_ref,
-            u_soft = u_soft,
-            r=r,
-            pair_closures=pair_closures,
-            N=N,
-            n_alpha=11
-        )
+                    
+                    
+        u_tot  =  u_ref + u_soft
+        delta_c = delta_c_r( u_ref=u_ref, u_full=u_tot, r=r, pair_closures=pair_closures, N=N,)        
+            
+            
         
-        G_out = {}
+        
+        
+        c_out = {}
         for i, si in enumerate(species):
             for j, sj in enumerate(species):
-                G_out[(si, sj)] = {
+                c_out[(si, sj)] = {
                     "r": r,
-                    "value": G_u[i, j],
+                    "value": -delta_c,
                 }
                 
     else :
     
-        G_out = {}
+        c_out = {}
         for i, si in enumerate(species):
             for j, sj in enumerate(species):
-                G_out[(si, sj)] = {
+                c_out[(si, sj)] = {
                     "r": r,
-                    "value": g_rep_final[i, j]*u_matrix[i, j],
+                    "value": -c_ref_final,
                 }
         
     
-    return G_out
+    return c_out
 
