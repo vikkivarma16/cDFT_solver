@@ -773,6 +773,8 @@ def coexistence_densities_isocore(
             raise RuntimeError("Isochore coexistence solver failed")
 
         rhos_per_phase = sol["rhos_per_phase"]
+        
+        print (rhos_per_phase)
 
         # --------------------------
         # Convergence check
