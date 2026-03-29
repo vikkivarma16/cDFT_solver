@@ -1116,6 +1116,58 @@ def delta_c_alpha(
                     "value": -c_ref_final[i, j],
                 }
         
+        
+        
+        # ===============================
+    # PLOTTING (Δc analysis)
+    # ===============================
+    if plot:
+
+        fig, ax = plt.subplots(figsize=(6, 5))
+
+        for i, si in enumerate(species):
+            for j, sj in enumerate(species):
+
+                r_vals = c_out[(si, sj)]["r"]
+                dc_vals = c_out[(si, sj)]["value"]
+
+                label = rf"$\Delta c_{{{si}{sj}}}(r)$"
+
+                # Different styles for clarity
+                if i == j:
+                    ax.plot(r_vals, dc_vals, lw=3.5, label=label)
+                else:
+                    ax.plot(r_vals, dc_vals, lw=3.0, ls="--", label=label)
+
+        # --- optional: vertical markers at core / features ---
+        for i in range(N):
+            for j in range(i, N):
+                if sigma_matrix[i, j] > 0:
+                    ax.axvline(
+                        sigma_matrix[i, j],
+                        color="gray",
+                        ls=":",
+                        lw=1.5,
+                        alpha=0.6
+                    )
+
+        ax.set_xlabel(r"$r$", fontsize=18)
+        ax.set_ylabel(r"$-\Delta c(r)$", fontsize=18)
+        ax.set_title(r"$\rm \Delta c(r)\ analysis$", fontsize=18)
+
+        ax.tick_params(labelsize=14)
+        ax.set_xlim(0, r[-1])
+
+        ax.legend(fontsize=12, frameon=False, ncol=2)
+
+        plt.tight_layout()
+
+        # Save plot
+        plot_path = Path(ctx.plots_dir) / f"{filename_prefix}_delta_c.png"
+        plt.savefig(plot_path, dpi=600, bbox_inches="tight")
+        plt.close()
+
+        print(f"✅ Δc(r) plot saved → {plot_path}")
     
     return c_out
 
