@@ -993,6 +993,17 @@ def delta_c_alpha(
 
     total_pair = [ (i, j) for i in range(N) for j in range(i, N) ]
     
+    def neutralize(delta_c, sigma_matrix):
+        final_dc =  delta_c
+        for i in range(N):
+            for j in range(i, N):
+                if (sigma_matrix[i, j]):
+                    final_dc[r < sigma_matrix[i, j]][i, j] = 0
+                    final_dc[j, i] =  final_dc[i, j]
+        return final_dc
+                    
+        
+    
     
     
     
@@ -1079,7 +1090,9 @@ def delta_c_alpha(
                     
                     
         u_tot  =  u_ref + u_soft
-        delta_c = delta_c_r( u_ref=u_ref, u_full=u_tot, r=r, pair_closures=pair_closures, N=N,)        
+        delta_c = delta_c_r( u_ref=u_ref, u_full=u_tot, r=r, pair_closures=pair_closures, N=N,)      
+        
+        delta_c_final = neutralize(delta_c, sigma_matrix)
             
             
         
@@ -1090,7 +1103,7 @@ def delta_c_alpha(
             for j, sj in enumerate(species):
                 c_out[(si, sj)] = {
                     "r": r,
-                    "value": -delta_c,
+                    "value": -delta_c_final[i, j],
                 }
                 
     else :
@@ -1100,7 +1113,7 @@ def delta_c_alpha(
             for j, sj in enumerate(species):
                 c_out[(si, sj)] = {
                     "r": r,
-                    "value": -c_ref_final,
+                    "value": -c_ref_final[i, j],
                 }
         
     
