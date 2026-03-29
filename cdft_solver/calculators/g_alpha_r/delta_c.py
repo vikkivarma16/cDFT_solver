@@ -1139,7 +1139,7 @@ def delta_c_alpha(
                 else:
                     ax.plot(r_vals, dc_vals, lw=3.0, ls="--", label=label)
 
-        # --- optional: vertical markers at core / features ---
+        # --- vertical markers at core ---
         for i in range(N):
             for j in range(i, N):
                 if sigma_matrix[i, j] > 0:
@@ -1162,12 +1162,17 @@ def delta_c_alpha(
 
         plt.tight_layout()
 
-        # Save plot
-        plot_path = Path(ctx.plots_dir) / f"{filename_prefix}_delta_c.png"
+        # ============================================
+        # ✅ Density-based filename
+        # ============================================
+        density_str = "_".join([f"{d:.3f}" for d in densities])
+        plot_filename = f"{filename_prefix}_delta_c_rho_{density_str}.png"
+
+        plot_path = Path(ctx.plots_dir) / plot_filename
+
         plt.savefig(plot_path, dpi=600, bbox_inches="tight")
         plt.close()
 
         print(f"✅ Δc(r) plot saved → {plot_path}")
-    
     return c_out
 
