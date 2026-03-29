@@ -998,7 +998,7 @@ def delta_c_alpha(
         for i in range(N):
             for j in range(i, N):
                 if (sigma_matrix[i, j]):
-                    final_dc[r < sigma_matrix[i, j]][i, j] = 0
+                    final_dc[i, j][r < sigma_matrix[i, j]] = 0
                     final_dc[j, i] =  final_dc[i, j]
         return final_dc
                     
