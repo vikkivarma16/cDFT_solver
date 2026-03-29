@@ -1138,6 +1138,65 @@ def rdf_alpha_r(
                     "value": g_rep_final[i, j]*u_matrix[i, j],
                 }
         
+        
+        
+    # ===============================
+    # PLOTTING (G_u analysis)
+    # ===============================
+    if plot:
+
+        fig, ax = plt.subplots(figsize=(6, 5))
+
+        for i, si in enumerate(species):
+            for j, sj in enumerate(species):
+
+                r_vals = G_out[(si, sj)]["r"]
+                gu_vals = G_out[(si, sj)]["value"]
+
+                label = rf"$G_u^{{{si}{sj}}}(r)$"
+
+                # Style: diagonal vs cross
+                if i == j:
+                    ax.plot(r_vals, gu_vals, lw=3.5, label=label)
+                else:
+                    ax.plot(r_vals, gu_vals, lw=3.0, ls="--", label=label)
+
+        # --- Optional: mark core positions ---
+        for i in range(N):
+            for j in range(i, N):
+                if sigma_matrix[i, j] > 0:
+                    ax.axvline(
+                        sigma_matrix[i, j],
+                        color="gray",
+                        ls=":",
+                        lw=1.5,
+                        alpha=0.6
+                    )
+
+        # ===============================
+        # Labels
+        # ===============================
+        ax.set_xlabel(r"$r$", fontsize=18)
+        ax.set_ylabel(r"$G_u(r)$", fontsize=18)
+        ax.set_title(r"$\rm G_u(r)\ analysis$", fontsize=18)
+
+        ax.tick_params(labelsize=14)
+        ax.set_xlim(0, r[-1])
+
+        ax.legend(fontsize=12, frameon=False, ncol=2)
+
+        plt.tight_layout()
+
+        # ===============================
+        # Density-aware filename
+        # ===============================
+        dens_str = "_".join([f"{d:.3f}" for d in densities])
+        plot_path = Path(ctx.plots_dir) / f"{filename_prefix}_Gu_rho_{dens_str}.png"
+
+        plt.savefig(plot_path, dpi=600, bbox_inches="tight")
+        plt.close()
+
+        print(f"✅ G_u(r) plot saved → {plot_path}")
     
     return G_out
 
