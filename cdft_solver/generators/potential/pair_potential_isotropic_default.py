@@ -308,14 +308,13 @@ def nvrn(p):
     Gamma  = p.get("epsilon", 1.0)
     m_i    = p.get("m_i", 1.0)
     m_j    = p.get("m_j", 1.0)
-    n      = p.get("n", 3.0)    # power of r
+    n      = p.get("n", 3.0)
     sigma  = p.get("sigma", 1.0)
     cutoff = p.get("cutoff", 5.0)
 
-    prefactor = Gamma * (m_i) * (m_j) * sigma**n
+    prefactor = Gamma * m_i * m_j * sigma**n
 
-    # Grid for small-r handling
-    r_grid = np.linspace(1e-6, cutoff, 5000)
+    V_MAX = 1e8  # <-- hard cap
 
     # Raw inverse power potential
     def raw(r):
@@ -323,11 +322,6 @@ def nvrn(p):
 
     # --- Shift so V(cutoff) = 0 ---
     v_cut = raw(cutoff)
-    v_shifted = raw(r_grid) - v_cut
-
-    # --- Cap at small r (avoid divergence) ---
-    v_max = v_shifted[0]
-    r_min = r_grid[0]
 
     def V(r):
         r = np.asarray(r, dtype=float)
@@ -339,8 +333,8 @@ def nvrn(p):
 
         v_eff = raw(r_eff) - v_cut
 
-        # --- Flatten core ---
-        v_eff[r_eff < r_min] = v_max
+        # --- Cap maximum value ---
+        v_eff = np.minimum(v_eff, V_MAX)
 
         v[mask] = v_eff
 
@@ -351,7 +345,6 @@ def nvrn(p):
 
 
 register_isotropic_pair_potential("nvrn", nvrn)
-
 
 
 
