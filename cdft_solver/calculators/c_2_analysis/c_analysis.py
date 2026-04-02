@@ -887,9 +887,9 @@ def c_analysis(
             bh_sigma[i, j] = bh_sigma[j, i] = d_bh
 
 
-        def compute_repulsive_gr(sigma_mat):
+        def compute_sigma_gr(sigma_mat):
 
-            u_rep = build_hard_core_u_from_sigma(sigma_mat)
+            u_rep = build_total_u_from_sigma(sigma_mat)
             
 
             c_state, gamma_state, g_state, conversion_flag = multi_component_oz_solver_alpha(
@@ -906,9 +906,9 @@ def c_analysis(
             return g_state, c_state, gamma_state
 
 
-        g_rep_sigma_opt, c_rep_sigma_opt, gamma_rep_sigma_opt = compute_repulsive_gr(sigma_opt)
+        g_rep_sigma_opt, c_rep_sigma_opt, gamma_rep_sigma_opt = compute_sigma_gr(sigma_opt)
 
-        g_rep_sigma_bh, c_rep_sigma_bh, gamma_rep_sigma_bh = compute_repulsive_gr(bh_sigma)
+        g_rep_sigma_bh, c_rep_sigma_bh, gamma_rep_sigma_bh = compute_sigma_gr(bh_sigma)
 
 
         u_rep = build_total_u_from_sigma(sigma_opt)
