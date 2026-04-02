@@ -719,8 +719,8 @@ def c_analysis(
             for j in range(i, N):
                 if has_core[i, j]:
                     u[i, j] = hard_core_potential(r, sigma_mat[i, j])
-                else:
-                    u[i, j] = u_matrix[i, j].copy()
+                #else:
+                #    u[i, j] = u_matrix[i, j].copy()
                 u[j, i] =  u[i, j]
         return u
 
@@ -857,8 +857,8 @@ def c_analysis(
 
                 if has_core[i, j]:
                     u_ref[i, j] = wca_split(r, u_matrix[i, j])
-                else:
-                    u_ref[i, j] = u_matrix[i, j].copy()
+                #else:
+                #    u_ref[i, j] = u_matrix[i, j].copy()
 
 
         c_ref, gamma_ref, g_ref, conversion_flag = multi_component_oz_solver_alpha(
@@ -886,7 +886,8 @@ def c_analysis(
 
         def compute_repulsive_gr(sigma_mat):
 
-            u_rep = build_total_u_from_sigma(sigma_mat)
+            u_rep = build_hard_core_u_from_sigma(sigma_mat)
+            
 
             c_state, gamma_state, g_state, conversion_flag = multi_component_oz_solver_alpha(
                 r=r,
