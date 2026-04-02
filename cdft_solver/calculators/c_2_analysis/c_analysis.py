@@ -887,9 +887,9 @@ def c_analysis(
             bh_sigma[i, j] = bh_sigma[j, i] = d_bh
 
 
-        def compute_sigma_gr(sigma_mat):
+        def compute_repulsive_gr(sigma_mat):
 
-            u_rep = build_total_u_from_sigma(sigma_mat)
+            u_rep = build_hard_core_u_from_sigma(sigma_mat)
             
 
             c_state, gamma_state, g_state, conversion_flag = multi_component_oz_solver_alpha(
@@ -906,9 +906,9 @@ def c_analysis(
             return g_state, c_state, gamma_state
 
 
-        g_rep_sigma_opt, c_rep_sigma_opt, gamma_rep_sigma_opt = compute_sigma_gr(sigma_opt)
+        g_rep_sigma_opt, c_rep_sigma_opt, gamma_rep_sigma_opt = compute_repulsive_gr(sigma_opt)
 
-        g_rep_sigma_bh, c_rep_sigma_bh, gamma_rep_sigma_bh = compute_sigma_gr(bh_sigma)
+        g_rep_sigma_bh, c_rep_sigma_bh, gamma_rep_sigma_bh = compute_repulsive_gr(bh_sigma)
 
 
         u_rep = build_total_u_from_sigma(sigma_opt)
@@ -1160,9 +1160,9 @@ def c_analysis(
         # Repulsive RDF using sigma
         # ============================================================
 
-        def compute_repulsive_gr_hard(sigma_mat):
+        def compute_gr_sigma(sigma_mat):
 
-            u_rep = build_hard_core_u_from_sigma(sigma_mat)
+            u_rep = build_total_u_from_sigma(sigma_mat)
 
             c_state, gamma_state, g_state, conversion_flag = multi_component_oz_solver_alpha(
                 r=r,
@@ -1181,7 +1181,7 @@ def c_analysis(
             return g_state, c_state, gamma_state
 
 
-        g_hard_sigma_opt, c_hard_sigma_opt, gamma_hard_sigma_opt = compute_repulsive_gr_hard(sigma_opt)
+        g_sigma_opt, c_sigma_opt, gamma_sigma_opt =  compute_gr_sigma(sigma_opt)
 
 
         # ============================================================
@@ -1190,8 +1190,8 @@ def c_analysis(
 
         c_real = np.asarray(final_oz_results["c_pred"])
         c_ref_hard = np.asarray(c_ref)
-        c_sigma_opt = np.asarray(reference_package["c_rep_sigma_opt"])
-        c_rep_sigma_opt = np.asarray(c_hard_sigma_opt)
+        c_rep_sigma_opt= np.asarray(reference_package["c_rep_sigma_opt"])
+        c_sigma_opt = np.asarray(c_sigma_opt)
 
 
         # ============================================================
