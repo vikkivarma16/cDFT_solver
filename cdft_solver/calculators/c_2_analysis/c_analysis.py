@@ -786,8 +786,35 @@ def c_analysis(
     if hard_core_pairs:
 
         print("\n🔧 Starting sigma calibration stage...")
+        
+        
+        print("Sigma reference system analysis\n")
 
 
+        u_ref = np.zeros_like(u_matrix)
+
+
+        for i in range(N):
+            for j in range(N):
+
+                if has_core[i, j]:
+                    u_ref[i, j] = wca_split(r, u_matrix[i, j])
+                #else:
+                #    u_ref[i, j] = u_matrix[i, j].copy()
+                
+
+        c_ref, gamma_ref, g_ref, conversion_flag = multi_component_oz_solver_alpha(
+            r=r,
+            pair_closures=pair_closures,
+            densities=np.asarray(densities_s, float),
+            u_matrix=u_ref,
+            sigma_matrix=np.zeros((N, N)),
+            n_iter=n_iter,
+            tol=tolerance,
+            alpha_rdf_max=alpha_max,
+        )
+        
+        
         def unpack_sigma_vector(sigma_vec):
 
             sigma_mat = np.zeros((N, N))
@@ -805,7 +832,7 @@ def c_analysis(
 
             sigma_mat = unpack_sigma_vector(sigma_vec)
 
-            u_trial = build_total_u_from_sigma(sigma_mat)
+            u_trial = build_hard_core_u_from_sigma(sigma_mat)
 
             c_trial, gamma_trial, g_trial, conversion_flag = multi_component_oz_solver_alpha(
                 r=r,
@@ -825,7 +852,7 @@ def c_analysis(
 
             for (i, j) in total_pair:
 
-                diff = g_trial[i, j] - final_oz_results["g_pred"][i, j]
+                diff = g_trial[i, j] - g_ref[i, j]
 
                 loss += np.sum(diff * diff)
 
@@ -847,31 +874,7 @@ def c_analysis(
         sigma_opt = unpack_sigma_vector(result.x)
 
 
-        print("Sigma reference system analysis\n")
-
-
-        u_ref = np.zeros_like(u_matrix)
-
-        for i in range(N):
-            for j in range(N):
-
-                if has_core[i, j]:
-                    u_ref[i, j] = wca_split(r, u_matrix[i, j])
-                #else:
-                #    u_ref[i, j] = u_matrix[i, j].copy()
-
-
-        c_ref, gamma_ref, g_ref, conversion_flag = multi_component_oz_solver_alpha(
-            r=r,
-            pair_closures=pair_closures,
-            densities=np.asarray(densities_s, float),
-            u_matrix=u_ref,
-            sigma_matrix=np.zeros((N, N)),
-            n_iter=n_iter,
-            tol=tolerance,
-            alpha_rdf_max=alpha_max,
-        )
-
+        
 
         bh_zero = {}
         bh_sigma = np.zeros_like(sigma_opt)
