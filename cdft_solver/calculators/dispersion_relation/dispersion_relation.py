@@ -569,7 +569,7 @@ def dispersion_relation(
         input_data=system,
         grid_points=5000,
         file_name_prefix="supplied_data_potential_hc.json",
-        export_files=False
+        export_files=True
     )
 
     mf_data = meanfield_potentials(
@@ -577,7 +577,7 @@ def dispersion_relation(
         input_data=system,
         grid_points=5000,
         file_name_prefix="supplied_data_potential_mf.json",
-        export_files=False
+        export_files=True
     )
 
     total_data = total_potentials(
@@ -585,7 +585,7 @@ def dispersion_relation(
         hc_source= hc_data,
         mf_source= mf_data,
         file_name_prefix="supplied_data_potential_total.json",
-        export_files=False,
+        export_files=True
        
     )
     
