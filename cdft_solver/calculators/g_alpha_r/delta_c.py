@@ -550,14 +550,11 @@ def boltzmann_potential_from_gr(g, beta=1.0, g_min=1e-8):
     
     
 def detect_first_minimum_near_core(r, u_ij, sigma=None):
-    """
-    Detect the first local minimum of u(r) after the hard core.
-    If sigma is provided, search starts slightly above sigma.
-    """
+    
+    
 
-    # Exclude hard-core region
     if sigma is not None and sigma > 0:
-        mask = r > 1.05 * sigma
+        mask = r > 1.0 * sigma
     else:
         mask = r > r[1]
 
