@@ -14,6 +14,7 @@ from collections.abc import Mapping
 from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
 from cdft_solver.generators.potential_splitter.mf import meanfield_potentials 
 from cdft_solver.generators.potential_splitter.total import total_potentials
+from cdft_solver.generators.potential_splitter.raw import raw_potentials
 from cdft_solver.calculators.radial_distribution_function.closure import closure_update_c_matrix
 from scipy.interpolate import interp1d
 import os
@@ -564,32 +565,16 @@ def dispersion_relation(
     
     print ("\n\n\n\nSupplied densities are given as:", densities, "\n\n\n\n\n")
     system = rdf_config
-    hc_data = hard_core_potentials(
+    
+    raw_potential = raw_potentials(
         ctx=ctx,
         input_data=system,
         grid_points=5000,
-        file_name_prefix="supplied_data_potential_hc.json",
+        file_name_prefix="supplied_data_potential_raw.json",
         export_files=True
-    )
-
-    mf_data = meanfield_potentials(
-        ctx=ctx,
-        input_data=system,
-        grid_points=5000,
-        file_name_prefix="supplied_data_potential_mf.json",
-        export_files=True
-    )
-
-    total_data = total_potentials(
-        ctx=ctx,
-        hc_source= hc_data,
-        mf_source= mf_data,
-        file_name_prefix="supplied_data_potential_total.json",
-        export_files=True
-       
     )
     
-    sigma = hc_data["sigma"]
+    pdata = raw_potential["potentials"]
     
 
     # -----------------------------
@@ -635,7 +620,7 @@ def dispersion_relation(
     # Potentials
     # -----------------------------
     
-    potential_dict = total_data["total_potentials"]
+    potential_dict = raw_potential["potentials"]
     u_matrix = np.zeros((N, N, len(r)))
     print (pair_closures)
     n = len(species)
@@ -685,19 +670,7 @@ def dispersion_relation(
 
   
 
-    # u_matrix: (N, N, Nr), r: (Nr,)
-    u_strength = np.zeros((N, N))
-
-    for i in range(N):
-        for j in range(N):
-            u = u_matrix[i, j, :]
-            integrand = r**2 * u
-            u_strength[i, j] = 4.0 * np.pi * np.trapz(integrand, r)
-
-    #print("Integrated potential strength (trapezoidal) for each pair:")
-    #print(u_strength)
-
-
+    sigma = None
 
     # -----------------------------
     # Sigma matrix
