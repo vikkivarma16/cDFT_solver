@@ -1007,7 +1007,7 @@ def c_analysis(
             n_iter,
             tolerance,
             alpha_max,
-            n_alpha=20,
+            n_alpha=11,
         ):
             """
             Computes
