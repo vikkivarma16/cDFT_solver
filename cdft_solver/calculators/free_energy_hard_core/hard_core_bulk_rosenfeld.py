@@ -1,4 +1,4 @@
-def hard_core(
+def hard_core_bulk_rosenfeld(
     ctx=None,
     hc_data=None,
     export_json=True,

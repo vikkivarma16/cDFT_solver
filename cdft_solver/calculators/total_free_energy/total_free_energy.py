@@ -3,9 +3,13 @@ import sympy as sp
 
 from cdft_solver.calculators.free_energy_ideal.ideal import ideal as idl
 from cdft_solver.calculators.free_energy_mean_field.mean_field import mean_field
-from cdft_solver.calculators.free_energy_hard_core.hard_core import hard_core
 from cdft_solver.calculators.free_energy_hybrid.hybrid import hybrid
 from cdft_solver.calculators.free_energy_hybrid_lattice.free_energy_lattice import free_energy_lattice
+
+from cdft_solver.calculators.free_energy_hard_core.hard_core_bulk_whitebeer import hard_core_bulk_whitebeer
+from cdft_solver.calculators.free_energy_hard_core.hard_core_bulk_rosenfeld import hard_core_bulk_rosenfeld
+from cdft_solver.calculators.free_energy_hard_core.hard_core_bulk_cs import hard_core_bulk_cs
+
 
 
 
@@ -196,27 +200,67 @@ def total_free_energy(
     # ============================================================
     # STANDARD → IDEAL + MF + HC
     # ============================================================
+    
+    
+    
+    
+    
+    # ============================================================
+    # STANDARD → IDEAL + MF + HC
+    # ============================================================
     if mode == "standard":
+
         mf = mean_field(
             ctx=ctx,
             hc_data=hc_data,
             system_config=system_config,
             export_json=export_json,
-            filename = filenames["mean_field"]
+            filename=filenames["mean_field"]
         )
 
-        hc = hard_core(
+        # -------------------------
+        # Select HS functional
+        # -------------------------
+        hs_functional = free_energy_block.get("hs_functional", "rosenfeld")
+
+        if not isinstance(hs_functional, str):
+            raise ValueError("hs_functional must be a string")
+
+        hs_functional = hs_functional.lower()
+
+        HS_FUNCTIONALS = {
+            "whitebeer": hard_core_bulk_whitebeer,
+            "rosenfeld": hard_core_bulk_rosenfeld,
+            "cs": hard_core_bulk_cs,
+            "bmcsl": hard_core_bulk_cs,  # alias
+        }
+
+        if hs_functional not in HS_FUNCTIONALS:
+            raise ValueError(
+                f"Unsupported hs_functional '{hs_functional}'. "
+                f"Available: {list(HS_FUNCTIONALS.keys())}"
+            )
+
+        hc_model = HS_FUNCTIONALS[hs_functional]
+
+        hc = hc_model(
             ctx=ctx,
             hc_data=hc_data,
             export_json=export_json,
-            filename = filenames["hard_core"] 
+            filename=filenames["hard_core"]
         )
 
         components.extend([mf, hc])
 
         merged = merge_free_energies(components)
-        merged["selected_model"] = "ideal + mean_field + hard_core"
+        merged["selected_model"] = f"ideal + mean_field + {hs_functional}"
+
         return merged
+    
+    
+    
+    
+    
 
     # ============================================================
     # HYBRID → IDEAL + HYBRID
