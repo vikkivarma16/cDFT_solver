@@ -8,8 +8,6 @@ from cdft_solver.calculators.free_energy_hybrid_lattice.free_energy_lattice impo
 
 from cdft_solver.calculators.free_energy_hard_core.hard_core_bulk_whitebeer import hard_core_bulk_whitebeer
 from cdft_solver.calculators.free_energy_hard_core.hard_core_bulk_rosenfeld import hard_core_bulk_rosenfeld
-from cdft_solver.calculators.free_energy_hard_core.hard_core_bulk_cs import hard_core_bulk_cs
-
 
 
 
@@ -231,8 +229,6 @@ def total_free_energy(
         HS_FUNCTIONALS = {
             "whitebeer": hard_core_bulk_whitebeer,
             "rosenfeld": hard_core_bulk_rosenfeld,
-            "cs": hard_core_bulk_cs,
-            "bmcsl": hard_core_bulk_cs,  # alias
         }
 
         if hs_functional not in HS_FUNCTIONALS:
