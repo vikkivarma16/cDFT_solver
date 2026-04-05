@@ -61,7 +61,7 @@ def dispersion_relation(
             rdf_config=rdf_config,
             densities=densities,
             supplied_data=supplied_data,
-            export=False,
+            export=True,
             plot=False,
         )
 
@@ -70,7 +70,7 @@ def dispersion_relation(
             ctx=ctx,
             rdf_config=rdf_config,
             densities=densities,
-            export=False,
+            export=True,
             plot=False,
         )
 
