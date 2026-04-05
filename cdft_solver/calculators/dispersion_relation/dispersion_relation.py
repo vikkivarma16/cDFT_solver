@@ -2,9 +2,9 @@ import numpy as np
 from pathlib import Path
 import json
 
-from .rdf_radial import rdf_radial
-from .rdf_two_d import rdf_2d
-from .rdf_radial import find_key_recursive
+from cdft_solver.calculators.radial_distribution_function.rdf_radial import rdf_radial
+from cdft_solver.calculators.radial_distribution_function.rdf_two_d import rdf_2d
+from cdft_solver.calculators.radial_distribution_function.rdf_radial import find_key_recursive
 
 # -------------------------------------------------
 # Dispersion relation calculator (AUTO 2D / 3D)
