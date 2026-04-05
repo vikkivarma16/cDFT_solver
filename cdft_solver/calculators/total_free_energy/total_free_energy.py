@@ -221,7 +221,7 @@ def total_free_energy(
         # -------------------------
         # Select HS functional
         # -------------------------
-        hs_functional = free_energy_block.get("hs_functional", "rosenfeld")
+        hs_functional = free_energy_block.get("hs_functional", "whitebeer")
 
         if not isinstance(hs_functional, str):
             raise ValueError("hs_functional must be a string")
