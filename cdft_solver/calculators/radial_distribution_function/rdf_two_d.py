@@ -213,12 +213,8 @@ def rdf_2d(
             gamma_r, r=r_grid, pair_closures=pair_closures, u_matrix =u_matrix, sigma_matrix =  sigma_matrix
         )
 
-        # Selective update
-        for i in range(Ns):
-            for j in range(Ns):
-                if c_update_flag[i, j]:
-                    c_r[i, j, :] = c_trial[i, j, :]
-
+   
+        c_r = c_trial
         # Stabilization
         c_r = np.clip(c_r, -50.0, 50.0)
 
