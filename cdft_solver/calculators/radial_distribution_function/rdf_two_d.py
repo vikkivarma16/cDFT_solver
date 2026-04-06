@@ -147,12 +147,17 @@ def rdf_2d(
     # -----------------------------
     # Grid (ONLY radial now)
     # -----------------------------
-    grid = r_k_space_cylindrical(ctx=ctx, data_dict=rdf_config)
-    r_space = np.array(grid["r_space"])
-    k_space = np.array(grid["k_space"])
-
-    r_grid = np.sort(np.unique(r_space[:, 1]))
-    k_grid = np.sort(np.unique(k_space[:, 1]))
+    
+    n_points = rdf_block.get("n_points", 300)
+    Nr = n_points
+    r_max  =  rdf_block.get("r_max", 6)
+    dr = r_max / (n_points + 1)
+    r_grid = dr * np.arange(1, n_points + 1)
+        
+    alpha = jn_zeros(0, Nr)   # zeros of J0
+    k_grid = alpha / r_max
+    
+    
 
     Nr = len(r_grid)
 
