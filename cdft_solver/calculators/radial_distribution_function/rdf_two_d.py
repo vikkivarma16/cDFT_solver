@@ -194,280 +194,223 @@ def process_supplied_rdf(supplied_data, species, r_grid):
 
 
 
-def hankel_forward_dst(f_r, r):
-    N = len(r)
+import numpy as np
+from numba import njit, prange
+
+# ============================================================
+# FAST NUMBA DST (Type-I equivalent)
+# ============================================================
+
+@njit(parallel=True, fastmath=True)
+def dst_type1_numba(x):
+    N = x.shape[0]
+    X = np.zeros(N)
+
+    for k in prange(N):
+        s = 0.0
+        for n in range(N):
+            s += x[n] * np.sin(np.pi * (k+1) * (n+1) / (N+1))
+        X[k] = s
+
+    return X
+
+
+@njit(parallel=True, fastmath=True)
+def idst_type1_numba(X):
+    N = X.shape[0]
+    x = np.zeros(N)
+
+    for n in prange(N):
+        s = 0.0
+        for k in range(N):
+            s += X[k] * np.sin(np.pi * (k+1) * (n+1) / (N+1))
+        x[n] = s
+
+    return x
+
+
+# ============================================================
+# FAST 2D HANKEL (DST-BASED)
+# ============================================================
+
+@njit(fastmath=True)
+def hankel_forward_2d_numba(f_r, r):
+    N = r.shape[0]
     dr = r[1] - r[0]
-    Rmax = max(r)
-    
-    #print (Rmax)
-    k = np.pi * np.arange(1, N + 1) / Rmax
+    Rmax = r[-1]
+
+    k = np.pi * (np.arange(1, N+1)) / Rmax
+
     x = r * f_r
-    X = dst(x, type=1)
+    X = dst_type1_numba(x)
+
     Fk = (2.0 * np.pi * dr / k) * X
+
     return k, Fk
 
-def hankel_inverse_dst(k, Fk, r):
-    N = len(r)
-    dr = r[1] - r[0]
-    Rmax = max (r)
+
+@njit(fastmath=True)
+def hankel_inverse_2d_numba(k, Fk, r):
+    N = r.shape[0]
+    Rmax = r[-1]
     dk = np.pi / Rmax
+
     Y = k * Fk
-    y = idst(Y, type=1)
+    y = idst_type1_numba(Y)
+
     f_r = np.zeros_like(r)
-    nonzero = ~np.isclose(r, 0.0)
-    f_r[nonzero] = (dk / (4.0 * np.pi**2 * r[nonzero])) * y[nonzero]
-    if np.isclose(r[0], 0.0) and len(r) > 1:
-        f_r[0] = f_r[1]
+
+    for i in range(N):
+        if r[i] > 1e-12:
+            f_r[i] = (dk / (4.0 * np.pi**2 * r[i])) * y[i]
+        else:
+            f_r[i] = y[1]  # regularization
+
     return f_r
 
-def hankel_transform_matrix_fast(f_r_matrix, r):
+
+# ============================================================
+# MATRIX VERSIONS (FULLY JITTED)
+# ============================================================
+
+@njit(parallel=True, fastmath=True)
+def hankel_transform_matrix_numba(f_r_matrix, r):
     N = f_r_matrix.shape[0]
-    f_k_matrix = np.zeros_like(f_r_matrix)
-    k = None
-    for a in range(N):
-        for b in range(N):
-            k, Fk = hankel_forward_dst(f_r_matrix[a, b, :], r)
-            f_k_matrix[a, b, :] = Fk
+    Nr = r.shape[0]
+
+    f_k_matrix = np.zeros((N, N, Nr))
+
+    for i in prange(N):
+        for j in range(N):
+            k, Fk = hankel_forward_2d_numba(f_r_matrix[i, j], r)
+            f_k_matrix[i, j] = Fk
+
     return f_k_matrix, k
 
-def inverse_hankel_transform_matrix_fast(f_k_matrix, k, r):
+
+@njit(parallel=True, fastmath=True)
+def inverse_hankel_transform_matrix_numba(f_k_matrix, k, r):
     N = f_k_matrix.shape[0]
-    f_r_matrix = np.zeros_like(f_k_matrix)
-    for a in range(N):
-        for b in range(N):
-            f_r_matrix[a, b, :] = hankel_inverse_dst(k, f_k_matrix[a, b, :], r)
+    Nr = r.shape[0]
+
+    f_r_matrix = np.zeros((N, N, Nr))
+
+    for i in prange(N):
+        for j in range(N):
+            f_r_matrix[i, j] = hankel_inverse_2d_numba(k, f_k_matrix[i, j], r)
+
     return f_r_matrix
 
 
-# -----------------------------
-# Closures and OZ solver
-# -----------------------------
+# ============================================================
+# FULL NUMBA OZ SOLVER (NO C, FULLY FAST)
+# ============================================================
 
-import os
-import sys
-import ctypes
-import numpy as np
-from ctypes import c_double, c_int, POINTER
+@njit(fastmath=True)
+def solve_oz_kspace_numba(c_k, densities):
+    N, _, Nk = c_k.shape
 
-# -------------------------------
-# Locate shared library reliably
-# -------------------------------
-_here = os.path.dirname(__file__)
+    gamma_k = np.zeros_like(c_k)
 
-if sys.platform == "darwin":
-    _libname = "liboz_cylindrical.dylib"
-elif sys.platform == "win32":
-    _libname = "liboz_cylindrical.dll"
-else:
-    _libname = "liboz_cylindrical.so"
+    for ik in range(Nk):
 
-_lib_path = os.path.join(_here, _libname)
+        # Build matrices
+        C = np.zeros((N, N))
+        for i in range(N):
+            for j in range(N):
+                C[i, j] = c_k[i, j, ik]
 
-if not os.path.exists(_lib_path):
-    raise FileNotFoundError(f"Shared library not found: {_lib_path}")
+        # OZ matrix solve
+        A = np.eye(N)
+        for i in range(N):
+            for j in range(N):
+                A[i, j] -= densities[j] * C[i, j]
 
-# Load shared library
-lib = ctypes.CDLL(_lib_path)
+        # Solve (A^-1 - I)C
+        A_inv = np.linalg.inv(A)
 
-# --------------------------------------------------
-# Define function signature
-# --------------------------------------------------
-lib.solve_oz_matrix.argtypes = [
-    c_int,                  # N
-    c_int,                  # Nr
-    POINTER(c_double),      # r
-    POINTER(c_double),      # densities
-    POINTER(c_double),      # c_r
-    POINTER(c_double),      # gamma_r
-]
+        for i in range(N):
+            for j in range(N):
+                gamma_k[i, j, ik] = 0.0
+                for m in range(N):
+                    gamma_k[i, j, ik] += (A_inv[i, m] - (1.0 if i == m else 0.0)) * C[m, j]
 
-lib.solve_oz_matrix.restype = None
+    return gamma_k
 
 
-# --------------------------------------------------
-# Python wrapper (FIXED + SAFE)
-# --------------------------------------------------
-def solve_oz_matrix(c_r, r, densities):
-    """
-    Calls optimized C OZ solver (2D Hankel-based)
-    """
+# ============================================================
+# FAST OZ SOLVER (FULL REPLACEMENT)
+# ============================================================
 
-    c_r = np.asarray(c_r, dtype=np.float64)
-    r = np.asarray(r, dtype=np.float64)
-    densities = np.asarray(densities, dtype=np.float64)
-
-    if c_r.ndim != 3:
-        raise ValueError("c_r must be shape (N, N, Nr)")
-
-    N, N2, Nr = c_r.shape
-    if N != N2:
-        raise ValueError("c_r must be square in first two dims")
-
-    # Allocate output
-    gamma_r = np.zeros_like(c_r, dtype=np.float64)
-
-    # Ensure C-contiguous memory (CRITICAL)
-    c_r_flat = np.ascontiguousarray(c_r).ravel()
-    gamma_r_flat = np.ascontiguousarray(gamma_r).ravel()
-
-    r_c = np.ascontiguousarray(r)
-    dens_c = np.ascontiguousarray(densities)
-
-    # Call C
-    lib.solve_oz_matrix(
-        c_int(N),
-        c_int(Nr),
-        r_c.ctypes.data_as(POINTER(c_double)),
-        dens_c.ctypes.data_as(POINTER(c_double)),
-        c_r_flat.ctypes.data_as(POINTER(c_double)),
-        gamma_r_flat.ctypes.data_as(POINTER(c_double)),
-    )
-
-    # Reshape back
-    gamma_r = gamma_r_flat.reshape((N, N, Nr))
-
-    # Stabilization
-    gamma_r = np.clip(gamma_r, -50.0, 50.0)
-
-    return gamma_r
-
-
-# --------------------------------------------------
-# Optional NumPy fallback (debug only)
-# --------------------------------------------------
-def hankel_forward_2d_all(c_r, J0, r_weight):
-    return 2 * np.pi * np.einsum(
-        'kr,abr->abk',
-        J0,
-        c_r * r_weight
-    )
-
-
-def hankel_inverse_2d_all(gamma_k, J0, k_weight):
-    return (1 / (2*np.pi)) * np.einsum(
-        'rk,abk->abr',
-        J0,
-        gamma_k * k_weight
-    )
-
-
-# --------------------------------------------------
-# Main OZ Solver (adaptive mixing)
-# --------------------------------------------------
-def multi_component_oz_solver_alpha(
+def multi_component_oz_solver_fast(
     r,
     pair_closures,
     densities,
     u_matrix,
     sigma_matrix=None,
-    c_update_flag=None,
-    c_initial=None,
-    n_iter=10000,
+    n_iter=5000,
     tol=1e-8,
-    alpha_rdf_max=0.01,
+    alpha_max=0.05,
 ):
-    """
-    Multi-component OZ solver with adaptive alpha-mixing
-    and selective c_ij update control.
-    """
 
-    if u_matrix is None:
-        raise ValueError("u_matrix must be provided.")
-
-    densities = np.asarray(densities, dtype=float)
-
+    densities = np.asarray(densities, float)
     N = pair_closures.shape[0]
     Nr = len(r)
 
-    # -----------------------------
-    # Initialize
-    # -----------------------------
     gamma_r = np.zeros((N, N, Nr))
 
-    if c_initial is not None:
-        c_r = c_initial.copy()
-    else:
+    # initial closure
+    c_r = closure_update_c_matrix(
+        gamma_r, r, pair_closures, u_matrix, sigma_matrix
+    )
+
+    alpha = 1e-4
+
+    for it in range(n_iter):
+
+        gamma_old = gamma_r.copy()
+
+        # --- closure
         c_r = closure_update_c_matrix(
             gamma_r, r, pair_closures, u_matrix, sigma_matrix
         )
 
-    # -----------------------------
-    # Update mask
-    # -----------------------------
-    if c_update_flag is None:
-        c_update_flag = np.ones((N, N), dtype=bool)
-    else:
-        c_update_flag = np.asarray(c_update_flag, dtype=bool)
+        # --- transform
+        c_k, k = hankel_transform_matrix_numba(c_r, r)
 
-    print("updating flag:", c_update_flag)
+        # --- OZ solve
+        gamma_k = solve_oz_kspace_numba(c_k, densities)
 
-    print(f"\n🚀 Starting OZ solver (adaptive α, α_max = {alpha_rdf_max})")
-    print(f"{'Iter':>6s} | {'Δγ(max)':>12s} | {'α':>8s}")
+        # --- inverse transform
+        gamma_new = inverse_hankel_transform_matrix_numba(gamma_k, k, r)
 
-    # -----------------------------
-    # Mixing setup
-    # -----------------------------
-    prev_diff = np.inf
-    alpha = min(1e-4, alpha_rdf_max)
-
-    # -----------------------------
-    # Iteration loop
-    # -----------------------------
-    for step in range(n_iter):
-
-        # --- Closure update
-        c_trial = closure_update_c_matrix(
-            gamma_r, r, pair_closures, u_matrix, sigma_matrix
-        )
-
-        # selective update
-        for i in range(N):
-            for j in range(N):
-                if c_update_flag[i, j]:
-                    c_r[i, j, :] = c_trial[i, j, :]
-
-        # stabilize
-        c_r = np.clip(c_r, -50.0, 50.0)
-
-        # --- Solve OZ (C backend)
-        gamma_new = solve_oz_matrix(c_r, r, densities)
-
-        # --- Convergence
-        delta_gamma = gamma_new - gamma_r
-        diff = np.max(np.abs(delta_gamma))
-
-        # --- Adaptive mixing
+        # --- mixing
         gamma_r = (1 - alpha) * gamma_r + alpha * gamma_new
-        gamma_r = np.clip(gamma_r, -50.0, 50.0)
 
-        # --- Adapt alpha
-        if step % 100 == 0 or diff < tol:
+        # --- convergence
+        err = np.max(np.abs(gamma_r - gamma_old))
 
-            if diff < prev_diff:
-                alpha = min(alpha * 1.05, alpha_rdf_max)
-            else:
-                alpha = max(alpha * 0.95, 0.0001)
+        if it % 50 == 0:
+            print(f"Iter {it} | Δγ = {err:.3e} | α = {alpha:.4f}")
 
-            print(f"{step:6d} | {diff:12.3e} | {alpha:8.5f}")
-
-        if diff < tol:
-            print(f"\n✅ Converged in {step+1} iterations.")
+        if err < tol:
+            print(f"✅ Converged in {it} iterations")
             break
 
-        prev_diff = diff
+        # adaptive alpha
+        if err < 1e-2:
+            alpha = min(alpha * 1.1, alpha_max)
+        else:
+            alpha = max(alpha * 0.7, 1e-5)
 
-    else:
-        print(f"\n⚠️ Warning: not converged after {n_iter} iterations.")
-
-    # -----------------------------
-    # Final observables
-    # -----------------------------
     h_r = gamma_r + c_r
     g_r = h_r + 1.0
 
     return c_r, gamma_r, g_r
-
-
+    
+    
+    
+    
 def apply_adaptive_ylim(ax, ydata, limit=10, clip=5):
     ymax = np.nanmax(np.abs(ydata))
     if ymax > limit:
