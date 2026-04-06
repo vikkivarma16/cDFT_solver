@@ -14,7 +14,7 @@ from .rdf_radial import find_key_recursive
 from cdft_solver.generators.potential_splitter.hc import hard_core_potentials
 from cdft_solver.generators.potential_splitter.mf import meanfield_potentials
 from cdft_solver.generators.potential_splitter.total import total_potentials
-from cdft_solver.generators.potential_loader.raw import raw_potentials
+from cdft_solver.generators.potential_splitter.raw import raw_potentials
 from cdft_solver.utils.plotting import plot_matrix_quantity
 
 # -------------------------------------------------
