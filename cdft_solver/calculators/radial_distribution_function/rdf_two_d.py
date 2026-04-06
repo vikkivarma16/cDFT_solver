@@ -342,7 +342,7 @@ def solve_oz_kspace_numba(c_k, densities):
 # FAST OZ SOLVER (FULL REPLACEMENT)
 # ============================================================
 
-def multi_component_oz_solver_fast(
+def multi_component_oz_solver_alpha(
     r,
     pair_closures,
     densities,
