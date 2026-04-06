@@ -196,150 +196,147 @@ def process_supplied_rdf(supplied_data, species, r_grid):
 
 import numpy as np
 from numba import njit, prange
+from scipy.special import j0
+
 
 # ============================================================
-# FAST NUMBA DST (Type-I equivalent)
+# K GRID (SAFE, OUTSIDE NUMBA)
+# ============================================================
+
+def build_k(r):
+    N = len(r)
+    Rmax = r[-1]
+    return np.pi * np.arange(1, N + 1) / Rmax
+
+
+# ============================================================
+# Bessel matrix (PRECOMPUTE ONCE, SAFE)
+# ============================================================
+
+def build_bessel_matrix(k, r):
+    Nk = len(k)
+    Nr = len(r)
+
+    J = np.empty((Nk, Nr), dtype=np.float64)
+
+    for i in range(Nk):
+        ki = k[i]
+        for j in range(Nr):
+            J[i, j] = j0(ki * r[j])
+
+    return J
+
+
+# ============================================================
+# FAST 2D HANKEL TRANSFORM (CORRECT FORM)
 # ============================================================
 
 @njit(parallel=True, fastmath=True)
-def dst_type1_numba(x):
-    N = x.shape[0]
-    X = np.zeros(N)
-
-    for k in prange(N):
-        s = 0.0
-        for n in range(N):
-            s += x[n] * np.sin(np.pi * (k+1) * (n+1) / (N+1))
-        X[k] = s
-
-    return X
-
-
-@njit(parallel=True, fastmath=True)
-def idst_type1_numba(X):
-    N = X.shape[0]
-    x = np.zeros(N)
-
-    for n in prange(N):
-        s = 0.0
-        for k in range(N):
-            s += X[k] * np.sin(np.pi * (k+1) * (n+1) / (N+1))
-        x[n] = s
-
-    return x
-
-
-# ============================================================
-# FAST 2D HANKEL (DST-BASED)
-# ============================================================
-
-@njit(fastmath=True)
-def hankel_forward_2d_numba(f_r, r):
-    N = r.shape[0]
+def hankel_forward_2d(f_r, r, J0):
+    Nk, Nr = J0.shape
     dr = r[1] - r[0]
-    Rmax = r[-1]
 
-    k = np.pi * (np.arange(1, N+1)) / Rmax
+    Fk = np.zeros(Nk)
 
-    x = r * f_r
-    X = dst_type1_numba(x)
+    for i in prange(Nk):
+        s = 0.0
+        for j in range(Nr):
+            s += r[j] * f_r[j] * J0[i, j]
+        Fk[i] = 2.0 * np.pi * s * dr
 
-    Fk = (2.0 * np.pi * dr / k) * X
-
-    return k, Fk
+    return Fk
 
 
-@njit(fastmath=True)
-def hankel_inverse_2d_numba(k, Fk, r):
-    N = r.shape[0]
-    Rmax = r[-1]
-    dk = np.pi / Rmax
+@njit(parallel=True, fastmath=True)
+def hankel_inverse_2d(Fk, k, r, J0):
+    Nr = len(r)
+    Nk = len(k)
+    dk = k[1] - k[0]
 
-    Y = k * Fk
-    y = idst_type1_numba(Y)
+    f_r = np.zeros(Nr)
 
-    f_r = np.zeros_like(r)
-
-    for i in range(N):
-        if r[i] > 1e-12:
-            f_r[i] = (dk / (4.0 * np.pi**2 * r[i])) * y[i]
-        else:
-            f_r[i] = y[1]  # regularization
+    for i in prange(Nr):
+        s = 0.0
+        for j in range(Nk):
+            s += k[j] * Fk[j] * J0[j, i]
+        f_r[i] = s * dk / (2.0 * np.pi)
 
     return f_r
 
 
 # ============================================================
-# MATRIX VERSIONS (FULLY JITTED)
+# MATRIX WRAPPERS (SAFE)
 # ============================================================
 
-@njit(parallel=True, fastmath=True)
-def hankel_transform_matrix_numba(f_r_matrix, r):
+def hankel_transform_matrix(f_r_matrix, r, k, J0):
     N = f_r_matrix.shape[0]
-    Nr = r.shape[0]
+    Nk = len(k)
+    Nr = len(r)
 
-    f_k_matrix = np.zeros((N, N, Nr))
+    f_k_matrix = np.zeros((N, N, Nk))
 
-    for i in prange(N):
+    for i in range(N):
         for j in range(N):
-            k, Fk = hankel_forward_2d_numba(f_r_matrix[i, j], r)
-            f_k_matrix[i, j] = Fk
+            f_k_matrix[i, j] = hankel_forward_2d(
+                f_r_matrix[i, j], r, J0
+            )
 
-    return f_k_matrix, k
+    return f_k_matrix
 
 
-@njit(parallel=True, fastmath=True)
-def inverse_hankel_transform_matrix_numba(f_k_matrix, k, r):
+def inverse_hankel_transform_matrix(f_k_matrix, r, k, J0):
     N = f_k_matrix.shape[0]
-    Nr = r.shape[0]
+    Nr = len(r)
 
     f_r_matrix = np.zeros((N, N, Nr))
 
-    for i in prange(N):
+    for i in range(N):
         for j in range(N):
-            f_r_matrix[i, j] = hankel_inverse_2d_numba(k, f_k_matrix[i, j], r)
+            f_r_matrix[i, j] = hankel_inverse_2d(
+                f_k_matrix[i, j], k, r, J0
+            )
 
     return f_r_matrix
 
 
 # ============================================================
-# FULL NUMBA OZ SOLVER (NO C, FULLY FAST)
+# OZ SOLVER IN K-SPACE (STABLE VERSION)
 # ============================================================
 
 @njit(fastmath=True)
 def solve_oz_kspace_numba(c_k, densities):
     N, _, Nk = c_k.shape
 
-    gamma_k = np.zeros_like(c_k)
+    gamma_k = np.zeros((N, N, Nk))
 
     for ik in range(Nk):
 
-        # Build matrices
         C = np.zeros((N, N))
         for i in range(N):
             for j in range(N):
                 C[i, j] = c_k[i, j, ik]
 
-        # OZ matrix solve
+        # OZ matrix: (I - ρC)
         A = np.eye(N)
+
         for i in range(N):
             for j in range(N):
                 A[i, j] -= densities[j] * C[i, j]
 
-        # Solve (A^-1 - I)C
         A_inv = np.linalg.inv(A)
 
         for i in range(N):
             for j in range(N):
-                gamma_k[i, j, ik] = 0.0
+                s = 0.0
                 for m in range(N):
-                    gamma_k[i, j, ik] += (A_inv[i, m] - (1.0 if i == m else 0.0)) * C[m, j]
+                    s += (A_inv[i, m] - (1.0 if i == m else 0.0)) * C[m, j]
+                gamma_k[i, j, ik] = s
 
     return gamma_k
 
 
 # ============================================================
-# FAST OZ SOLVER (FULL REPLACEMENT)
+# MAIN OZ SOLVER
 # ============================================================
 
 def multi_component_oz_solver_alpha(
@@ -348,21 +345,23 @@ def multi_component_oz_solver_alpha(
     densities,
     u_matrix,
     sigma_matrix=None,
-    n_iter=5000,
+    n_iter=2000,
     tol=1e-8,
     alpha_rdf_max=0.05,
 ):
 
     densities = np.asarray(densities, float)
     N = pair_closures.shape[0]
-    Nr = len(r)
 
-    gamma_r = np.zeros((N, N, Nr))
+    gamma_r = np.zeros((N, N, len(r)))
 
-    # initial closure
     c_r = closure_update_c_matrix(
         gamma_r, r, pair_closures, u_matrix, sigma_matrix
     )
+
+    # PRECOMPUTE ONCE
+    k = build_k(r)
+    J0 = build_bessel_matrix(k, r)
 
     alpha = 1e-4
 
@@ -370,24 +369,26 @@ def multi_component_oz_solver_alpha(
 
         gamma_old = gamma_r.copy()
 
-        # --- closure
+        # closure
         c_r = closure_update_c_matrix(
             gamma_r, r, pair_closures, u_matrix, sigma_matrix
         )
 
-        # --- transform
-        c_k, k = hankel_transform_matrix_numba(c_r, r)
+        # forward transform
+        c_k = hankel_transform_matrix(c_r, r, k, J0)
 
-        # --- OZ solve
+        # OZ solve
         gamma_k = solve_oz_kspace_numba(c_k, densities)
 
-        # --- inverse transform
-        gamma_new = inverse_hankel_transform_matrix_numba(gamma_k, k, r)
+        # inverse transform
+        gamma_r = inverse_hankel_transform_matrix(
+            gamma_k, r, k, J0
+        )
 
-        # --- mixing
-        gamma_r = (1 - alpha) * gamma_r + alpha * gamma_new
+        # mixing
+        gamma_r = (1 - alpha) * gamma_r + alpha * gamma_r
 
-        # --- convergence
+        # error
         err = np.max(np.abs(gamma_r - gamma_old))
 
         if it % 50 == 0:
@@ -399,7 +400,7 @@ def multi_component_oz_solver_alpha(
 
         # adaptive alpha
         if err < 1e-2:
-            alpha = min(alpha * 1.1, alpha_max)
+            alpha = min(alpha * 1.1, alpha_rdf_max)
         else:
             alpha = max(alpha * 0.7, 1e-5)
 
