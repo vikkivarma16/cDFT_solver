@@ -35,6 +35,7 @@ def dispersion_relation(
     # -----------------------------
     rdf_block = find_key_recursive(rdf_config, "rdf")
     species = find_key_recursive(rdf_config, "species")
+    
 
     if rdf_block is None:
         raise KeyError("No 'rdf' section found")
@@ -95,27 +96,57 @@ def dispersion_relation(
             c_r[i, j] = rdf_data[(si, sj)]["c_r"]
 
     # ============================================================
-    # STEP 2: Hankel transform c(r) → c(k)
+    # STEP 2: Dimension-aware transform c(r) → c(k)
     # ============================================================
 
-    def hankel_transform_matrix(c_r, r):
-        dr = r[1] - r[0]
-
-        # k grid (consistent with RDF resolution)
-        k = np.linspace(0.0, np.pi / dr, Nr)
-
+    def transform_matrix_dimensional(c_r, r, dimension):
+        import numpy as np
         from scipy.special import j0
-        J0 = j0(np.outer(k, r))
+
+        dr = r[1] - r[0]
+        Nr = len(r)
+
+        # Better k-grid (physically consistent)
+        r_max = r[-1]
+        k = np.pi * np.arange(1, Nr + 1) / r_max
 
         c_k = np.zeros((N, N, Nr))
 
-        for i in range(N):
-            for j in range(N):
-                c_k[i, j] = 2 * np.pi * (J0 @ (r * c_r[i, j])) * dr
+        # -----------------------------
+        # 2D transform (Bessel J0)
+        # -----------------------------
+        if dimension.lower() in ["2d", "planar", "two_page"]:
+            J0 = j0(np.outer(k, r))
+
+            for i in range(N):
+                for j in range(N):
+                    c_k[i, j] = 2 * np.pi * (J0 @ (r * c_r[i, j])) * dr
+
+        # -----------------------------
+        # 3D transform (spherical)
+        # -----------------------------
+        elif dimension.lower() in ["3d", "radial", "isotropic"]:
+            kr = np.outer(k, r)
+
+            # safe sinc: sin(kr)/(kr)
+            sinc = np.ones_like(kr)
+            mask = kr != 0.0
+            sinc[mask] = np.sin(kr[mask]) / kr[mask]
+
+            for i in range(N):
+                for j in range(N):
+                    c_k[i, j] = 4 * np.pi * (
+                        sinc @ (r**2 * c_r[i, j])
+                    ) * dr
+
+        else:
+            raise ValueError(f"Unsupported dimension: {dimension}")
 
         return c_k, k
 
-    c_k, k_vals = hankel_transform_matrix(c_r, r)
+
+    # Call it
+    c_k, k_vals = transform_matrix_dimensional(c_r, r, dimension)
 
     # ============================================================
     # STEP 3: Compute dispersion relation
