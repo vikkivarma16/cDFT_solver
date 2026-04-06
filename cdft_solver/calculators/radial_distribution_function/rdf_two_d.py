@@ -440,7 +440,7 @@ def multi_component_oz_solver_alpha(
         gamma_r = np.clip(gamma_r, -50.0, 50.0)
 
         # --- Adapt alpha
-        if step % 50 == 0 or diff < tol:
+        if step % 100 == 0 or diff < tol:
 
             if diff < prev_diff:
                 alpha = min(alpha * 1.05, alpha_rdf_max)
