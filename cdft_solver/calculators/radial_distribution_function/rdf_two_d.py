@@ -281,7 +281,7 @@ def hankel_transform_matrix(f_r_matrix, r, k, J0):
     for i in range(N):
         for j in range(N):
             f_k_matrix[i, j] = hankel_forward_2d(
-                f_r_matrix[i, j], r, J0
+                f_r_matrix[i, j], r, k, J0
             )
 
     return f_k_matrix
