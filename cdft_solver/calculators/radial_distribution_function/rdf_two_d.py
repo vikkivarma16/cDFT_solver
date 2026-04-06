@@ -350,7 +350,7 @@ def multi_component_oz_solver_alpha(
     sigma_matrix=None,
     n_iter=5000,
     tol=1e-8,
-    alpha_max=0.05,
+    alpha_rdf_max=0.05,
 ):
 
     densities = np.asarray(densities, float)
