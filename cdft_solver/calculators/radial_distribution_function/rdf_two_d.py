@@ -208,15 +208,9 @@ def rdf_2d(
         # -------------------------
         # Closure update
         # -------------------------
+        
         c_trial = closure_update_c_matrix(
-            r=r_grid,
-            pair_closures=pair_closures,
-            densities=densities,
-            u_matrix=u_matrix,
-            sigma_matrix=sigma_matrix,
-            n_iter=n_iter,
-            tol=tol,
-            alpha_rdf_max=alpha_mix,
+            gamma_r, r=r_grid, pair_closures=pair_closures, u_matrix =u_matrix, sigma_matrix =  sigma_matrix
         )
 
         # Selective update
