@@ -381,12 +381,12 @@ def multi_component_oz_solver_alpha(
         gamma_k = solve_oz_kspace_numba(c_k, densities)
 
         # inverse transform
-        gamma_r = inverse_hankel_transform_matrix(
+        gamma_new = inverse_hankel_transform_matrix(
             gamma_k, r, k, J0
         )
 
-        # mixing
-        gamma_r = (1 - alpha) * gamma_r + alpha * gamma_r
+        
+        gamma_r = (1 - alpha) * gamma_r + alpha * gamma_new
 
         # error
         err = np.max(np.abs(gamma_r - gamma_old))
