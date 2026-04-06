@@ -232,10 +232,8 @@ def build_bessel_matrix(k, r):
 # ============================================================
 
 @njit(parallel=True, fastmath=True)
-def hankel_forward_2d(f_r, r, J0):
-    Nk, Nr = J0.shape
+def hankel_forward_core(f_r, r, J0, Nk, Nr):
     dr = r[1] - r[0]
-
     Fk = np.zeros(Nk)
 
     for i in prange(Nk):
@@ -245,6 +243,11 @@ def hankel_forward_2d(f_r, r, J0):
         Fk[i] = 2.0 * np.pi * s * dr
 
     return Fk
+
+def hankel_forward_2d(f_r, r, k, J0):
+    Nk = len(k)
+    Nr = len(r)
+    return hankel_forward_core(f_r, r, J0, Nk, Nr)
 
 
 @njit(parallel=True, fastmath=True)
