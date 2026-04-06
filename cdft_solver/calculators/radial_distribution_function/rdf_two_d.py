@@ -6,6 +6,7 @@ from scipy.special import j0
 import ctypes
 import os
 import sys
+from scipy.special import jn_zeros
 
 from .closure import closure_update_c_matrix
 from .rdf_radial import find_key_recursive
