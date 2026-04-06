@@ -606,19 +606,6 @@ def rdf_2d(
     dr = r_max / (n_points + 1)
     r = dr * np.arange(1, n_points + 1)
     r_grid  = r
-    zeta = jn_zeros(0, Nr)
-    k_grid = zeta / r_max
-    
-    
-    dr = r_grid[1] - r_grid[0]
-    dk = k_grid[1] - k_grid[0]
-
-    # Precompute kernel once
-    J0 = j0(np.outer(k_grid, r_grid))   # (Nk, Nr)
-
-    # Precompute weights
-    r_weight = r_grid * dr              # (Nr,)
-    k_weight = k_grid * dk              # (Nk,)
     
     # -----------------------------
     # Closures (all ON initially)
