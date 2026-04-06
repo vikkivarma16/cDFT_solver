@@ -2,19 +2,20 @@ import numpy as np
 from pathlib import Path
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
-from scipy.special import j0
+from scipy.special import j0, jn_zeros
 import ctypes
 import os
 import sys
-from scipy.special import jn_zeros
+import json
 
 from .closure import closure_update_c_matrix
 from .rdf_radial import find_key_recursive
 
-from cdft_solver.generators.grids_properties.k_and_r_space_cylindrical import r_k_space_cylindrical
 from cdft_solver.generators.potential_splitter.hc import hard_core_potentials
 from cdft_solver.generators.potential_splitter.mf import meanfield_potentials
 from cdft_solver.generators.potential_splitter.total import total_potentials
+from cdft_solver.generators.potential_loader.raw import raw_potentials
+from cdft_solver.utils.plotting import plot_matrix_quantity
 
 # -------------------------------------------------
 # Load C solver
@@ -64,7 +65,6 @@ def solve_oz_matrix_2d(c_r, rho, r, k_grid, J0, Ns, Nr):
     Ck = np.zeros_like(c_r)
     gamma_k = np.zeros_like(c_r)
 
-    # Forward Hankel
     for a in range(Ns):
         for b in range(Ns):
             Ck[a, b, :] = hankel_transform_2d(c_r[a, b, :], r, k_grid, J0)
@@ -90,7 +90,6 @@ def solve_oz_matrix_2d(c_r, rho, r, k_grid, J0, Ns, Nr):
 
         gamma_k[:, :, ik] = B_f
 
-    # Inverse Hankel
     gamma_r = np.zeros_like(c_r)
     for a in range(Ns):
         for b in range(Ns):
@@ -99,32 +98,6 @@ def solve_oz_matrix_2d(c_r, rho, r, k_grid, J0, Ns, Nr):
             )
 
     return gamma_r
-
-# -------------------------------------------------
-# Plot
-# -------------------------------------------------
-def plot_rdf(g_r, r_grid, Ns, ctx):
-    plots = Path(ctx.plots_dir)
-    plots.mkdir(parents=True, exist_ok=True)
-
-    fig, axes = plt.subplots(Ns, Ns, figsize=(4*Ns, 4*Ns))
-
-    if Ns == 1:
-        axes = np.array([[axes]])
-
-    for i in range(Ns):
-        for j in range(Ns):
-            ax = axes[i, j]
-            ax.plot(r_grid, g_r[i, j])
-            ax.set_title(f"g_{i}{j}(r)")
-            ax.grid(True)
-
-    plt.tight_layout()
-    fname = plots / "rdf_2d.png"
-    plt.savefig(fname, dpi=300)
-    plt.close()
-
-    print(f"Saved {fname}")
 
 # -------------------------------------------------
 # MAIN PURE 2D RDF
@@ -142,54 +115,83 @@ def rdf_2d(
 
     Ns = len(species)
     beta = rdf_block.get("beta", 1.0)
-    n_iter = find_key_recursive(rdf_config, "max_iteration")
+    n_iter = rdf_block.get("max_iteration", 200)
     tol = rdf_block.get("tolerance", 1e-5)
+    filename_prefix = rdf_block.get("output_prefix", "rdf2d")
+    alpha_max = rdf_block.get("alpha_max", 0.05)
 
     # -----------------------------
-    # Grid (ONLY radial now)
+    # Grid
     # -----------------------------
-    
-    n_points = rdf_block.get("n_points", 300)
-    Nr = n_points
-    r_max  =  rdf_block.get("r_max", 6)
-    dr = r_max / (n_points + 1)
-    r_grid = dr * np.arange(1, n_points + 1)
-        
-    alpha = jn_zeros(0, Nr)   # zeros of J0
+    Nr = rdf_block.get("n_points", 300)
+    r_max = rdf_block.get("r_max", 6.0)
+
+    dr = r_max / (Nr + 1)
+    r_grid = dr * np.arange(1, Nr + 1)
+
+    alpha = jn_zeros(0, Nr)
     k_grid = alpha / r_max
-    
-    
-
-    Nr = len(r_grid)
 
     print("Nr =", Nr)
 
     # -----------------------------
-    # Potentials (pure radial)
+    # Potentials
     # -----------------------------
+    raw_data = raw_potentials(
+        ctx=ctx,
+        input_data=rdf_config,
+        grid_points=5000,
+        file_name_prefix="supplied_data_potential_raw.json",
+        export_files=True
+    )
+
+    potential_dict = raw_data["potentials"]
+
     hc_data = hard_core_potentials(ctx=ctx, input_data=rdf_config)
     mf_data = meanfield_potentials(ctx=ctx, input_data=rdf_config)
     total_data = total_potentials(ctx=ctx, hc_source=hc_data, mf_source=mf_data)
 
-    potential_dict = total_data["total_potentials"]
+    sigma = hc_data.get("sigma", None)
+    sigma_matrix = np.zeros((Ns, Ns)) if sigma is None else np.array(sigma)
 
     u_matrix = np.zeros((Ns, Ns, Nr))
 
     for i, si in enumerate(species):
         for j in range(i, Ns):
-
             sj = species[j]
+
             pdata = potential_dict.get(si+sj) or potential_dict.get(sj+si)
+            if pdata is None:
+                raise KeyError(f"Missing potential for pair {si}{sj}")
 
             R_tab = np.asarray(pdata["r"])
             U_tab = np.asarray(pdata["U"])
 
             interp_u = interp1d(R_tab, U_tab, bounds_error=False, fill_value=0.0)
-
             u = beta * interp_u(r_grid)
 
             u_matrix[i, j] = u
             u_matrix[j, i] = u
+
+    # -----------------------------
+    # Closures
+    # -----------------------------
+    closure_cfg = rdf_block.get("closure", {})
+    pair_closures = np.empty((Ns, Ns), dtype=object)
+
+    for i, si in enumerate(species):
+        for j in range(i, Ns):
+            sj = species[j]
+
+            key_ij = f"{si}{sj}"
+            key_ji = f"{sj}{si}"
+
+            closure = closure_cfg.get(key_ij) or closure_cfg.get(key_ji)
+            if closure is None:
+                raise KeyError(f"Missing closure for pair {key_ij}")
+
+            pair_closures[i, j] = closure
+            pair_closures[j, i] = closure
 
     # -----------------------------
     # Initialize
@@ -202,61 +204,84 @@ def rdf_2d(
     # -----------------------------
     # Iteration
     # -----------------------------
-    alpha = 0.1
-
+    prev_diff = np.inf
     for it in range(n_iter):
 
-        gamma_old = gamma_r.copy()
-
+        # -------------------------
+        # Closure update
+        # -------------------------
         c_trial = closure_update_c_matrix(
-            gamma_r.reshape(Ns, Ns, Nr),
-            r_grid,
-            None,
-            u_matrix.reshape(Ns, Ns, Nr),
-            None
+            r=r_grid,
+            pair_closures=pair_closures,
+            densities=densities,
+            u_matrix=u_matrix,
+            sigma_matrix=sigma_matrix,
+            n_iter=n_iter,
+            tol=tol,
+            alpha_rdf_max=alpha_mix,
         )
 
-        c_r[:] = c_trial
+        # Selective update
+        for i in range(Ns):
+            for j in range(Ns):
+                if c_update_flag[i, j]:
+                    c_r[i, j, :] = c_trial[i, j, :]
 
+        # Stabilization
+        c_r = np.clip(c_r, -50.0, 50.0)
+
+        # -------------------------
+        # Solve OZ
+        # -------------------------
         gamma_new = solve_oz_matrix_2d(
             c_r, densities, r_grid, k_grid, J0, Ns, Nr
         )
 
-        gamma_r = (1 - alpha) * gamma_old + alpha * gamma_new
+        # -------------------------
+        # Convergence check
+        # -------------------------
+        delta_gamma = gamma_new - gamma_r
+        diff = np.max(np.abs(delta_gamma))
 
-        err = np.max(np.abs(gamma_r - gamma_old))
+        # -------------------------
+        # Adaptive mixing
+        # -------------------------
+        gamma_r = (1 - alpha) * gamma_r + alpha * gamma_new
+        gamma_r = np.clip(gamma_r, -50.0, 50.0)
 
-        if it % 10 == 0:
-            print(f"Iter {it} | err = {err:.3e}")
+        # Adapt alpha (only occasionally to avoid noise)
+        if it % 50 == 0 or diff < tol:
+            if diff < prev_diff:
+                alpha = min(alpha * 1.05, alpha_max)
+            else:
+                alpha = max(alpha * 0.5, 0.00001)
 
-        if err < tol:
-            print("✅ Converged")
+            print(f"{it:6d} | {diff:12.3e} | {alpha:8.5f}")
+
+        if diff < tol:
+            print(f"\n✅ Converged in {it+1} iterations.")
             break
 
+        prev_diff = diff
+
+    else:
+        print(f"\n⚠️ Warning: not converged after {n_iter} iterations.")
+
+    # -----------------------------
+    # Final quantities
+    # -----------------------------
     h_r = gamma_r + c_r
     g_r = h_r + 1.0
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    # ============================================================
+
+    # -----------------------------
     # Output
-    # ============================================================
-    import json
-
-    r = r_grid  # unify naming
-
+    # -----------------------------
     rdf_out = {}
+
     for i, si in enumerate(species):
         for j, sj in enumerate(species):
             rdf_out[(si, sj)] = {
-                "r": r,
+                "r": r_grid,
                 "g_r": g_r[i, j],
                 "c_r": c_r[i, j],
                 "gamma_r": gamma_r[i, j],
@@ -282,7 +307,7 @@ def rdf_2d(
                 pair_key = f"{si}{sj}"
 
                 json_out["pairs"][pair_key] = {
-                    "r": r.tolist(),
+                    "r": r_grid.tolist(),
                     "g_r": g_r[i, j].tolist(),
                     "h_r": (g_r[i, j] - 1.0).tolist(),
                     "c_r": c_r[i, j].tolist(),
@@ -295,7 +320,7 @@ def rdf_2d(
         with open(json_path, "w") as f:
             json.dump(json_out, f, indent=4)
 
-        print(f"✅ RDF results exported to JSON → {json_path}")
+        print(f"✅ RDF results exported → {json_path}")
 
     # -----------------------------
     # Plotting
@@ -304,27 +329,26 @@ def rdf_2d(
         plots = Path(ctx.plots_dir)
         plots.mkdir(parents=True, exist_ok=True)
 
-        # filename-friendly density string
         rho_str = "_".join(f"{rho:.3f}" for rho in densities)
 
         plot_matrix_quantity(
-            r, g_r, u_matrix, species,
+            r_grid, g_r, u_matrix, species,
             title_prefix="g(r)",
-            filename=f"{filename_prefix}_gr_matrix_rho_{rho_str}.png",
+            filename=f"{filename_prefix}_gr_{rho_str}.png",
             plots_dir=plots
         )
 
         plot_matrix_quantity(
-            r, c_r, u_matrix, species,
+            r_grid, c_r, u_matrix, species,
             title_prefix="c(r)",
-            filename=f"{filename_prefix}_cr_matrix_rho_{rho_str}.png",
+            filename=f"{filename_prefix}_cr_{rho_str}.png",
             plots_dir=plots
         )
 
         plot_matrix_quantity(
-            r, gamma_r, u_matrix, species,
+            r_grid, gamma_r, u_matrix, species,
             title_prefix="γ(r)",
-            filename=f"{filename_prefix}_gammar_matrix_rho_{rho_str}.png",
+            filename=f"{filename_prefix}_gamma_{rho_str}.png",
             plots_dir=plots
         )
 
