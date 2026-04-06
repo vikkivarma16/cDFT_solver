@@ -7,6 +7,7 @@ from scipy.fftpack import dst, idst
 from scipy.interpolate import interp1d
 from collections import defaultdict
 from pathlib import Path
+from scipy.special import j0
 
 from collections.abc import Mapping
 from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
