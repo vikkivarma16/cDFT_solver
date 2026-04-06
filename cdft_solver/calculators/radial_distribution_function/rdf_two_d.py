@@ -127,8 +127,8 @@ def rdf_2d(
     dr = r_max / (Nr + 1)
     r_grid = dr * np.arange(1, Nr + 1)
 
-    alpha = jn_zeros(0, Nr)
-    k_grid = alpha / r_max
+    zeta = jn_zeros(0, Nr)
+    k_grid = zeta / r_max
 
     print("Nr =", Nr)
 
@@ -203,6 +203,7 @@ def rdf_2d(
     # Iteration
     # -----------------------------
     prev_diff = np.inf
+    alpha =  0.001
     for it in range(n_iter):
 
         # -------------------------
