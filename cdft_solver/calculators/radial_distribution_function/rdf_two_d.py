@@ -15,8 +15,6 @@ from cdft_solver.generators.potential_splitter.hc import hard_core_potentials
 from cdft_solver.generators.potential_splitter.mf import meanfield_potentials
 from cdft_solver.generators.potential_splitter.total import total_potentials
 from cdft_solver.generators.potential_splitter.raw import raw_potentials
-from cdft_solver.utils.plotting import plot_matrix_quantity
-
 # -------------------------------------------------
 # Load C solver
 # -------------------------------------------------
@@ -325,31 +323,6 @@ def rdf_2d(
     # -----------------------------
     # Plotting
     # -----------------------------
-    if plot:
-        plots = Path(ctx.plots_dir)
-        plots.mkdir(parents=True, exist_ok=True)
-
-        rho_str = "_".join(f"{rho:.3f}" for rho in densities)
-
-        plot_matrix_quantity(
-            r_grid, g_r, u_matrix, species,
-            title_prefix="g(r)",
-            filename=f"{filename_prefix}_gr_{rho_str}.png",
-            plots_dir=plots
-        )
-
-        plot_matrix_quantity(
-            r_grid, c_r, u_matrix, species,
-            title_prefix="c(r)",
-            filename=f"{filename_prefix}_cr_{rho_str}.png",
-            plots_dir=plots
-        )
-
-        plot_matrix_quantity(
-            r_grid, gamma_r, u_matrix, species,
-            title_prefix="γ(r)",
-            filename=f"{filename_prefix}_gamma_{rho_str}.png",
-            plots_dir=plots
-        )
+   
 
     return rdf_out
