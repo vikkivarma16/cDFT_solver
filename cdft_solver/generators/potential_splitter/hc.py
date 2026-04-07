@@ -180,7 +180,7 @@ def hard_core_potentials(
                         r_max = r_tab.max()
 
                     # Build a fine uniform grid for integration
-                    r = np.linspace(r_min, r_max, grid_points)
+                    r = np.linspace(r_min, 1.5*r_max, grid_points)
                     u = np.clip(pot(r), -1e3, 1e7)
 
 
@@ -200,10 +200,11 @@ def hard_core_potentials(
                 
                     u_ref = wca_split(r, u)
                     
-                    print (u_ref)
-                    exit(0)
                     
                     s = barker_henderson_diameter(r, u_ref)
+                    
+                    print (s)
+                    exit(0)
 
                     if i == j:
                         flag[i, j] = flag[j, i] = 1
