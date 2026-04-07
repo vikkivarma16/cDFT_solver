@@ -151,7 +151,7 @@ def hard_core_potentials(
                     # ----- Analytic potential (soft or hard) -----
                     pot = ppi(inter.copy())
 
-                    r_max = 1.5*inter.get("sigma", 1.0)
+                    r_max = inter.get("sigma", 1.0)
                     r = np.linspace(1e-5, r_max, grid_points)
                     u = np.clip(pot(r), -1e3, 1e7)
 
@@ -174,7 +174,7 @@ def hard_core_potentials(
 
                     if len(idx_zero) > 0:
                         # Take the first r where potential becomes zero
-                        r_max =1.5* r_tab[idx_zero[0]]
+                        r_max = r_tab[idx_zero[0]]
                     else:
                         # fallback if potential never crosses zero
                         r_max = r_tab.max()
@@ -195,11 +195,9 @@ def hard_core_potentials(
                 # -------------------------------------------------
                 # Probe the short-range part robustly
                 n_probe = max(5, grid_points // 20)
-                
-                u_ref = wca_split(r, u)
 
-                if np.any(u[:n_probe] > 1e8):
-                    s = barker_henderson_diameter(r, u_ref)
+                if np.any(u[:n_probe] > 1e5):
+                    s = barker_henderson_diameter(r, u)
 
                     if i == j:
                         flag[i, j] = flag[j, i] = 1
