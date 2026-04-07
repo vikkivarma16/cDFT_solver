@@ -881,7 +881,7 @@ def c_analysis(
 
         for (i, j) in hard_core_pairs:
 
-            d_bh, r0 = compute_bh_radius_truncated(r, u_matrix[i, j], beta_ref)
+            d_bh, r0 = compute_bh_radius_shift_truncated(r, u_matrix[i, j], beta_ref)
 
             bh_zero[(i, j)] = r0
             bh_sigma[i, j] = bh_sigma[j, i] = d_bh
