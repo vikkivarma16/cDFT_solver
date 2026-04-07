@@ -30,7 +30,7 @@ def hard_core_potentials(
    
     
     
-    def wca_split(r, u):
+    def wca_split(r, u, sigma_t):
         """
         Returns repulsive part of u(r) using WCA splitting.
         """
@@ -39,7 +39,7 @@ def hard_core_potentials(
         u_min = u[idx_min]
 
         u_rep = np.zeros_like(u)
-        mask = r <= r_min
+        mask = r <= sigma_t
         u_rep[mask] = u[mask] - u_min
         u_rep[~mask] = 0.0
         
@@ -150,7 +150,7 @@ def hard_core_potentials(
 
                     # ----- Analytic potential (soft or hard) -----
                     pot = ppi(inter.copy())
-
+                    sigma_t = inter.get("sigma", 1.0)
                     r_max = 1.5*inter.get("sigma", 1.0)
                     r = np.linspace(1e-5, r_max, grid_points)
                     u = np.clip(pot(r), -1e3, 1e7)
@@ -178,6 +178,8 @@ def hard_core_potentials(
                     else:
                         # fallback if potential never crosses zero
                         r_max = r_tab.max()
+                        
+                    sigma_t = r_max
 
                     # Build a fine uniform grid for integration
                     r = np.linspace(r_min, 1.5*r_max, grid_points)
@@ -198,7 +200,7 @@ def hard_core_potentials(
 
                 if np.any(u[:n_probe] > 1e5):
                 
-                    u_ref = wca_split(r, u)
+                    u_ref = wca_split(r, u, sigma_t)
                     
                     
                     s = barker_henderson_diameter(r, u_ref)
