@@ -203,8 +203,6 @@ def hard_core_potentials(
                     
                     s = barker_henderson_diameter(r, u_ref)
                     
-                    print (s)
-                    exit(0)
 
                     if i == j:
                         flag[i, j] = flag[j, i] = 1
