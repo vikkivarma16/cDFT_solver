@@ -990,13 +990,36 @@ def delta_c_alpha(
 
     total_pair = [ (i, j) for i in range(N) for j in range(i, N) ]
     
-    def neutralize(delta_c, sigma_matrix):
-        final_dc =  delta_c
+    def neutralize(delta_c, g_full, g_zero_tol=1e-3):
+        """
+        Neutralize delta_c in the CORE region using g(r) ≈ 0.
+
+        Parameters
+        ----------
+        g_zero_tol : float
+            Threshold below which g(r) is considered zero
+        """
+
+        N, _, Nr = delta_c.shape
+        final_dc = delta_c.copy()
+
         for i in range(N):
             for j in range(i, N):
-                if has_core[i, j]:
-                    final_dc[i, j][r < sigma_matrix[i, j]] = 0
-                    final_dc[j, i] =  final_dc[i, j]
+
+                dc = final_dc[i, j]
+                g  = g_full[i, j]
+
+                # -----------------------------
+                # Core region: g ≈ 0
+                # -----------------------------
+                core_mask = g < g_zero_tol
+
+                dc[core_mask] = 0.0
+
+                # enforce symmetry
+                final_dc[i, j] = dc
+                final_dc[j, i] = dc.copy()
+
         return final_dc
                     
         
@@ -1055,7 +1078,7 @@ def delta_c_alpha(
             # --------------------------------------------------------
         
 
-            return delta_c
+            return delta_c, g_full
         
         u_ref = build_hard_core_u_from_sigma(sigma_matrix)#: np.zeros_like(u_matrix)  
         
@@ -1102,9 +1125,9 @@ def delta_c_alpha(
                     
                     
         u_tot  =  u_ref + u_soft
-        delta_c = delta_c_r( u_ref=u_ref, u_full=u_tot, r=r, pair_closures=pair_closures, N=N,)      
+        delta_c, g_full = delta_c_r( u_ref=u_ref, u_full=u_tot, r=r, pair_closures=pair_closures, N=N,)      
         
-        delta_c_final = neutralize(delta_c, sigma_matrix)
+        delta_c_final = neutralize(delta_c, g_full)
             
             
         
