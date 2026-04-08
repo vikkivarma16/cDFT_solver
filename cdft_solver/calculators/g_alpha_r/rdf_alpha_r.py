@@ -1068,19 +1068,20 @@ def rdf_alpha_r(
             return G_u, G_accum
             
             
-        u_ref = build_hard_core_u_from_sigma(sigma_matrix)#: np.zeros_like(u_matrix)   
-        #for i in range(N):
-        #    for j in range(N):
-        #        if has_core[i, j]:
-        #            #u_ref[i, j] = wca_split(r, u_matrix[i, j])
-        #            u_ref[i, j] =  build_hard_core_u_from_sigma(sigma_matrix):
-        #            # u_r =  u_matrix[i, j]
-        #            # bh , r0 =  compute_bh_radius_truncated(r, u_r, beta_ref)
-        #            # mask  =  r < r0
-        #            # u_ref[i ,j] =  np.zeros_like(r)
-        #            # u_ref[i, j, mask] =  u_matrix[i, j, mask]
-        #        else:
-        #            u_ref[i, j] = u_matrix[i, j].copy()
+        #u_ref = build_hard_core_u_from_sigma(sigma_matrix)#: np.zeros_like(u_matrix)   
+        u_ref = np.zeros_like(u_matrix)
+        for i in range(N):
+            for j in range(N):
+                if has_core[i, j]:
+                    u_ref[i, j] = wca_split(r, u_matrix[i, j])
+                    #u_ref[i, j] =  build_hard_core_u_from_sigma(sigma_matrix):
+                    # u_r =  u_matrix[i, j]
+                    # bh , r0 =  compute_bh_radius_truncated(r, u_r, beta_ref)
+                    # mask  =  r < r0
+                    # u_ref[i ,j] =  np.zeros_like(r)
+                    # u_ref[i, j, mask] =  u_matrix[i, j, mask]
+                else:
+                    u_ref[i, j] = np.zeros_like(u_matrix[i, j])
 
         
         u_soft = np.zeros_like(u_matrix)
