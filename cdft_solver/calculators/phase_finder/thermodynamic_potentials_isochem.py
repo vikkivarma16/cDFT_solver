@@ -348,6 +348,7 @@ def evaluate_grand_canonical_state(
         "ensemble": "grand_canonical",
         "species": species, 
         "densities_solution": rho.tolist(),
+        "vij": vij.tolist(),
         "chemical_potentials": mu.tolist(),
         "pressure": float(P),
         "free_energy_density": float(f),

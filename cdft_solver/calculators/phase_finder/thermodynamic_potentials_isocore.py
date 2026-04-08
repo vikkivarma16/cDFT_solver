@@ -272,6 +272,7 @@ def evaluate_canonical_state(
         "ensemble": "canonical",
         "species": species,
         "densities": rho.tolist(),
+        "vij": vij.tolist(),
         "chemical_potentials": mu.tolist(),
         "pressure": float(P),
         "free_energy_density": float(f),
