@@ -990,7 +990,7 @@ def delta_c_alpha(
 
     total_pair = [ (i, j) for i in range(N) for j in range(i, N) ]
     
-    def neutralize(delta_c, g_full, g_zero_tol=1e-2):
+    def neutralize(delta_c, g_full, g_zero_tol=1e-1):
         """
         Neutralize delta_c in the CORE region using g(r) ≈ 0.
 
