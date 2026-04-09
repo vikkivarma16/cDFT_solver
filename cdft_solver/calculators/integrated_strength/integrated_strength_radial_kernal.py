@@ -211,6 +211,9 @@ def vij_radial_kernel(
 
                 u_real = Uc_raw
                 u_ref = wca_split(r_common, u_real)
+                
+                
+                
                 # --------------------------------------------------
                 # B2 computation
                 # --------------------------------------------------
@@ -218,6 +221,11 @@ def vij_radial_kernel(
                 B2_ref = compute_B2(r_common, u_ref, beta)
 
                 vij = 2.0 * (B2_real - B2_ref)
+                
+                print (u_real)
+                print (u_ref)
+                
+                exit(0)
 
             elif use_uniform:
                 vij = float(
