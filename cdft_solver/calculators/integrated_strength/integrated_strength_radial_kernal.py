@@ -178,7 +178,6 @@ def vij_radial_kernel(
             # MF potential
             ru = U_dict[key]["r"]
             Uv = U_dict[key]["U"]
-
             # RAW potential
             rr = Uraw_dict[key]["r"]
             Ur = Uraw_dict[key]["U"]
@@ -223,12 +222,6 @@ def vij_radial_kernel(
 
                 vij = 2.0 * (B2_real - B2_ref)
                 
-                print (u_real)
-                print (u_ref)
-                
-                print (B2_ref)
-                print (B2_real)
-                exit(0)
 
             elif use_uniform:
                 vij = float(
