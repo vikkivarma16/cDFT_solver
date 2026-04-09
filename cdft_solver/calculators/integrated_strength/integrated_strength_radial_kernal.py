@@ -202,6 +202,9 @@ def vij_radial_kernel(
             use_b2 = is_uniform_kernel(Kc) and has_hard_core(Uc_raw)
             
             use_uniform =   is_uniform_kernel(Kc)
+            
+            print  (use_uniform)
+            print (use_b2)
 
             if use_b2:
 
