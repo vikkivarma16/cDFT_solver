@@ -357,33 +357,61 @@ register_isotropic_pair_potential("nvrn", nvrn)
 # ============================================================
 
 def ma(p):
-    sigma = p.get("sigma", 1.0)
+    import numpy as np
+
+    sigma   = p.get("sigma", 1.0)
     epsilon = p.get("epsilon", 1.0)
-    cutoff = p.get("cutoff", 5.0)
+    cutoff  = p.get("cutoff", 5.0)
 
     m = p.get("m", 12.0)
     n = p.get("n", 6.0)
     lambda_p = p.get("lambda", 1.0)
 
+    # -------------------------------
+    # Grid to detect minimum
+    # -------------------------------
+    r_grid = np.linspace(1e-6, cutoff, 5000)
+
+    # -------------------------------
+    # Raw Mie potential
+    # -------------------------------
+    prefactor = (m / (m - n)) * (m / n) ** (n / (m - n))
+
+    def mie_raw(r):
+        return prefactor * epsilon * (
+            lambda_p * (sigma / r) ** m
+            - (sigma / r) ** n
+        )
+
+    # -------------------------------
+    # Shift so V(cutoff) = 0
+    # -------------------------------
+    v_cut = mie_raw(cutoff)
+    v_shifted = mie_raw(r_grid) - v_cut
+
+    # -------------------------------
+    # Find minimum numerically
+    # -------------------------------
+    idx_min = np.argmin(v_shifted)
+    r_min   = r_grid[idx_min]
+    v_min   = v_shifted[idx_min]
+
+    # -------------------------------
+    # Final potential
+    # -------------------------------
     def V(r):
-        r = np.asarray(r)
-
-        r_min = (lambda_p * m / n) ** (1 / (m - n))
-
+        r = np.asarray(r, dtype=float)
         v = np.zeros_like(r)
 
-        v[r < r_min] = -epsilon / lambda_p
+        mask = r <= cutoff
+        r_eff = r[mask]
 
-        mask = (r >= r_min)
-        v[mask] = (
-            (m / (m - n))
-            * ((m / n) ** (n / (m - n)))
-            * epsilon
-            * (
-                lambda_p * (sigma / r[mask]) ** m
-                - (sigma / r[mask]) ** n
-            )
-        )
+        v_eff = mie_raw(r_eff) - v_cut
+
+        # --- Flatten core ---
+        v_eff[r_eff < r_min] = v_min
+
+        v[mask] = v_eff
 
         return v
 
