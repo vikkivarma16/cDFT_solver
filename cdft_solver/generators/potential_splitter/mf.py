@@ -166,12 +166,6 @@ def meanfield_potentials(
                     V = ppi(inter)
                     u_raw = V(r)
                     
-                    print (inter)
-                    
-                    print (u_raw)
-                
-                    exit(0)
-
                 # -------------------------------
                 # Tabulated potential
                 # -------------------------------
