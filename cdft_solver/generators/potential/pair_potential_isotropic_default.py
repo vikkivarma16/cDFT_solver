@@ -170,9 +170,6 @@ def mie(p):
         # shifted potential
         v_eff = mie_raw(r_eff) - v_cut
 
-        # --- Flatten below minimum ---
-        v_eff[r_eff < r_min] = v_min
-
         v[mask] = v_eff
 
         # r > cutoff already zero
