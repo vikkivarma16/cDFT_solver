@@ -167,6 +167,8 @@ def meanfield_potentials(
                     u_raw = V(r)
                     
                     print (inter)
+                    
+                    print (u_raw)
                 
                     exit(0)
 
