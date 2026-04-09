@@ -174,8 +174,6 @@ def mie(p):
 
         # r > cutoff already zero
         
-        print (v)
-        exit (0)
         return v
 
     return V
