@@ -367,7 +367,7 @@ def multi_component_oz_solver_alpha(
     k = build_k(r)
     J0 = build_bessel_matrix(k, r)
 
-    alpha = 1e-4
+    alpha = 1e-2
 
     for it in range(n_iter):
 
@@ -404,9 +404,9 @@ def multi_component_oz_solver_alpha(
 
         # adaptive alpha
         if err < 1e-2:
-            alpha = min(alpha * 1.1, alpha_rdf_max)
+            alpha = min(alpha * 1.05, alpha_rdf_max)
         else:
-            alpha = max(alpha * 0.7, 1e-5)
+            alpha = max(alpha * 0.95, 1e-5)
 
     h_r = gamma_r + c_r
     g_r = h_r + 1.0
