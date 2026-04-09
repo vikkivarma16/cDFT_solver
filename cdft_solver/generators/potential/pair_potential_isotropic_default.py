@@ -130,21 +130,52 @@ register_isotropic_pair_potential("ggs", generalized_gaussian)
 # MIE
 # ------------------------------------------------------------
 def mie(p):
-    sigma = p.get("sigma", 1.0)
+    import numpy as np
+
+    sigma   = p.get("sigma", 1.0)
     epsilon = p.get("epsilon", 1.0)
+    cutoff  = p.get("cutoff", 5.0)
+
     n = p.get("n", 12)
     m = p.get("m", 6)
-    cutoff = p.get("cutoff", 5.0)
 
+    # Mie prefactor
     c = (n / (n - m)) * (n / m) ** (m / (n - m))
-    
+
+    # Grid to detect minimum
+    r_grid = np.linspace(1e-6, cutoff, 5000)
+
+    # --- Raw Mie potential ---
+    def mie_raw(r):
+        return epsilon * c * ((sigma / r)**n - (sigma / r)**m)
+
+    # --- Shift so V(cutoff) = 0 ---
+    v_cut = mie_raw(cutoff)
+    v_shifted = mie_raw(r_grid) - v_cut
+
+    # --- Find minimum ---
+    idx_min = np.argmin(v_shifted)
+    r_min   = r_grid[idx_min]
+    v_min   = v_shifted[idx_min]
+
+    # --- Final potential ---
     def V(r):
-        r = np.asarray(r) 
+        r = np.asarray(r, dtype=float)
         v = np.zeros_like(r)
-        mask = r > EPS
-        v[mask] = epsilon * c * ((sigma / r[mask])**n - (sigma / r[mask])**m)
-        v[r <= EPS] = 2e8
-        v[r > cutoff] = 0.0
+
+        # Inside cutoff
+        mask = r <= cutoff
+        r_eff = r[mask]
+
+        # shifted potential
+        v_eff = mie_raw(r_eff) - v_cut
+
+        # --- Flatten below minimum ---
+        v_eff[r_eff < r_min] = v_min
+
+        v[mask] = v_eff
+
+        # r > cutoff already zero
         return v
 
     return V
