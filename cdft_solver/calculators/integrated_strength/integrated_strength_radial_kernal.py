@@ -203,10 +203,6 @@ def vij_radial_kernel(
             
             use_uniform =   is_uniform_kernel(Kc)
             
-            print  (use_uniform)
-            print (use_b2)
-            print (Uc_raw)
-            exit (0)
 
             if use_b2:
 
