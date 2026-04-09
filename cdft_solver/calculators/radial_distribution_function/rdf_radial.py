@@ -681,12 +681,12 @@ def rdf_radial(
             
     plots = Path(ctx.plots_dir)      
     plot_u_matrix(
-    r=r,
-    u_matrix=u_matrix,
-    species=species,
-    outdir=plots,
-    filename="pair_potentials.png",
-)
+        r=r,
+        u_matrix=u_matrix,
+        species=species,
+        outdir=plots,
+        filename="pair_potentials.png",
+    )
 
   
 
