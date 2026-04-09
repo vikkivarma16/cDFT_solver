@@ -225,6 +225,8 @@ def vij_radial_kernel(
                 print (u_real)
                 print (u_ref)
                 
+                print (B2_ref)
+                print (B2_real)
                 exit(0)
 
             elif use_uniform:
