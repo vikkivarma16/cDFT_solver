@@ -13,6 +13,7 @@ from collections.abc import Mapping
 from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
 from cdft_solver.generators.potential_splitter.mf import meanfield_potentials 
 from cdft_solver.generators.potential_splitter.total import total_potentials
+from cdft_solver.generators.potential_splitter.raw import raw_potentials
 
 import matplotlib.pyplot as plt
 import re
@@ -539,6 +540,14 @@ def rdf_2d(
         export_files=False,
        
     )
+    real_potential  = raw_potentials(
+        ctx=ctx,
+        input_data=system,
+        grid_points=5000,
+        file_name_prefix="supplied_data_potential_raw.json",
+        export_files=True
+    )
+    
     
     sigma = hc_data["sigma"]
     
@@ -588,7 +597,8 @@ def rdf_2d(
     # Potentials
     # -----------------------------
     
-    potential_dict = total_data["total_potentials"]
+    potential_dict = real_potential["potentials"]
+    
     u_matrix = np.zeros((N, N, len(r)))
     print (pair_closures)
     n = len(species)
