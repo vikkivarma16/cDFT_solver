@@ -1,6 +1,8 @@
 
 # cdft_solver/generators/rdf_isotropic.py
 
+import numpy as np
+from numba import njit, prange
 import json
 import numpy as np
 from scipy.fftpack import dst, idst
@@ -8,6 +10,8 @@ from scipy.interpolate import interp1d
 from collections import defaultdict
 from pathlib import Path
 from scipy.special import j0
+import matplotlib.pyplot as plt
+import re
 
 from collections.abc import Mapping
 from cdft_solver.generators.potential_splitter.hc import hard_core_potentials 
@@ -15,8 +19,7 @@ from cdft_solver.generators.potential_splitter.mf import meanfield_potentials
 from cdft_solver.generators.potential_splitter.total import total_potentials
 from cdft_solver.generators.potential_splitter.raw import raw_potentials
 
-import matplotlib.pyplot as plt
-import re
+
 
 from .closure import closure_update_c_matrix
 
@@ -74,8 +77,6 @@ def solve_oz_kspace(h_k, densities, eps=1e-12):
     return c_k
 
 
-import matplotlib.pyplot as plt
-from pathlib import Path
 
 def plot_u_matrix(r, u_matrix, species, outdir, filename="u_matrix.png"):
     """
@@ -195,9 +196,6 @@ def process_supplied_rdf(supplied_data, species, r_grid):
 
 
 
-import numpy as np
-from numba import njit, prange
-from scipy.special import j0
 
 
 # ============================================================
@@ -521,7 +519,7 @@ def rdf_2d(
         input_data=system,
         grid_points=5000,
         file_name_prefix="supplied_data_potential_hc.json",
-        export_files=False
+        export_files=True
     )
 
     mf_data = meanfield_potentials(
@@ -529,7 +527,7 @@ def rdf_2d(
         input_data=system,
         grid_points=5000,
         file_name_prefix="supplied_data_potential_mf.json",
-        export_files=False
+        export_files=True
     )
 
     total_data = total_potentials(
@@ -537,7 +535,7 @@ def rdf_2d(
         hc_source= hc_data,
         mf_source= mf_data,
         file_name_prefix="supplied_data_potential_total.json",
-        export_files=False,
+        export_files=True,
        
     )
     real_potential  = raw_potentials(
@@ -639,12 +637,12 @@ def rdf_2d(
             
     plots = Path(ctx.plots_dir)      
     plot_u_matrix(
-    r=r,
-    u_matrix=u_matrix,
-    species=species,
-    outdir=plots,
-    filename="pair_potentials.png",
-)
+        r=r,
+        u_matrix=u_matrix,
+        species=species,
+        outdir=plots,
+        filename="pair_potentials.png",
+    )
 
   
 

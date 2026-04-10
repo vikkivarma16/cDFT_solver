@@ -35,7 +35,7 @@ def dispersion_relation(
     # -----------------------------
     rdf_block = find_key_recursive(rdf_config, "rdf")
     species = find_key_recursive(rdf_config, "species")
-    
+    r_max = rdf_block["r_max"]
 
     if rdf_block is None:
         raise KeyError("No 'rdf' section found")

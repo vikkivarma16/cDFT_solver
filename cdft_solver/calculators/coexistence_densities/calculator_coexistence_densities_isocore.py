@@ -690,6 +690,56 @@ def coexistence_densities_isocore(
                 if(fractions[i]<0.0):
                     print ( f"Attempt {attempt}: rejected — negative fraction {fractions[i]:.4f}")
                     continue
+                    
+                    
+                    
+                    
+            # --------------------------------------------------
+            # MONOTONICITY CHECK: v_ij must increase with density
+            # --------------------------------------------------
+            monotonic_ok = True
+            tol_v = 1e-10   # tolerance to avoid noise issues
+
+            # loop over species
+            for i in range(len(species_names)):
+
+                # collect (density, v_ii) pairs across phases
+                rho_v_pairs = []
+
+                for p in range(n_phases):
+                    rho_i = rhos_per_phase[p][i]
+                    vij_matrix = CURRENT_VIJ_PER_PHASE[p]
+
+                    v_ii = vij_matrix[i][i]   # use diagonal element
+
+                    rho_v_pairs.append((rho_i, v_ii))
+
+                # sort by density
+                rho_v_pairs.sort(key=lambda x: x[0])
+
+                # check monotonic increase
+                for k in range(len(rho_v_pairs) - 1):
+                    rho1, v1 = rho_v_pairs[k]
+                    rho2, v2 = rho_v_pairs[k + 1]
+
+                    if rho2 > rho1:
+                        if v2 < v1 - tol_v:
+                            monotonic_ok = False
+                            if verbose:
+                                print(
+                                    f"❌ Rejected (monotonicity): species {species_names[i]} | "
+                                    f"rho ↑ but v decreases: ({rho1:.4e},{v1:.4e}) → ({rho2:.4e},{v2:.4e})"
+                                )
+                            break
+
+                if not monotonic_ok:
+                    break
+
+            if not monotonic_ok:
+                continue
+                    
+                    
+        
  
             
 
@@ -757,7 +807,7 @@ def coexistence_densities_isocore(
         CURRENT_VIJ_PER_PHASE = vij_per_phase
         
         
-        print("iteration number",outer_iter, "vij", CURRENT_VIJ_PER_PHASE)
+        print("\n\n\n\niteration number",outer_iter, "vij", CURRENT_VIJ_PER_PHASE)
 
         sol = solve_coexistence_isocore(
             n_phases=n_phases,
