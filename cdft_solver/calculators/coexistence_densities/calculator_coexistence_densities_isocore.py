@@ -692,7 +692,8 @@ def coexistence_densities_isocore(
                     continue
                     
                     
-                    
+                 
+            global CURRENT_VIJ_PER_PHASE
                     
             # --------------------------------------------------
             # MONOTONICITY CHECK: v_ij must increase with density
@@ -749,7 +750,7 @@ def coexistence_densities_isocore(
             mu_vals = []
             pressure_vals = []
 
-            global CURRENT_VIJ_PER_PHASE
+            
             
             for p in range(n_phases):
                 mu_p, p_p = eval_mue_pressure_fn(
