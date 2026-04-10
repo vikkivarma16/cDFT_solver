@@ -735,7 +735,7 @@ def coexistence_densities_isocore(
                                 )
                             break
                             
-                    else if rho1 > rho2:
+                    elif rho1 > rho2:
                         if abs(v2) > abs(v1):
                             monotonic_ok = False
                             if verbose:
