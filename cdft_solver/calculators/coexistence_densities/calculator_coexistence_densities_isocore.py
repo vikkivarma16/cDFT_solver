@@ -603,7 +603,9 @@ def coexistence_densities_isocore(
             
                 
                 
-              # --- HETEROGENEOUS-PAIR CHECK (threshold-based dominant species) ---
+                
+            # --- Even at the end it was going to get the mind blowing    
+            # --- HETEROGENEOUS-PAIR CHECK (threshold-based dominant species) ---
             dominant_threshold = 0.9  # species considered dominant if ≥ 90% of its max density
             hetero_ok = True
 
@@ -724,7 +726,7 @@ def coexistence_densities_isocore(
                     rho2, v2 = rho_v_pairs[k + 1]
 
                     if rho2 > rho1:
-                        if abs(v2) < abs(v1) - tol_v:
+                        if abs(v2) < abs(v1):
                             monotonic_ok = False
                             if verbose:
                                 print(
@@ -732,6 +734,17 @@ def coexistence_densities_isocore(
                                     f"rho ↑ but v decreases: ({rho1:.4e},{v1:.4e}) → ({rho2:.4e},{v2:.4e})"
                                 )
                             break
+                            
+                    else if rho1 > rho2:
+                        if abs(v2) > abs(v1):
+                            monotonic_ok = False
+                            if verbose:
+                                print(
+                                    f"❌ Rejected (monotonicity): species {species_names[i]} | "
+                                    f"rho ↑ but v decreases: ({rho1:.4e},{v1:.4e}) → ({rho2:.4e},{v2:.4e})"
+                                )
+                            break
+                    
 
                 if not monotonic_ok:
                     break
