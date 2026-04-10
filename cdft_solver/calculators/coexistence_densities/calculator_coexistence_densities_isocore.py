@@ -724,7 +724,7 @@ def coexistence_densities_isocore(
                     rho2, v2 = rho_v_pairs[k + 1]
 
                     if rho2 > rho1:
-                        if v2 < v1 - tol_v:
+                        if abs(v2) < abs(v1) - tol_v:
                             monotonic_ok = False
                             if verbose:
                                 print(
