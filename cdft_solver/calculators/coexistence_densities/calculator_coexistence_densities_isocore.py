@@ -535,6 +535,7 @@ def coexistence_densities_isocore(
         eval_mue_pressure_fn,
         heterogeneous_pair,
         total_density_bound,
+        flag_consistent,
         verbose=True,
         max_attempts=2000000,
     ):
@@ -753,7 +754,7 @@ def coexistence_densities_isocore(
                 if not monotonic_ok:
                     break
 
-            if not monotonic_ok:
+            if not monotonic_ok and flag_consistent:
                 continue
                     
                     
@@ -817,6 +818,7 @@ def coexistence_densities_isocore(
     CURRENT_VIJ_PER_PHASE = vij_per_phase
 
     final_solution = None
+    flag_consistent = 1
 
     for outer_iter in range(1, max_outer_iters + 1):
         if verbose:
@@ -834,6 +836,7 @@ def coexistence_densities_isocore(
             eval_mue_pressure_fn=eval_mue_pressure_fn,
             heterogeneous_pair=heterogeneous_pair,
             total_density_bound=total_density_bound,
+            flag_consistent = flag_consistent,
             verbose=True,
         )
 
@@ -867,6 +870,48 @@ def coexistence_densities_isocore(
             compute_vij(rhos_per_phase[p], kernel_type=integrated_strength_kernel)
             for p in range(n_phases)
         ]
+        
+        
+        flag_consistent = 1
+
+        n_phases = len(rhos_per_phase)
+        n_species = len(rhos_per_phase[0])
+
+        for i in range(n_species):
+
+            # --- collect values ---
+            rho_vals = []
+            vij_vals = []
+
+            for p in range(n_phases):
+                rho_i = rhos_per_phase[p][i]
+                v_ii  = vij_per_phase[p][i][i]
+
+                rho_vals.append(rho_i)
+                vij_vals.append(abs(v_ii))  # absolute value
+
+            # convert to numpy (safer)
+            rho_vals = np.array(rho_vals)
+            vij_vals = np.array(vij_vals)
+
+            # --- get ordering indices ---
+            rho_order = np.argsort(rho_vals)
+            vij_order = np.argsort(vij_vals)
+
+            # --- compare ordering ---
+            if not np.array_equal(rho_order, vij_order):
+                flag_consistent = 0
+                break   # ← important: stop early
+        
+        
+        
+        
+        
+        
+        
+            
+            
+        
 
         last_rhos_per_phase = [np.asarray(r).copy() for r in rhos_per_phase]
         final_solution = sol
