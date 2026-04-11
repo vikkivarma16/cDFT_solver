@@ -743,11 +743,7 @@ def coexistence_densities_isocore(
                     elif rho1 > rho2:
                         if abs(v2) > abs(v1):
                             monotonic_ok = False
-                            if verbose:
-                                print(
-                                    f"❌ Rejected (monotonicity): species {species_names[i]} | "
-                                    f"rho ↑ but v decreases: ({rho1:.4e},{v1:.4e}) → ({rho2:.4e},{v2:.4e})"
-                                )
+                            
                             break
                     
 
@@ -755,6 +751,11 @@ def coexistence_densities_isocore(
                     break
 
             if not monotonic_ok and flag_consistent:
+                if verbose:
+                    print(
+                        f"❌ Rejected (monotonicity): species {species_names[i]} | "
+                        f"rho ↑ but v decreases: ({rho1:.4e},{v1:.4e}) → ({rho2:.4e},{v2:.4e})"
+                    )
                 continue
                     
                     
@@ -905,7 +906,7 @@ def coexistence_densities_isocore(
         
         
         
-        
+        print ("\n\n\nflag consistency check vij", flag_consistent, "\n\n\n")
         
         
         
