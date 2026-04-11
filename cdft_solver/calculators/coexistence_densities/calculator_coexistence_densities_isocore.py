@@ -381,6 +381,10 @@ def coexistence_densities_isocore(
         for i, si in enumerate(species_names):
             for j, sj in enumerate(species_names):
                 vij[i, j] = vij_out["vij_numeric"][(si, sj)]
+                
+                
+                print (densities)
+                print (vij[i, j])
 
         return vij
 
