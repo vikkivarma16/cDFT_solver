@@ -690,7 +690,7 @@ def coexistence_densities_isocore(
                     
             if any(f < 0.0 for f in fractions):
                 if verbose:
-                    print(f"Attempt {attempt}: rejected — negative fraction")
+                    print(f"Attempt {attempt}: rejected — negative fraction", rhos_per_phase)
                 continue
                     
             for i in range (len(fractions)):
