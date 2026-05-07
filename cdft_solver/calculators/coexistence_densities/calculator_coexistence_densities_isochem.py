@@ -296,7 +296,7 @@ def coexistence_densities_isochem(
         raise ValueError(
             f"Too many intrinsic constraints ({species_constraint_count}) "
             f"for {N_species} species (max allowed = {N_species - 1})."
-            f"count of intrinsic constraints  ({species_constraint_count})"
+            f"the specified intrinsic constraints are given as  ({intrinsic_constraints})"
         )
 
 
