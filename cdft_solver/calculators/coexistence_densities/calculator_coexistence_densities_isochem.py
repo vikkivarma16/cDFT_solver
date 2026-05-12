@@ -542,8 +542,7 @@ def coexistence_densities_isochem(
             
             
             
-            density_tol = 1e-5  # adjust based on physical scale
-
+            density_tol = 1e-3  # adjust based on physical scale
             # --- NEW CONSTRAINT: reject if densities across phases are nearly identical ---
             for i, sp_name in enumerate(species_names):
                 densities = [rhos_per_phase[p][i] for p in range(n_phases)]
