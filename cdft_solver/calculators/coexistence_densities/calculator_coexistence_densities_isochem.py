@@ -650,7 +650,7 @@ def coexistence_densities_isochem(
 
 
     # ============================================================
-    # Outer integrated-strength (v_ij) iteration loop
+    # Outer integrated-strength (v_{ij}) iteration loop ::::::::::
     # ============================================================
 
     n_phases = number_of_phases
