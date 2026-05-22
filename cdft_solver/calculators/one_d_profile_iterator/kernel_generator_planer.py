@@ -84,7 +84,7 @@ def build_strength_kernel_planer(
     # ==================================================
     # UNIFORM KERNEL
     # ==================================================
-    if kernel_type == "uniform":
+    if kernel_type == "uniform" or   kernel_type == "meanfield":
         print("✅ Using UNIFORM planar strength kernel")
 
         for i, si in enumerate(species):
