@@ -129,6 +129,11 @@ def vij_radial_kernel(
     # --------------------------------------------------
     U_dict = {}
     Uraw_dict = {}
+    
+    
+    kernel = config["system"]["free_energy"]["integrated_strength_kernel"]
+
+    print(kernel)
 
     for i, si in enumerate(species):
         for j, sj in enumerate(species[i:], start=i):
@@ -202,35 +207,43 @@ def vij_radial_kernel(
             
             use_uniform =   is_uniform_kernel(Kc)
             
-
-            if use_b2:
-
-                sigma = None
-                if sigma_matrix is not None:
-                    sigma = sigma_matrix[i, j]
-
-                u_real = Uc_raw
-                u_ref = wca_split(r_common, u_real)
-                
-                
-                
-                # --------------------------------------------------
-                # B2 computation
-                # --------------------------------------------------
-                B2_real = compute_B2(r_common, u_real, beta)
-                B2_ref = compute_B2(r_common, u_ref, beta)
-
-                vij = 2.0 * (B2_real - B2_ref)
-                
-
-            elif use_uniform:
+            
+            if kernel  == "meanfield":
                 vij = float(
-                    np.trapz(4.0 * np.pi * r_common**2 * Kc * Uc, r_common)
-                )
+                        np.trapz(4.0 * np.pi * r_common**2 * Kc * Uc, r_common)
+                    )
+            
+            
             else:
-                vij = float(
-                    np.trapz(4.0 * np.pi * r_common**2 * Kc, r_common)
-                )
+            
+                if use_b2:
+
+                    sigma = None
+                    if sigma_matrix is not None:
+                        sigma = sigma_matrix[i, j]
+
+                    u_real = Uc_raw
+                    u_ref = wca_split(r_common, u_real)
+                    
+                    
+                    
+                    # --------------------------------------------------
+                    # B2 computation
+                    # --------------------------------------------------
+                    B2_real = compute_B2(r_common, u_real, beta)
+                    B2_ref = compute_B2(r_common, u_ref, beta)
+
+                    vij = 2.0 * (B2_real - B2_ref)
+                    
+
+                elif use_uniform:
+                    vij = float(
+                        np.trapz(4.0 * np.pi * r_common**2 * Kc * Uc, r_common)
+                    )
+                else:
+                    vij = float(
+                        np.trapz(4.0 * np.pi * r_common**2 * Kc, r_common)
+                    )
                 
             vij_numeric[key] = vij
             vij_numeric[rkey] = vij
