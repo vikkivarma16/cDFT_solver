@@ -778,7 +778,7 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
 
     # --- Default values (in case needed) ---
     profile_p = find_key_recursive(config, "profile")
-    alpha = profile_p [ "alpha_mixing_min" ]
+    alpha = profile_p [ "alpha_mixing_max" ]
     iteration_max = profile_p[ "iteration_max" ]
     log_period = profile_p [ "log_period" ]
     tol = find_key_recursive(profile_p, "tolerance")
