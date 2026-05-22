@@ -131,9 +131,9 @@ def vij_radial_kernel(
     Uraw_dict = {}
     
     
-    kernel = config["system"]["free_energy"]["integrated_strength_kernel"]
+    kernel_label = config["system"]["free_energy"]["integrated_strength_kernel"]
 
-    print(kernel)
+    print(kernel_label)
 
     for i, si in enumerate(species):
         for j, sj in enumerate(species[i:], start=i):
@@ -208,7 +208,7 @@ def vij_radial_kernel(
             use_uniform =   is_uniform_kernel(Kc)
             
             
-            if kernel  == "meanfield":
+            if kernel_label  == "meanfield":
                 vij = float(
                         np.trapz(4.0 * np.pi * r_common**2 * Kc * Uc, r_common)
                     )

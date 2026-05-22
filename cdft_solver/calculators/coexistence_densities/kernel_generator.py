@@ -98,7 +98,7 @@ def  build_strength_kernel(
     r = np.linspace(grid["r_min"], grid["r_max"], grid["n_points"], endpoint=True )
 
     Nr = grid["n_points"]
-    if kernel_type == "uniform":
+    if kernel_type == "uniform" or  kernel_type == "meanfield" :
         print("✅ Using UNIFORM integrated strength kernel")
 
         kernel = np.ones((N, N, Nr))
