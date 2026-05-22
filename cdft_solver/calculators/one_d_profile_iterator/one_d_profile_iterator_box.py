@@ -1320,6 +1320,9 @@ def one_d_profile_iterator_box(ctx, config, export_json= True, export_plots = Tr
         prev_residual = residual
 
         # Tolerance-based stopping
+        if (iteration == 0):
+            residual = 1.0
+        
         if residual < tol:
             print(f"Converged at iteration {iteration+1} with residual {residual:.3e}")
             break
