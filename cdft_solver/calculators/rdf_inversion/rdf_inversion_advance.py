@@ -1115,10 +1115,60 @@ def boltzmann_inversion_advance(
         gamma_inputs  =  {}
         for sname, sdata in states.items():
             gamma_inputs[sname] = gamma_initial
+            
+            
+            
+            
+            
+        
+        
+        print ("Sigma reference system analysis !!!! \n")
+        
+        g_ref = {}
+        c_ref = {}
+        gamma_ref = {}
+        
+        u_ref = np.zeros_like(u_matrix)   
+        for i in range(N):
+            for j in range(N):
+                if has_core[i, j]:
+                    u_ref[i, j] = wca_split(r, u_matrix[i, j])
+                    # u_r =  u_matrix[i, j]
+                    # bh , r0 =  compute_bh_radius_truncated(r, u_r, beta_ref)
+                    # mask  =  r < r0
+                    # u_ref[i ,j] =  np.zeros_like(r)
+                    # u_ref[i, j, mask] =  u_matrix[i, j, mask]
+                else:
+                    u_ref[i, j] = u_matrix[i, j].copy()
+
+        for sname, sdata in states.items():
+
+            beta_s = sdata["beta"]
+            rho_s = sdata["densities"]
+            print(f"\nComputing reference RDF for state {sname}")
+            c_ref_state, gamma_ref_state, g_ref_state, conversion_flag = multi_component_oz_solver_alpha(
+                r=r,
+                pair_closures=pair_closures,
+                densities=np.asarray(rho_s, float),
+                u_matrix=beta_s * u_ref / beta_ref,
+                sigma_matrix=np.zeros((N, N)),
+                n_iter=n_iter,
+                tol=tolerance,
+                alpha_rdf_max=alpha_max,
+            )
+
+            g_ref[sname] = g_ref_state
+            c_ref[sname] = c_ref_state
+            gamma_ref[sname] = gamma_ref_state  
+        
+        
+        
+        
+        
 
         def sigma_objective(sigma_vec):
             sigma_mat = unpack_sigma_vector(sigma_vec)
-            u_trial = build_total_u_from_sigma(sigma_mat)
+            u_trial = build_hard_core_u_from_sigma(sigma_mat)
             loss = 0.0
             
             
@@ -1140,7 +1190,7 @@ def boltzmann_inversion_advance(
                 if conversion_flag:
                     gamma_inputs[sname] =  gamma_trial
                     for (i, j) in total_pair:
-                        diff = g_trial[i, j] - final_oz_results[sname]["g_pred"][i, j]
+                        diff = g_trial[i, j] - g_ref[sname][i, j]
                         loss += np.sum(diff * diff)
                         
                 else :
@@ -1191,44 +1241,7 @@ def boltzmann_inversion_advance(
         
         
         
-        print ("Sigma reference system analysis !!!! \n")
         
-        g_ref = {}
-        c_ref = {}
-        gamma_ref = {}
-        
-        u_ref = np.zeros_like(u_matrix)   
-        for i in range(N):
-            for j in range(N):
-                if has_core[i, j]:
-                    u_ref[i, j] = wca_split(r, u_matrix[i, j])
-                    # u_r =  u_matrix[i, j]
-                    # bh , r0 =  compute_bh_radius_truncated(r, u_r, beta_ref)
-                    # mask  =  r < r0
-                    # u_ref[i ,j] =  np.zeros_like(r)
-                    # u_ref[i, j, mask] =  u_matrix[i, j, mask]
-                else:
-                    u_ref[i, j] = u_matrix[i, j].copy()
-
-        for sname, sdata in states.items():
-
-            beta_s = sdata["beta"]
-            rho_s = sdata["densities"]
-            print(f"\nComputing reference RDF for state {sname}")
-            c_ref_state, gamma_ref_state, g_ref_state, conversion_flag = multi_component_oz_solver_alpha(
-                r=r,
-                pair_closures=pair_closures,
-                densities=np.asarray(rho_s, float),
-                u_matrix=beta_s * u_ref / beta_ref,
-                sigma_matrix=np.zeros((N, N)),
-                n_iter=n_iter,
-                tol=tolerance,
-                alpha_rdf_max=alpha_max,
-            )
-
-            g_ref[sname] = g_ref_state
-            c_ref[sname] = c_ref_state
-            gamma_ref[sname] = gamma_ref_state  
 
         # -------------------------------------------------
         # PHASE D: Collective sigma optimization
