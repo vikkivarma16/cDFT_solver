@@ -11,4 +11,3 @@ from .rdf_two_d import rdf_2d
 from .rdf_planer import rdf_planer
 from .closure import closure_update_c_matrix
 from .registry import CLOSURE_REGISTRY
-from .rdf_radial_thermodynamic import rdf_radial_thermodynamic
