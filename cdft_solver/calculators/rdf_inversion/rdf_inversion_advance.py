@@ -323,6 +323,116 @@ def detect_first_minimum_near_core(r, u_ij, sigma=None):
     
     
     
+    
+    
+    
+    
+    
+def clean_gr_tail(
+    r,
+    g,
+    prominence=0.02,
+    alpha=2.0,
+    noise_tol=0.01,
+    min_persistence=5
+):
+    """
+    Physically motivated RDF tail cleaning.
+
+    Key idea:
+    - Determine structural length scale from peaks + origin
+    - Only treat region beyond structural regime as noise
+    - Require persistent low fluctuations before replacing tail with 1
+    """
+
+    g_clean = g.copy()
+
+    dr = r[1] - r[0]
+
+    # ------------------------------------------------
+    # Step 1: detect peaks
+    # ------------------------------------------------
+    peaks, _ = find_peaks(g, prominence=prominence)
+
+    # ------------------------------------------------
+    # Step 2: structural wavelength estimation
+    # ------------------------------------------------
+    if len(peaks) == 0:
+        # fallback: no structure detected → do nothing
+        return g_clean, None, None
+
+    r_peaks = r[peaks]
+
+    intervals = []
+
+    # include origin → first peak distance
+    intervals.append(r_peaks[0])
+
+    # include peak-to-peak spacing
+    for i in range(len(r_peaks) - 1):
+        intervals.append(r_peaks[i+1] - r_peaks[i])
+
+    lambda_struct = np.mean(intervals)
+
+    # ------------------------------------------------
+    # Step 3: define safe structural region
+    # ------------------------------------------------
+    r_first_peak = r_peaks[0]
+    r_safe = r_first_peak + alpha * lambda_struct
+    
+    
+    print (r_safe, lambda_struct, alpha)
+
+    # ------------------------------------------------
+    # Step 4: scan tail for persistent noise
+    # ------------------------------------------------
+    for i in range(len(r)):
+
+        if r[i] < r_safe:
+            continue  # never touch structural region
+
+        # local window size tied to structural scale
+        window = max(5, int(alpha * lambda_struct / dr))
+
+        i1 = max(0, i - window)
+        i2 = min(len(g), i + window)
+
+        local_block = g[i1:i2]
+
+        local_amp = np.std(local_block - 1.0)
+
+        # ------------------------------------------------
+        # persistence check (important fix!)
+        # ------------------------------------------------
+        if local_amp < noise_tol:
+
+            stable = True
+
+            for j in range(min_persistence):
+                k = min(len(g)-1, i + j)
+
+                j1 = max(0, k - window)
+                j2 = min(len(g), k + window)
+
+                if np.std(g[j1:j2] - 1.0) >= noise_tol:
+                    stable = False
+                    break
+
+            if stable:
+                g_clean[i:] = 1.0
+
+                cutoff_r = r[i]
+
+                return g_clean, cutoff_r, lambda_struct
+
+    return g_clean, None, lambda_struct
+
+    
+    
+    
+    
+    
+    
 
 
 def process_supplied_rdf_multistate(supplied_data, species, r_grid):
@@ -443,7 +553,19 @@ def process_supplied_rdf_multistate(supplied_data, species, r_grid):
                 g_interp = interp(r_grid)
 
                 # Symmetric assignment
-                g_target[i, j, :] = g_target[j, i, :] = g_interp
+                
+                
+                g_clean, _, _ = clean_gr_tail(
+                    r = r_grid,
+                    g = g_interp,
+                    prominence=0.02,
+                    alpha=2.0,
+                    noise_tol=0.005,
+                    min_persistence=6
+                )
+                
+                
+                g_target[i, j, :] = g_target[j, i, :] = g_clean
                 fixed_mask[i, j] = fixed_mask[j, i] = True
 
         states_out[state_name] = {
