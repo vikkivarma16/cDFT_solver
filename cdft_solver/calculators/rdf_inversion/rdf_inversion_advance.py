@@ -560,7 +560,7 @@ def process_supplied_rdf_multistate(supplied_data, species, r_grid):
                     r = r_grid,
                     g = g_interp,
                     prominence=0.02,
-                    alpha=2.0,
+                    alpha=1.0,
                     noise_tol=0.005,
                     min_persistence=6
                 )
