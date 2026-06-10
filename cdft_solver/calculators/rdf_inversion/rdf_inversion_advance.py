@@ -20,6 +20,7 @@ import os
 import sys
 import ctypes
 from ctypes import c_double, c_int, POINTER
+from scipy.signal import find_peaks
 
 
 hard_core_repulsion = 1e6
