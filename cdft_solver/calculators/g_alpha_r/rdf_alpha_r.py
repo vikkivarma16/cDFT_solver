@@ -1081,7 +1081,7 @@ def rdf_alpha_r(
                     # u_ref[i ,j] =  np.zeros_like(r)
                     # u_ref[i, j, mask] =  u_matrix[i, j, mask]
                 else:
-                    u_ref[i, j] = np.zeros_like(u_matrix[i, j])
+                    u_ref[i, j] = u_matrix[i, j]
 
         
         u_soft = np.zeros_like(u_matrix)
@@ -1106,8 +1106,8 @@ def rdf_alpha_r(
                     u_soft[i, j] = u_att
                     u_soft[j, i] = u_att
                 elif not has_core[i, j]:
-                    u_soft[i, j] = u_matrix[i, j]
-                    u_soft[j, i] = u_matrix[i, j]
+                    u_soft[i, j] = np.zeros_like(u_matrix[i, j])
+                    u_soft[j, i] = np.zeros_like(u_matrix[i, j])
 
         # ============================================================
         # Run G(r) computation for σ_opt
