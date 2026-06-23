@@ -1020,6 +1020,8 @@ def delta_c_alpha(
                 # -----------------------------
                 # Very weak interaction region
                 # -----------------------------
+                
+                print (i, j , u_soft[i, j])
                 if np.all(np.abs(u_soft[i, j]) < 0.01):
                     dc[:] = 0.0
 
