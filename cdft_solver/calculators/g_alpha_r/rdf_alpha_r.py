@@ -1063,7 +1063,7 @@ def rdf_alpha_r(
             # --------------------------------------------------------
             # Compute G_u(r)
             # --------------------------------------------------------
-            G_u = np.zeroslike(G_accum)
+            G_u = np.zeros_like(G_accum)
             
             for i in range(N):
                 for j in range(N):
