@@ -218,7 +218,7 @@ def multi_component_oz_solver_alpha(
         if diff < prev_diff:
             alpha = min(alpha * 1.05, alpha_rdf_max)
         else:
-            alpha = max(alpha * 0.5, 1e-4)
+            alpha = max(alpha * 0.5, 1e-6)
 
         gamma_r = (1 - alpha) * gamma_r + alpha * gamma_new
 
