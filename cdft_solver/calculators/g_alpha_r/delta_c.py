@@ -1022,7 +1022,7 @@ def delta_c_alpha(
                 # -----------------------------
                 
                 #print (i, j , u_soft[i, j])
-                if np.all(np.abs(u_soft[i, j]) < 0.02):
+                if has_core[i, j] and np.all(np.abs(u_soft[i, j]) < 0.02):
                     #print ("here I am working actually_______\n\n\n")
                     dc[:] = 0.0
 
@@ -1098,7 +1098,7 @@ def delta_c_alpha(
 
             return delta_c, g_full
         
-        u_ref = build_hard_core_u_from_sigma(sigma_matrix)#: np.zeros_like(u_matrix)  
+        #u_ref = build_hard_core_u_from_sigma(sigma_matrix)#: np.zeros_like(u_matrix)  
         
         u_ref = np.zeros_like(u_matrix)
         for i in range(N):
