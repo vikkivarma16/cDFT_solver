@@ -1083,6 +1083,12 @@ def delta_c_alpha(
                 gamma_initial=np.zeros_like(u_ref),
             )
             
+            for i in range(N):
+                for j in range(i, N):
+                    if has_core[i, j]:
+                        c_rep[i, j] = np.zeros_like(u_ref)
+                        c_rep[j, i] = c_rep[i, j]
+            
             delta_c = c_full - c_rep
 
             # --------------------------------------------------------
@@ -1106,7 +1112,7 @@ def delta_c_alpha(
                     # u_ref[i ,j] =  np.zeros_like(r)
                     # u_ref[i, j, mask] =  u_matrix[i, j, mask]
                 else:
-                    u_ref[i, j] = np.zeros_like(u_matrix[i, j])
+                    u_ref[i, j] = u_matrix[i, j]
 
         
         
@@ -1132,8 +1138,8 @@ def delta_c_alpha(
                     u_soft[i, j] = u_att
                     u_soft[j, i] = u_att
                 elif not has_core[i, j]:
-                    u_soft[i, j] = u_matrix[i, j]
-                    u_soft[j, i] = u_matrix[i, j]
+                    u_soft[i, j] = np.zeros_like(r)
+                    u_soft[j, i] = np.zeros_like(r)
                     
                     
         u_tot  =  u_ref + u_soft
