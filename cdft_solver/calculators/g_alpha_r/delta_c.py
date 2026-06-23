@@ -1023,6 +1023,7 @@ def delta_c_alpha(
                 
                 print (i, j , u_soft[i, j])
                 if np.all(np.abs(u_soft[i, j]) < 0.01):
+                    print ("here I am working actually_______\n\n\n")
                     dc[:] = 0.0
 
                 # -----------------------------
