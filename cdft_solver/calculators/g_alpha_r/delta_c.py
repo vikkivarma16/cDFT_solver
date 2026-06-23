@@ -990,14 +990,16 @@ def delta_c_alpha(
 
     total_pair = [ (i, j) for i in range(N) for j in range(i, N) ]
     
-    def neutralize(delta_c, g_full, g_zero_tol=0.2):
+    def neutralize(delta_c, g_full, u_soft, g_zero_tol=0.2):
+        
         """
-        Neutralize delta_c in the CORE region using g(r) ≈ 0.
-
-        Parameters
         ----------
-        g_zero_tol : float
+            Neutralize delta_c in the CORE region using g(r) ≈ 0.
+            Parameters
+        ----------
+            g_zero_tol : float
             Threshold below which g(r) is considered zero
+        ----------
         """
 
         N, _, Nr = delta_c.shape
@@ -1013,10 +1015,17 @@ def delta_c_alpha(
                 # Core region: g ≈ 0
                 # -----------------------------
                 core_mask = g < g_zero_tol
-
                 dc[core_mask] = 0.0
 
-                # enforce symmetry
+                # -----------------------------
+                # Very weak interaction region
+                # -----------------------------
+                if np.all(np.abs(u_soft[i, j]) < 0.01):
+                    dc[:] = 0.0
+
+                # -----------------------------
+                # Enforce symmetry
+                # -----------------------------
                 final_dc[i, j] = dc
                 final_dc[j, i] = dc.copy()
 
@@ -1127,7 +1136,7 @@ def delta_c_alpha(
         u_tot  =  u_ref + u_soft
         delta_c, g_full = delta_c_r( u_ref=u_ref, u_full=u_tot, r=r, pair_closures=pair_closures, N=N,)      
         
-        delta_c_final = neutralize(delta_c, g_full)
+        delta_c_final = neutralize(delta_c, g_full, u_soft)
             
             
         
