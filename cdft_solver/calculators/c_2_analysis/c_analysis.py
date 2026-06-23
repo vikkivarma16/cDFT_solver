@@ -223,7 +223,7 @@ def multi_component_oz_solver_alpha(
         gamma_r = (1 - alpha) * gamma_r + alpha * gamma_new
 
         if step % 100 == 0 or diff < tol:
-            print(f"{step:6d} | {diff:12.3e} | {alpha:10.9f}")
+            print(f"{step:6d} | {diff:12.3e} | {alpha:10.8f}")
 
         if diff < tol:
             print(f"\n✅ Converged in {step+1} iterations.")

@@ -431,12 +431,12 @@ def multi_component_oz_solver_alpha(
         if diff < prev_diff:
             alpha = min(alpha * 1.05, alpha_rdf_max)
         else:
-            alpha = max(alpha * 0.5, 1e-4)
+            alpha = max(alpha * 0.5, 1e-6)
 
         gamma_r = (1 - alpha) * gamma_r + alpha * gamma_new
 
         if step % 100 == 0 or diff < tol:
-            print(f"{step:6d} | {diff:12.3e} | {alpha:6.4f}")
+            print(f"{step:6d} | {diff:12.3e} | {alpha:10.8f}")
 
         if diff < tol:
             print(f"\n✅ Converged in {step+1} iterations.")
