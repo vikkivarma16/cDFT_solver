@@ -1063,7 +1063,17 @@ def rdf_alpha_r(
             # --------------------------------------------------------
             # Compute G_u(r)
             # --------------------------------------------------------
-            G_u = G_accum * u_soft
+            G_u = np.zeroslike(G_accum)
+            
+            for i in range(N):
+                for j in range(N):
+                
+                    if has_core[i, j]:
+                        G_u[i, j] = G_accum[i, j] * u_soft[i, j]
+                        
+                        
+                    else:
+                        G_u[i, j] = G_accum[i, j] * u_matrix[i, j]
             
             return G_u, G_accum
             
