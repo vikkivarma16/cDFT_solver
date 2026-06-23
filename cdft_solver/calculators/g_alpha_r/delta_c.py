@@ -1086,7 +1086,7 @@ def delta_c_alpha(
             for i in range(N):
                 for j in range(i, N):
                     if has_core[i, j]:
-                        c_rep[i, j] = np.zeros_like(u_ref)
+                        c_rep[i, j] = np.zeros_like(u_ref[i, j])
                         c_rep[j, i] = c_rep[i, j]
             
             delta_c = c_full - c_rep
