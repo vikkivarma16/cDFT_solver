@@ -1073,7 +1073,7 @@ def rdf_alpha_r(
                         
                         
                     else:
-                        G_u[i, j] = G_accum[i, j] * u_matrix[i, j]
+                        G_u[i, j] = u_matrix[i, j]
             
             return G_u, G_accum
             
