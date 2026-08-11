@@ -1153,7 +1153,7 @@ def c_analysis(
             "G_r_real": G_r_real.tolist(),
             "G_u_r_sigma_opt": G_u_r_sigma_opt.tolist(),
             "G_u_r_real": G_u_r_real.tolist(),
-            "u_attractive_real": u_attractive.tolist()
+            "u_attractive_real": u_attractive.tolist(),
             "delta_c_alpha_u_real": delta_c_alpha_real.tolist()
         }
 
