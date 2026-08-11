@@ -1048,7 +1048,7 @@ def c_analysis(
 
                 G_accum += g_alpha * dalpha
                 
-                delta_c_alpha_acc += beta*(c_new - c_ref_additive)*dalpha
+                delta_c_alpha_acc += -beta*(c_new - c_ref_additive)*dalpha
                 
                 
                 
