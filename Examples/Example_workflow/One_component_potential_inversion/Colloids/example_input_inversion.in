@@ -1,13 +1,12 @@
-species = a, b
+species = a
 
-#, b, c
-
+#, b
 # for identical pairs, max 3 kinds of potentials are supported
 # reduce system configuration to ≤ 3 potential types per pair
 
 # --- primary interactions ---
-interactions primary: aa: filename = aa_colloids.txt
-interactions primary: bb: filename = bb_polymers.txt
+#interactions primary: aa: filename = aa_colloids.txt
+#interactions primary: bb: filename = bb_polymers.txt
 #interactions primary: ab: type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.5
 #interactions primary: ac: type = ma,  sigma = 1.000, cutoff = 3.5, epsilon = 0.3, m = 12, n = 6, lambda = 1.0
 #interactions primary: ac: type = gs,  sigma = 1.000, cutoff = 3.5, epsilon =-1.6
@@ -22,22 +21,22 @@ interactions primary: bb: filename = bb_polymers.txt
 
 # --- rdf calculation parameter ---
 rdf closure aa = py
-rdf closure ab = py
+#rdf closure ab = py
 #rdf closure ac = py
-rdf closure bb = hnc
+#rdf closure bb = hnc
 #rdf closure bc = py
 #rdf closure cc = py
 
 rdf alpha_max =  0.1
 rdf max_iteration  = 40000
-rdf max_iteration_ibi = 5000
+rdf max_iteration_ibi = 10000
 rdf alpha_ibi_max  = 0.1
 rdf tolerance = 0.00001
-rdf ibi_tolerance  = 0.001
+rdf ibi_tolerance  = 0.0001
 rdf beta = 1.0
-rdf r_max  =  10.0
-rdf n_points =  200
+rdf r_max  =  20.0
+rdf n_points =  2000
 
-supplied_data states 1 rdf ab: filename = rdf_colloids_polymers_2.txt
-supplied_data states 1 densities a = 0.09, b = 0.27
+supplied_data states 1 rdf aa: filename = rdf_colloid.txt
+supplied_data states 1 densities a = 0.4
 supplied_data states 1 beta = 1.0

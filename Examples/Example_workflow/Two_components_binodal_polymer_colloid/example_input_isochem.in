@@ -1,0 +1,60 @@
+species = a, b
+
+
+
+interactions primary: aa: type = gs,  sigma = 1.0,   cutoff = 3.5,     epsilon = 2.0
+interactions primary: ab: type = lj,  sigma = 1.0,   cutoff = 1.1224,    epsilon = 1.0
+interactions primary: bb: type = mie, sigma = 1.0,  m = 24, n= 12,   cutoff =2.5,    epsilon = 0.1
+
+
+
+
+
+# --- rdf calculation parameter---
+rdf closure aa = py
+rdf closure ab = py
+rdf closure bb = py
+
+
+rdf alpha_max =  0.1
+rdf max_iteration  = 600000
+rdf tolerence = 0.00001 
+rdf beta = 1.0
+rdf r_max  =  10.0
+rdf n_points =  2000
+
+
+
+# # # .... PRELIMINARY SETTINGS .... # # #
+free_energy ensemble = isochem
+
+# choose mode for the calculation of free energy:
+#   - "standard" → uses perturbative mean-field
+#   - "advanced" → uses FMT-integrated mean-field
+free_energy mode = standard
+
+
+# choose method for the calculation of mean-field free energy:
+#   - "smf" → Standard Mean Field
+#   - "emf" → Enhanced Mean Field
+#   - "zdl" → Zero-Dimensional Cavity Limit
+free_energy method = smf
+free_energy hs_functional = whitebeer
+
+# choose mode for the calculation of integrated strength:
+#   - "rdf"      → uses supplied RDF data
+#   - "uniform"  → uniform mean-field integration
+#   - "void"     → void data or user-supplied information
+free_energy integrated_strength_kernel = uniform
+free_energy supplied_data = no
+
+solution extrinsic_constraints: number_of_phases = 2
+solution extrinsic_constraints: heterogeneous_pair = None
+solution extrinsic_constraints: total_density_bound = 10
+
+#solution intrinsic_constraints: chemical_potential: c = -15
+solution intrinsic_constraints: chemical_potential: a = 14
+# Change the chemical potential for the polymers...
+
+
+

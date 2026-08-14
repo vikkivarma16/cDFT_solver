@@ -1,0 +1,18 @@
+species = a
+
+
+# --- interactions --- #
+# interactions primary: aa: type = lj,  sigma = 1.0, cutoff = 3.5, epsilon = 0.5, m = 12, n = 6
+interactions primary: aa: filename = aa_colloids.txt
+
+
+# --- rdf calculation parameter --- #
+rdf closure aa = py
+
+
+rdf alpha_max =  0.4
+rdf max_iteration  = 400000
+rdf tolerance = 0.000001
+rdf beta = 1.0
+rdf r_max  =  20.0
+rdf n_points =  2000

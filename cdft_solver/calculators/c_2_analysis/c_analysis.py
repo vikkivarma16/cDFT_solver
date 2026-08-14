@@ -1018,16 +1018,16 @@ def c_analysis(
 
             alpha_grid = np.linspace(0.0, 1.0, n_alpha)
             dalpha = alpha_grid[1] - alpha_grid[0]
-            c_ref_additive = np.asarray(c_ref)
+            
 
             G_accum = np.zeros_like(u_attractive)
-            delta_c_alpha_acc = np.zeros_like(u_attractive) 
+            
 
             for alpha in alpha_grid:
 
                 u_alpha = u_repulsive + alpha * u_attractive
 
-                c_new, _, g_alpha, conversion_flag = multi_component_oz_solver_alpha(
+                _, _, g_alpha, conversion_flag = multi_component_oz_solver_alpha(
                     r=r,
                     pair_closures=pair_closures,
                     densities=np.asarray(densities, float),
@@ -1042,13 +1042,11 @@ def c_analysis(
                     raise RuntimeError("OZ solver failed during alpha integration")
                     
                 
-                if (alpha==0):
-                    c_ref_additive = c_new
                     
 
                 G_accum += g_alpha * dalpha
                 
-                delta_c_alpha_acc += -beta*(c_new - c_ref_additive)*dalpha
+                
                 
                 
                 
@@ -1056,14 +1054,14 @@ def c_analysis(
             G_u = beta * G_accum * u_attractive
             
             
-            return G_accum, G_u, delta_c_alpha_acc
+            return G_accum, G_u
 
 
         # ============================================================
         # Run G(r) computation
         # ============================================================
 
-        G_r_sigma_opt, G_u_r_sigma_opt, delta_c_alpha_sigma_opt = compute_G_of_r(
+        G_r_sigma_opt, G_u_r_sigma_opt = compute_G_of_r(
             u_repulsive=build_hard_core_u_from_sigma(sigma_opt),
             u_attractive=u_attractive,
             densities=densities,
@@ -1077,7 +1075,7 @@ def c_analysis(
             alpha_max=alpha_max,
         )
 
-        G_r_real, G_u_r_real, delta_c_alpha_real = compute_G_of_r(
+        G_r_real, G_u_r_real = compute_G_of_r(
             u_repulsive=u_ref,
             u_attractive=u_attractive,
             densities=densities,
@@ -1154,7 +1152,6 @@ def c_analysis(
             "G_u_r_sigma_opt": G_u_r_sigma_opt.tolist(),
             "G_u_r_real": G_u_r_real.tolist(),
             "u_attractive_real": u_attractive.tolist(),
-            "delta_c_alpha_u_real": delta_c_alpha_real.tolist()
         }
 
         out = Path(ctx.scratch_dir)

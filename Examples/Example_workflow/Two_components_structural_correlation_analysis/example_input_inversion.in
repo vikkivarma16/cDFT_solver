@@ -1,0 +1,21 @@
+species = a, b  
+
+#interactions primary: aa: type = gs,   sigma = 1.414,  cutoff = 3.5,     epsilon = 2.0
+#interactions primary: bb: type = mie,  sigma = 1.0,    cutoff = 1.1224,  epsilon = 1.0,  m = 12,  n = 6
+#interactions primary: ab: type = mie,  sigma = 1.0,    cutoff = 3.5  ,   epsilon = 0.5,  m = 24,  n = 12
+
+interactions primary: aa: filename = aa.txt
+interactions primary: ab: filename = ab.txt
+interactions primary: bb: filename = bb.txt
+
+# --- rdf calculation parameter---
+rdf closure aa = hnc
+rdf closure bb = py
+rdf closure ab = py 
+
+rdf alpha_max =  0.1
+rdf max_iteration  = 400000
+rdf tolerance = 0.00001
+rdf beta = 1.0
+rdf r_max  =  10.0
+rdf n_points =  2000

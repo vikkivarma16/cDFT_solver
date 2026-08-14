@@ -5,7 +5,8 @@ from cdft_solver.generators.parameters.advance_dictionary import super_dictionar
 from cdft_solver.calculators.radial_distribution_function.rdf_planer import rdf_planer
 from cdft_solver.calculators.radial_distribution_function.rdf_radial import rdf_radial
 from cdft_solver.generators.supplied_data.process_supplied_data import process_supplied_data as psd
-from cdft_solver.calculators.rdf_inversion.rdf_inversion_standard import boltzmann_inversion_standard
+#from cdft_solver.calculators.rdf_inversion.rdf_inversion_standard import boltzmann_inversion_standard
+from cdft_solver.calculators.rdf_inversion.rdf_inversion_advance import boltzmann_inversion_advance
 
 
 
@@ -32,5 +33,6 @@ system =  super_dictionary_creator (ctx, export_json = True, filename = "input_s
 
 supplied_data = psd( ctx = ctx, config = system , export_json = True, export_plot = True)
 
-boltzmann_inversion_standard( ctx = ctx, rdf_config= system, supplied_data =  supplied_data, filename_prefix="multistate", export_plot=True, export_json=True )
+#boltzmann_inversion_standard( ctx = ctx, rdf_config= system, supplied_data =  supplied_data, filename_prefix="multistate", export_plot=True, export_json=True )
+boltzmann_inversion_advance( ctx = ctx, rdf_config= system, supplied_data =  supplied_data, filename_prefix="multistate", export_plot=True, export_json=True )
 
