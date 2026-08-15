@@ -1,0 +1,79 @@
+species = a, b, c
+
+# primary interaction
+
+interactions primary: aa: type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.0
+interactions primary: ab: type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.5
+interactions primary: ac: type = gs,  sigma = 1.000, cutoff = 3.5, epsilon = -0.599
+interactions primary: bb: type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.0
+interactions primary: bc: type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 0.0
+interactions primary: cc: type = hc,  sigma = 1.0, cutoff = 5.0, epsilon = 2.0
+
+# secondary interaction
+
+interactions secondary: ac: type = ghc,  sigma = 1.0, cutoff = 3.2, epsilon=2
+interactions secondary: bc: type = ghc,  sigma = 1.0, cutoff = 3.2, epsilon=2
+
+
+
+
+
+# --- rdf calculation parameter---
+rdf closure aa = hnc
+rdf closure ab = hnc
+rdf closure ac = py
+rdf closure bb = hnc
+rdf closure bc = py
+rdf closure cc = py 
+
+
+rdf alpha_max =  0.1
+rdf max_iteration  = 100000
+rdf tolerence = 0.000001 
+rdf beta = 1.0
+
+
+
+# # # .... PRELIMINARY SETTINGS .... # # #
+free_energy ensemble = isocore
+
+
+# choose mode for the calculation of free energy:
+#   - "standard" → uses perturbative mean-field
+#   - "advanced" → uses FMT-integrated mean-field
+free_energy mode = standard
+
+
+# choose method for the calculation of mean-field free energy:
+#   - "smf" → Standard Mean Field
+#   - "emf" → Enhanced Mean Field
+#   - "zdl" → Zero-Dimensional Cavity Limit
+free_energy method = smf
+free_energy hs_functional = rosenfeld
+
+
+# choose mode for the calculation of integrated strength:
+#   - "rdf"      → uses supplied RDF data
+#   - "uniform"  → uniform mean-field integration
+#   - "void"     → void data or user-supplied information
+free_energy integrated_strength_kernel = uniform
+free_energy supplied_data = no
+
+
+solution intrinsic_constraints: species_fraction: a = 0.18
+solution intrinsic_constraints: species_fraction: b = 0.18
+solution intrinsic_constraints: species_fraction: c = 0.09
+
+
+
+
+
+# # # .... Solution Parameters .... # # #
+solution extrinsic_constraints: number_of_phases = 2
+solution extrinsic_constraints: heterogeneous_pair = ab
+solution extrinsic_constraints: total_density_bound = 2.0
+
+
+solution extrinsic_constraints: density: a = 0.18
+solution extrinsic_constraints: density: b = 0.18
+solution extrinsic_constraints: density: c = 0.09

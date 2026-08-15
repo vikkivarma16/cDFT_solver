@@ -1,0 +1,110 @@
+task = profile_planer
+
+ensemble = isocore
+
+species = a, b, c
+
+# --- primary interactions ---
+interactions primary: aa: type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.0
+interactions primary: ab: type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.5
+interactions primary: ac: type = mie, m = 36, n = 18, sigma = 1.000, cutoff = 3.5, epsilon = 1.6358
+interactions primary: bb: type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.0
+interactions primary: bc: type = lj,  sigma = 1.0, cutoff = 1.1224, epsilon = 1.0
+interactions primary: cc: type = lj,  sigma = 1.0, cutoff = 1.1224, epsilon = 1.0
+
+# secondary interaction
+
+interactions secondary: ac: type = gs,  sigma = 1, cutoff = 3.2, epsilon=0.1
+#interactions secondary: bc: type = ghc,  sigma = 0.989, cutoff = 3.2, epsilon=2
+
+
+
+
+# --- rdf calculation parameter---
+rdf closure aa = hnc
+rdf closure ab = hnc
+rdf closure ac = py
+rdf closure bb = hnc
+rdf closure bc = py
+rdf closure cc = py
+
+rdf alpha_max =  0.01
+rdf max_iteration  = 100000
+rdf tolerence = 0.00001 
+rdf beta = 1.0
+rdf r_max  =  5.0
+rdf n_points =  200
+
+# # # .... PRELIMINARY SETTINGS .... # # #
+
+free_energy ensemble = isocore
+
+# choose mode for the calculation of free energy:
+#   - "standard" → uses perturbative mean-field
+#   - "advanced" → uses FMT-integrated mean-field
+free_energy mode = standard
+
+# choose method for the calculation of mean-field free energy:
+#   - "smf" → Standard Mean Field
+#   - "emf" → Enhanced Mean Field
+#   - "void" → Zero-Dimensional Cavity Limit
+free_energy method = emf
+
+# choose mode for the calculation of integrated strength:
+#   - "rdf"      → uses supplied RDF data
+#   - "uniform"  → uniform mean-field integration
+#   - "void"     → void data or user-supplied information
+free_energy integrated_strength_kernel = meanfield
+free_energy supplied_data = no
+#    - "meanfield" meanfield simply implement the soft potential integration. uniform opotion which is based on delta B_2 will not work in this as it is by structure defined for the bulk not for the inhomogeneous  
+
+
+
+# # # .... Isochoric Calculations (Canonical Ensemble) .... # # #
+# For isochoric (canonical) calculations, only the total average densities
+# across all simulation boxes and phases are required.
+solution intrinsic_constraints: species_fraction: a = 0.27
+solution intrinsic_constraints: species_fraction: b = 0.27
+solution intrinsic_constraints: species_fraction: c = 0.09
+
+# # # .... Solution Parameters .... # # #
+solution extrinsic_constraints: number_of_phases = 2
+solution extrinsic_constraints: heterogeneous_pair = None
+solution extrinsic_constraints: total_density_bound = 2.0
+# Note: The number of heterogeneous pairs should equal (number_of_phases - 1).
+# Defining more heterogeneous pairs may over-constrain the solution.
+# Conversely, omitting necessary pairs may lead to non-disjoint or equivalent coexistence densities.
+
+# supplied_data potentials primary ab: filename = potential_ab.txt
+# supplied_data rdf ab: filename = gr_ab.txt
+# supplied_data densities a: filename = density_a.txt 
+
+external species = d
+external interaction ad: type = custom_3,  sigma = 1.0, cutoff = 2.5, epsilon = 0.01
+external interaction bd: type = custom_3,  sigma = 1.0, cutoff = 2.5, epsilon = 0.01
+external interaction cd: type = custom_3,  sigma = 1.0, cutoff = 2.5, epsilon = 0.01
+
+# external particle position
+ 
+external d position = 0.0,  0.0,  0.0
+external d position = 60.0, 0.0,  0.0
+
+space_confinement_parameters space_properties: dimension = 1
+space_confinement_parameters space_properties: space_confinement = abox
+
+# confinement box parameters (for 1D system)
+space_confinement_parameters box_properties: box_length = 60, 5, 0
+space_confinement_parameters box_properties: box_points = 200, 50, 0
+
+planer_rdf space_properties: dimension = 2
+planer_rdf space_properties: space_confinement = abox
+planer_rdf tolerance = 0.001 
+# confinement box parameters (for 1D system)
+planer_rdf box_properties: box_length = 60, 5, 0
+planer_rdf box_properties: box_points = 200, 50, 0
+
+profile iteration_max  =   3000
+profile vij_interval = 1000
+profile tolerance  = 0.0000000001
+profile alpha_mixing_max = 0.001 
+profile log_period = 10

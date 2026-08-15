@@ -1,0 +1,53 @@
+ensemble = isochem
+
+species = a
+
+
+interactions primary: aa: type = lj,   sigma = 1.0,    cutoff = 3.5,  epsilon =1.0
+
+
+rdf closure aa = py
+
+
+
+
+rdf alpha_max =  0.01
+rdf max_iteration  = 200000
+rdf tolerence = 0.00001 
+rdf beta = 1.0
+rdf r_max  =  10.0
+rdf n_points =  200
+
+
+
+# # # .... PRELIMINARY SETTINGS .... # # #
+
+free_energy ensemble = isochem
+
+# choose mode for the calculation of free energy:
+#   - "standard" → uses perturbative mean-field
+#   - "advanced" → uses FMT-integrated mean-field
+free_energy mode = standard
+
+
+# choose method for the calculation of mean-field free energy:
+#   - "smf" → Standard Mean Field
+#   - "emf" → Enhanced Mean Field
+#   - "zdl" → Zero-Dimensional Cavity Limit
+free_energy method = smf
+
+# choose mode for the calculation of integrated strength:
+#   - "rdf"      → uses supplied RDF data
+#   - "uniform"  → uniform mean-field integration
+#   - "void"     → void data or user-supplied information
+free_energy integrated_strength_kernel = delta_c
+free_energy supplied_data = no
+
+
+solution extrinsic_constraints: number_of_phases = 2
+solution extrinsic_constraints: heterogeneous_pair = None
+solution extrinsic_constraints: total_density_bound = 5.0
+
+solution intrinsic_constraints: chemical_potential: None
+
+

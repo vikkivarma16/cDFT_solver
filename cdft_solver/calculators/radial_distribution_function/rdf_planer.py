@@ -349,7 +349,7 @@ def rdf_planer(
     
     rdf_planer  =  find_key_recursive(rdf_config, "planer_rdf")
     tol = 0.02
-    tol = rdf_planer["tolerance"]
+    tol = rdf_block["tolerance"]
     
     planer_grid_config = {}
     planer_grid_config ["space_confinement_parameters"] = rdf_planer

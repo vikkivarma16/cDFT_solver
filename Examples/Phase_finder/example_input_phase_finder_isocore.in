@@ -1,0 +1,41 @@
+species = a
+
+interactions primary: aa: type = lj,  sigma = 1.0,  cutoff = 3.5,  epsilon = 1.0
+
+
+
+# --- rdf calculation parameter---
+rdf closure aa = hnc
+
+
+rdf alpha_max =  0.01
+rdf max_iteration  = 100000
+rdf tolerence = 0.000001 
+rdf beta = 1.0
+
+
+
+# # # .... PRELIMINARY SETTINGS .... # # #
+
+
+
+# choose mode for the calculation of free energy:
+#   - "standard" → uses perturbative mean-field
+#   - "advanced" → uses FMT-integrated mean-field
+free_energy mode = standard
+
+
+# choose method for the calculation of mean-field free energy:
+#   - "smf" → Standard Mean Field
+#   - "emf" → Enhanced Mean Field
+#   - "zdl" → Zero-Dimensional Cavity Limit
+free_energy method = smf
+
+# choose mode for the calculation of integrated strength:
+#   - "rdf"      → uses supplied RDF data
+#   - "uniform"  → uniform mean-field integration
+#   - "void"     → void data or user-supplied information
+free_energy integrated_strength_kernel = uniform
+free_energy supplied_data = no
+
+solution extrinsic_constraints: density: a = 0.15

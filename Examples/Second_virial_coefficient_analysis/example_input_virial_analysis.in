@@ -1,0 +1,16 @@
+species = a
+
+#, b
+
+
+# --- primary interactions ---
+interactions primary: aa: type = lj,  sigma = 1.0, cutoff = 6, epsilon = 0.15
+# interactions primary: bb: type = lj,  sigma = 1.0, cutoff = 3.5, epsilon = 1.0
+# interactions primary: ab: type = lj,  sigma = 1.0, cutoff = 3.5, epsilon = 0.2
+# interactions primary: ac: type = ma,  sigma = 1.000, cutoff = 3.5, epsilon = 0.15, m = 12, n = 6, lambda = 1.0
+# interactions primary: ac: type = gs,  sigma = 1.000, cutoff = 3.5, epsilon =-1.6
+# interactions primary: bb: type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.0
+# interactions primary: bc: type =  gs,  sigma = 1.414, cutoff = 3.5, epsilon = 0.0
+# interactions primary: cc: type =  hc,  sigma = 1.0, cutoff = 3.5, epsilon = 2.0
+
+virial beta = 1.0

@@ -1,0 +1,6 @@
+species = a
+
+# --- primary interactions ---
+interactions primary: aa: type = mie,  sigma = 1.0, n = 48, m = 24, cutoff = 6, epsilon = 1.0
+
+virial beta = 1.0

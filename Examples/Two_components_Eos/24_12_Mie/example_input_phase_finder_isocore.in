@@ -1,0 +1,54 @@
+species = a, b  
+
+
+#interactions primary: aa: type = gs,   sigma = 1.0,    cutoff = 3.5,     epsilon = 2.0
+#interactions primary: bb: type = mie,  sigma = 0.5,    cutoff = 3.5,   epsilon = 0.5,  m = 12,  n = 6
+#interactions primary: ab: type = lj,  sigma = 1.0,    cutoff = 1.12246204,  epsilon = 1.0,  m = 12,  n = 6
+
+
+interactions primary: aa: filename  = aa.txt
+interactions primary: ab: filename  = ab.txt
+interactions primary: bb: filename  = bb.txt
+
+
+# --- rdf calculation parameter---
+rdf closure aa = hnc
+rdf closure bb = py
+rdf closure ab = py 
+
+
+rdf alpha_max =  0.01
+rdf r_max = 3.5
+rdf max_iteration  = 200000
+rdf tolerence = 0.000001 
+rdf n_points =  2000
+rdf beta = 1.0
+
+
+
+# # # .... PRELIMINARY SETTINGS .... # # #
+
+
+
+# choose mode for the calculation of free energy:
+#   - "standard" → uses perturbative mean-field
+#   - "advanced" → uses FMT-integrated mean-field
+free_energy mode = standard
+
+
+# choose method for the calculation of mean-field free energy:
+#   - "smf" → Standard Mean Field
+#   - "emf" → Enhanced Mean Field
+#   - "zdl" → Zero-Dimensional Cavity Limit
+free_energy hs_functional = whitebeer
+free_energy method = smf
+
+# choose mode for the calculation of integrated strength:
+#   - "rdf"      → uses supplied RDF data
+#   - "uniform"  → uniform mean-field integration
+#   - "void"     → void data or user-supplied information
+free_energy integrated_strength_kernel = rdf
+free_energy supplied_data = no
+
+solution extrinsic_constraints: density: a = 0.15
+solution extrinsic_constraints: density: b = 0.
