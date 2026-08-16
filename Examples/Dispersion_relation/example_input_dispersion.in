@@ -1,0 +1,25 @@
+species = a, b
+
+
+
+# --- primary interactions ---
+
+interactions primary: aa: type = nvrn,  sigma = 1.0, cutoff = 3.5, epsilon = 42, n = 3, m_i = 1.0, m_j = 1.0 
+interactions primary: bb: type = nvrn,  sigma = 1.0, cutoff = 3.5, epsilon = 42, n = 3, m_i = 0.025, m_j = 0.025 
+interactions primary: ab: type = nvrn,  sigma = 1.0, cutoff = 3.5, epsilon = 42, n = 3, m_i = 1.0, m_j = 0.025 
+
+
+
+# --- rdf calculation parameter ---
+
+rdf closure aa = hnc
+rdf closure ab = hnc
+rdf closure bb = hnc
+
+rdf alpha_max =  0.001
+rdf dimension  = 2d
+rdf max_iteration  = 1000000
+rdf tolerance = 0.00001
+rdf beta = 1.0
+rdf r_max  =  10.0
+rdf n_points =  4000

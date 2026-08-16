@@ -1,0 +1,44 @@
+task = profile_planer
+
+ensemble = isocore
+
+species = a
+
+#, b, c
+
+
+# for identical pairs, max 3 kinds of potentials are supported
+# reduce system configuration to ≤ 3 potential types per pair
+
+# --- primary interactions ---
+interactions primary: aa: type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.01
+#interactions primary: ab: type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.5
+#interactions primary: ac: type = ma,  sigma = 1.000, cutoff = 3.5, epsilon = 0.3, m = 12, n = 6, lambda = 1.0
+#interactions primary: ac: type = gs,  sigma = 1.000, cutoff = 3.5, epsilon =-1.6
+#interactions primary: bb: type = gs,  sigma = 1.414, cutoff = 3.5, epsilon = 2.0
+#interactions primary: bc: type =  gs,  sigma = 1.414, cutoff = 3.5, epsilon = 0.0
+#interactions primary: cc: type =  hc,  sigma = 1.0, cutoff = 3.5, epsilon = 2.0
+
+# --- secondary interactions ---
+#interactions secondary: aa: type = ghc,  sigma = 1.0, cutoff = 3.2, epsilon = 2.0
+#interaction secondary: aa: type = ma,  sigma = 1.000, cutoff = 3.5, epsilon = 0.1787, m = 12, n = 6, lambda = 0.477246
+#interactions secondary: bb: type = ghc,  sigma = 1.0, cutoff = 3.2, epsilon = 2.0
+
+
+
+
+
+# --- rdf calculation parameter---
+rdf closure aa = hnc
+#rdf closure ab = py
+#rdf closure ac = py
+#rdf closure bb = py
+#rdf closure bc = py
+#rdf closure cc = py
+
+rdf alpha_max =  0.001
+rdf max_iteration  = 100000
+rdf tolerance = 0.00001 
+rdf beta = 1.0
+rdf r_max  =  10.0
+rdf n_points =  400

@@ -1,0 +1,51 @@
+task = rdf_planer
+
+# ensemble = isocore
+
+species = a, b, c
+
+
+# for identical pairs, max 3 kinds of potentials are supported
+# reduce system configuration to ≤ 3 potential types per pair
+
+# --- primary interactions ---
+interactions primary: aa: type = gs,   sigma = 1.414,  cutoff = 3.5,     epsilon = 2.0
+interactions primary: ab: type = gs,   sigma = 1.414,  cutoff = 3.5,     epsilon = 2.5
+interactions primary: ac: type = ma,  sigma = 1.0,    cutoff = 5.0,    epsilon = 0.3104, m = 24, n = 12
+interactions primary: bb: type = gs,   sigma = 1.414,  cutoff = 3.5,     epsilon = 2.0
+#interactions primary: bc: type = lj,   sigma = 1.0,    cutoff = 1.1224,  epsilon = 1.0
+interactions primary: cc: type = lj,   sigma = 1.0,    cutoff = 1.1224,  epsilon = 1.0
+
+# --- secondary interactions ---
+interactions secondary: aa: type = ghc,  sigma = 1.02, cutoff = 3.2, epsilon = 1.0
+#interaction:  = ma,  sigma = 1.000, cutoff = 3.5, epsilon = 0.1787, m = 12, n = 6, lambda = 0.477246
+interactions secondary: bb: type = ghc,  sigma = 1.0, cutoff = 3.2, epsilon = 1.0
+
+
+
+
+
+
+# --- rdf calculation parameter---
+rdf closure aa = hnc
+rdf closure ab = hnc
+rdf closure ac = py
+rdf closure bb = hnc
+rdf closure bc = py
+rdf closure cc = py
+
+
+rdf alpha_max =  0.1
+rdf max_iteration  = 100000
+rdf tolerance = 0.01 
+rdf beta = 1.0
+
+
+
+planer_rdf space_properties: dimension = 2
+planer_rdf space_properties: space_confinement = abox
+# confinement box parameters (for 1D system)
+planer_rdf box_properties: box_length = 5, 5, 0
+planer_rdf box_properties: box_points = 50, 50, 0
+
+
