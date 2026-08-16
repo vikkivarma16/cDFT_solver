@@ -22,7 +22,7 @@ plots.mkdir(exist_ok=True)
 
 # export different dictionaries bases on their functions.
 ctx = ExecutionContext(
-    input_file="example_input_inversion.in",
+    input_file="example_input_structural_analysis.in",
     scratch_dir=scratch,
     plots_dir=plots,
 )
